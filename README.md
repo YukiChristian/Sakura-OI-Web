@@ -24,6 +24,8 @@ Compartir un ejemplo completo y una guía clara para que otras personas puedan c
 - Notificaciones de Android cuando Sakura termina de responder y la app está en segundo plano. La primera vez que carga Open WebUI, Android pregunta si permites notificaciones; acepta y activa también **Ajustes → Interfaz → Notificaciones** en Open WebUI. Solo llegan mientras Android mantenga la app abierta en segundo plano. Detalles en [Implementación Android](docs/ANDROID.md#notificaciones-de-android).
 - Icono de Sakura sobre fondo transparente; el arte original está en [assets/sakura-original.png](assets/sakura-original.png).
 - **TTS opcional:** Qwen3-TTS Fast es el proveedor usado en esta instalación de ejemplo. No es requisito; puedes configurar otro proveedor de texto a voz compatible con tu instancia de Open WebUI, o no usar TTS.
+- **Uso fuera de casa:** guía para conectarte desde datos móviles aunque no tengas IP pública (CGNAT), con Tailscale Funnel. Ver [docs/TAILSCALE.md](docs/TAILSCALE.md).
+- **Logo y favicon de Open WebUI:** script [server/aplicar_icono.py](server/aplicar_icono.py) que cambia el icono de la pestaña, la barra lateral y la app instalada a partir de una sola imagen. Ver [docs/ICONO-OPENWEBUI.md](docs/ICONO-OPENWEBUI.md).
 
 <div align="center">
   <img src="assets/sakura-icon.png" alt="Flor de Sakura con fondo transparente" width="160">
@@ -64,6 +66,19 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 - Android de referencia: Android 16 (API 36). La app declara minSdk 23 (Android 6.0), targetSdk 36 (Android 16) y compileSdk 37 (Android 17/API 37). compileSdk es la plataforma usada al compilar; no significa que el teléfono necesite Android 17.
 - Herramientas fijadas en el proyecto: Android Gradle Plugin 9.4.1, Gradle 9.6.0, Kotlin 2.2.10 y JDK 17 para ejecutar Gradle. El código Java usa compatibilidad de lenguaje 11.
 - La activación por palabra “Oye, Sakura” queda como idea futura; no está implementada.
+
+## 💡 Nuevas guías
+
+Cambios solo de documentación y del servidor; la app sigue en la versión 0.1.10.
+
+- **Usar Sakura desde la calle con Tailscale:** si tu proveedor usa CGNAT y no puedes abrir puertos, publica Open WebUI con Tailscale Funnel, agrega esa dirección a `CORS_ALLOW_ORIGIN` (si no, la página carga pero las respuestas no llegan) y compila la app con `https://<tu-pc>.<tu-tailnet>.ts.net/`. Guía completa en [docs/TAILSCALE.md](docs/TAILSCALE.md).
+- **Cambiar el logo y el favicon de Open WebUI:** [server/aplicar_icono.py](server/aplicar_icono.py) genera todos los iconos desde una imagen, los aplica sin reiniciar y puede restaurar los originales con `--restaurar`. Desde cualquier carpeta:
+
+  ```powershell
+  & 'C:\ruta\a\Open WebUI\Scripts\python.exe' 'C:\ruta\a\SakuraWebApp\server\aplicar_icono.py' --logo 'C:\ruta\a\mi-logo.png'
+  ```
+
+  Detalles, licencia y cómo quitar el icono viejo de la caché en [docs/ICONO-OPENWEBUI.md](docs/ICONO-OPENWEBUI.md).
 
 ## 🆕 Novedades de la versión 0.1.10
 

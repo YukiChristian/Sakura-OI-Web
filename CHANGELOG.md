@@ -2,6 +2,12 @@
 
 Cambios de SakuraWebApp por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## Sin versión de la app — 1 de noviembre de 2026
+
+### Añadido
+- [docs/TAILSCALE.md](docs/TAILSCALE.md): usar Sakura fuera de casa sin IP pública con Tailscale Funnel, ajuste de `CORS_ALLOW_ORIGIN` y arranque automático.
+- [server/aplicar_icono.py](server/aplicar_icono.py) y [docs/ICONO-OPENWEBUI.md](docs/ICONO-OPENWEBUI.md): cambiar el logo y el favicon de Open WebUI, con opción para restaurar los originales.
+
 ## 0.1.10 (versionCode 21) — 1 de noviembre de 2026
 
 ### Corregido
