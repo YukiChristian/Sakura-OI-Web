@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Monochrome sakura flower used as the status-bar notification icon. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M8.6,7a3.4,3.4 0 1,0 6.8,0a3.4,3.4 0 1,0 -6.8,0z
+            M13.36,10.45a3.4,3.4 0 1,0 6.8,0a3.4,3.4 0 1,0 -6.8,0z
+            M11.54,16.05a3.4,3.4 0 1,0 6.8,0a3.4,3.4 0 1,0 -6.8,0z
+            M5.66,16.05a3.4,3.4 0 1,0 6.8,0a3.4,3.4 0 1,0 -6.8,0z
+            M3.84,10.45a3.4,3.4 0 1,0 6.8,0a3.4,3.4 0 1,0 -6.8,0z" />
+</vector>

@@ -10,6 +10,7 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.net.http.SslError
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -39,6 +40,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -64,6 +66,16 @@ class MainActivity : ComponentActivity() {
     private var launchSplashDeadlineMs = 0L
     private var pageReadyWhileSplashIsVisible = false
     private var launchSplashRunnable: Runnable? = null
+    private lateinit var notificationBridge: WebNotificationBridge
+    @Volatile private var trustedPageLoaded = false
+    private var pendingNotificationRequestId: String? = null
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { _ ->
+        notificationBridge.markAsked()
+        resolveNotificationRequest()
+    }
 
     private val fileChooserLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -113,8 +125,16 @@ class MainActivity : ComponentActivity() {
             settings.displayZoomControls = false
             setInitialScale(110)
             webViewClient = object : WebViewClient() {
+                override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
+                    super.onPageStarted(view, url, favicon)
+                    trustedPageLoaded = isOpenWebUiOrigin(Uri.parse(url))
+                    if (trustedPageLoaded) view.evaluateJavascript(WebNotificationBridge.SHIM_JS, null)
+                }
+
                 override fun onPageFinished(view: WebView, url: String) {
                     super.onPageFinished(view, url)
+                    trustedPageLoaded = isOpenWebUiOrigin(Uri.parse(url))
+                    if (trustedPageLoaded) view.evaluateJavascript(WebNotificationBridge.SHIM_JS, null)
                     if (!mainFrameLoadFailed) confirmPageLoaded(view)
                 }
                 override fun onReceivedError(
@@ -224,6 +244,14 @@ class MainActivity : ComponentActivity() {
                 override fun onHideCustomView() = hideCustomView()
             }
         }
+        notificationBridge = WebNotificationBridge(
+            context = applicationContext,
+            isTrustedPage = { trustedPageLoaded },
+            requestSystemPermission = { requestId ->
+                runOnUiThread { requestNotificationPermission(requestId) }
+            }
+        )
+        webView.addJavascriptInterface(notificationBridge, WebNotificationBridge.JS_NAME)
         contentRoot.addView(webView, FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
@@ -552,6 +580,31 @@ class MainActivity : ComponentActivity() {
             origin.host.equals(HOME_HOST, ignoreCase = true) &&
             origin.port == HOME_PORT
 
+    private fun requestNotificationPermission(requestId: String) {
+        pendingNotificationRequestId?.let { resolveNotificationRequest() }
+        pendingNotificationRequestId = requestId
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            notificationBridge.markAsked()
+            resolveNotificationRequest()
+        }
+    }
+
+    private fun resolveNotificationRequest() {
+        val requestId = pendingNotificationRequestId ?: return
+        pendingNotificationRequestId = null
+        if (!::webView.isInitialized) return
+        val state = notificationBridge.currentPermission()
+        if (state != "granted") {
+            Toast.makeText(this, "Activa las notificaciones de Sakura en los ajustes de Android", Toast.LENGTH_LONG).show()
+        }
+        webView.evaluateJavascript(WebNotificationBridge.resolveScript(requestId, state), null)
+    }
+
     private fun closeWebDialogOrNavigateBack() {
         val script = """
             (function() {
@@ -594,6 +647,8 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         if (::webView.isInitialized) webView.onResume()
+        // The user is looking at Open WebUI again, so its pending alerts are no longer news.
+        NotificationManagerCompat.from(this).cancelAll()
     }
 
     override fun onDestroy() {
