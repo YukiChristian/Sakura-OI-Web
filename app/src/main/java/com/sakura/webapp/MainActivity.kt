@@ -290,7 +290,7 @@ class MainActivity : ComponentActivity() {
                 const html = (document.documentElement && document.documentElement.innerHTML) || '';
                 const title = document.title || '';
                 const browserError = /web page not available|net::err_|err_ssl_protocol_error|err_connection_/i;
-                return location.hostname === 'open-webui.example' &&
+                return location.hostname === '$HOME_HOST' &&
                     !browserError.test(text + ' ' + title) && html.length > 300;
             })();
         """.trimIndent()
@@ -549,8 +549,8 @@ class MainActivity : ComponentActivity() {
 
     private fun isOpenWebUiOrigin(origin: Uri): Boolean =
         origin.scheme.equals("https", ignoreCase = true) &&
-            origin.host.equals(Uri.parse(BuildConfig.WEBUI_URL).host, ignoreCase = true) &&
-            origin.port == Uri.parse(BuildConfig.WEBUI_URL).port
+            origin.host.equals(HOME_HOST, ignoreCase = true) &&
+            origin.port == HOME_PORT
 
     private fun closeWebDialogOrNavigateBack() {
         val script = """
@@ -615,7 +615,9 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
-        private const val HOME_URL = "https://open-webui.example:8081/"
+        private const val HOME_URL = BuildConfig.WEBUI_URL
+        private val HOME_HOST: String? = Uri.parse(HOME_URL).host
+        private val HOME_PORT: Int = Uri.parse(HOME_URL).port
         private const val CONNECTION_TIMEOUT_MS = 5_000L
         private const val SPLASH_MIN_DURATION_MS = 3_000L
         private const val TAG = "SakuraWebApp"
