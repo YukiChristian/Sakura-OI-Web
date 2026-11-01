@@ -18,6 +18,14 @@ Prepara una imagen cuadrada, de preferencia PNG con fondo transparente de 512×5
 
 Por ejemplo, con la flor de este repositorio: `--logo C:\ruta\a\SakuraWebApp\assets\sakura-icon.png`.
 
+`.\Scripts\python.exe` es una ruta relativa: solo funciona si la terminal está en la carpeta de Open WebUI. Desde cualquier otra carpeta, escribe las rutas completas con el operador `&` de PowerShell (las comillas son necesarias si la ruta tiene espacios):
+
+```powershell
+& 'C:\ruta\a\Open WebUI\Scripts\python.exe' 'C:\ruta\a\SakuraWebApp\server\aplicar_icono.py' --logo 'C:\ruta\a\mi-logo.png'
+```
+
+Si todo va bien, muestra una línea `ok ...` por cada archivo y termina con `Listo.` Si no aparece nada, o PowerShell dice que no reconoce el comando, la ruta de `python.exe` es incorrecta.
+
 El script encuentra solo el paquete `open_webui`. Si usas otro Python, indícalo con `--open-webui C:\ruta\a\site-packages\open_webui`.
 
 No hace falta reiniciar Open WebUI: recarga la página con **Ctrl+F5**.
