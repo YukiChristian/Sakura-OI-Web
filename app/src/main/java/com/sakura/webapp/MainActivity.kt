@@ -464,7 +464,9 @@ class MainActivity : ComponentActivity() {
             setPadding(0, dp(2), 0, dp(8))
         }
         content.addView(version)
-        val progress = LogoSpinnerView(this).apply {
+        // Black on the light screen; white in dark mode, where black would not show.
+        val loadingColor = themed(Color.BLACK, Color.WHITE)
+        val progress = LogoSpinnerView(this, loadingColor).apply {
             contentDescription = getString(R.string.loading_description)
         }
         content.addView(progress, LinearLayout.LayoutParams(dp(44), dp(44)).apply {
@@ -474,7 +476,7 @@ class MainActivity : ComponentActivity() {
         val label = TextView(this).apply {
             text = "Conectándose con el servidor…"
             textSize = 18f
-            setTextColor(themed(Color.rgb(110, 70, 90), Color.rgb(240, 190, 215)))
+            setTextColor(loadingColor)
             gravity = Gravity.CENTER
             setPadding(0, dp(16), 0, 0)
         }
