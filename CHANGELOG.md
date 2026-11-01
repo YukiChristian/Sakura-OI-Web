@@ -2,6 +2,12 @@
 
 Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 0.2.2 (versionCode 26) — 1 de noviembre de 2026
+
+### Cambiado
+- El indicador de carga (`LogoSpinnerView.kt`) y el texto "Conectándose con el servidor…" son negros en lugar de arcoíris y rosa. En modo oscuro se muestran en blanco.
+- Captura de la pantalla de carga actualizada en `docs/images/loading.png`.
+
 ## 0.2.1 (versionCode 25) — 1 de noviembre de 2026
 
 ### Cambiado
