@@ -1,4 +1,4 @@
-# 🌸 Sakura OI Web 📱 v0.2.2
+# 🌸 Sakura OI Web 📱 v0.2.3
 
 <div align="center">
   <img src="assets/sakura-oi-web-icon.png" alt="Logo de Sakura OI Web: flor con contorno arcoíris y las letras OI" width="160">
@@ -63,8 +63,8 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 
 ## 📦 Versiones documentadas
 
-- App: Sakura OI Web **0.2.2** (versionCode 26). Historial completo en [CHANGELOG.md](CHANGELOG.md).
-- Notificaciones verificadas en el teléfono Android 16 de referencia con Open WebUI 0.12.3. Pantallas, icono y barras en tema claro y oscuro de 0.2.1 y 0.2.2 verificados en el emulador de Android Studio (API 37).
+- App: Sakura OI Web **0.2.3** (versionCode 27). Historial completo en [CHANGELOG.md](CHANGELOG.md).
+- Notificaciones verificadas en el teléfono Android 16 de referencia con Open WebUI 0.12.3. Pantallas, icono y barras en tema claro y oscuro de 0.2.1 a 0.2.3 verificados en el emulador de Android Studio (API 37).
 - Open WebUI: **0.12.3**, versión verificada en la instalación local.
 - Nombre visible del modelo en Open WebUI: **Sakura**. Los registros identifican **llama.cpp 0.7.0-dev**, compilado para x64 con CUDA desde el commit `ea0c4c2c8`, que carga `SoAIHQ/Qwen3.5-9B-GGUF:Q4_K_M` (Qwen 3.5 de 9B, cuantización Q4_K_M). llama.cpp es el servidor de inferencia; el modelo no pertenece a la familia Llama. El alias Sakura se configura en Open WebUI.
 - Voz de ejemplo (opcional): Qwen3-TTS Fast compatible con API de OpenAI, modelo **qwen3-tts-clone-0.6b**, puerto local **5052**. Puedes usar otro TTS compatible o no configurar voz.
@@ -72,7 +72,13 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 - Herramientas fijadas en el proyecto: Android Gradle Plugin 9.4.1, Gradle 9.6.0, Kotlin 2.2.10 y JDK 17 para ejecutar Gradle. El código Java usa compatibilidad de lenguaje 11.
 - La activación por palabra “Oye, Sakura” queda como idea futura; no está implementada.
 
-## 🆕 Novedades de la versión 0.2.2
+## 🆕 Novedades de la versión 0.2.3
+
+- **Botón Reintentar en negro:** en la pantalla “No hay conexión con Sakura”, el botón redondo es negro con la flecha blanca y el texto **Reintentar** es negro, igual que la pantalla de carga. En modo oscuro se invierten: botón blanco, flecha negra y texto blanco.
+- **Repositorio renombrado a Sakura-OI-Web:** las rutas de ejemplo de las guías usan la carpeta `Sakura-OI-Web` y el proyecto de Android Studio se llama igual. Los enlaces antiguos a `SakuraWebApp` redirigen al nuevo nombre.
+- **Captura de la pantalla de error** actualizada.
+
+### Versión 0.2.2
 
 - **Indicador de carga y texto en negro:** el círculo que gira y el texto “Conectándose con el servidor…” de la pantalla de carga ahora son negros, en lugar del arcoíris y el rosa de 0.2.1. Con el teléfono en modo oscuro se muestran en blanco para que se vean sobre el fondo oscuro.
 - **Captura de la pantalla de carga** actualizada.
@@ -94,7 +100,7 @@ Cambios solo de documentación y del servidor, publicados entre las versiones 0.
 - **Cambiar el logo y el favicon de Open WebUI:** [server/aplicar_icono.py](server/aplicar_icono.py) genera todos los iconos desde una imagen, los aplica sin reiniciar y puede restaurar los originales con `--restaurar`. Desde cualquier carpeta:
 
   ```powershell
-  & 'C:\ruta\a\Open WebUI\Scripts\python.exe' 'C:\ruta\a\SakuraWebApp\server\aplicar_icono.py' --logo 'C:\ruta\a\mi-logo.png'
+  & 'C:\ruta\a\Open WebUI\Scripts\python.exe' 'C:\ruta\a\Sakura-OI-Web\server\aplicar_icono.py' --logo 'C:\ruta\a\mi-logo.png'
   ```
 
   Detalles, licencia y cómo quitar el icono viejo de la caché en [docs/ICONO-OPENWEBUI.md](docs/ICONO-OPENWEBUI.md).
@@ -115,7 +121,8 @@ Resumen de todos los cambios de la app. El detalle de cada versión está en [CH
 
 | Versión | versionCode | Cambios |
 |---|---:|---|
-| **0.2.2** | 26 | Indicador de carga y texto “Conectándose con el servidor…” en negro (blanco en modo oscuro). |
+| **0.2.3** | 27 | Botón y texto **Reintentar** en negro (invertidos en modo oscuro); repositorio y proyecto renombrados a Sakura-OI-Web. |
+| 0.2.2 | 26 | Indicador de carga y texto “Conectándose con el servidor…” en negro (blanco en modo oscuro). |
 | 0.2.1 | 25 | Nombre Sakura OI Web, nueva identidad (icono, logo y pantallas), indicador de carga con los colores del logo, texto “Conectándose con el servidor…”, barras del sistema que siguen el tema oscuro y reconocimiento de URLs sin puerto (Tailscale). |
 | 0.2.0 | 24 | Compilación local con el nombre Sakura OI Web; no se publicó por separado y sus cambios están en 0.2.1. |
 | 0.1.12 | 23 | Compilación local con la flor de Sakura en la pantalla de error; incluida en 0.2.1. |
@@ -152,7 +159,7 @@ Instala Android Studio compatible con Android Gradle Plugin 9.4.1, Android SDK P
 | Android mínimo | API 23 / Android 6.0 | Versión mínima para instalar la app |
 | Android objetivo | API 36 / Android 16 | Comportamientos de Android para los que está configurada |
 | SDK de compilación | API 37 / Android 17 | Plataforma necesaria para compilar; no es requisito para el teléfono |
-| Versión de Sakura OI Web | 0.2.2 (versionCode 26) | Versión del APK de este repositorio |
+| Versión de Sakura OI Web | 0.2.3 (versionCode 27) | Versión del APK de este repositorio |
 
 La versión de Android de tu teléfono es independiente del SDK de compilación. En el dispositivo Android 16 de referencia, la app funciona con target API 36.
 

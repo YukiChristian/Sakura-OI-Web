@@ -13,15 +13,15 @@ La licencia de Open WebUI restringe quitar o reemplazar su marca. Según su [lic
 Prepara una imagen cuadrada, de preferencia PNG con fondo transparente de 512×512 o más. Desde la carpeta del entorno de Open WebUI, ejecuta el script con su Python (ya incluye Pillow):
 
 ```powershell
-.\Scripts\python.exe C:\ruta\a\SakuraWebApp\server\aplicar_icono.py --logo C:\ruta\a\mi-logo.png
+.\Scripts\python.exe C:\ruta\a\Sakura-OI-Web\server\aplicar_icono.py --logo C:\ruta\a\mi-logo.png
 ```
 
-Por ejemplo, con el logo de este repositorio: `--logo C:\ruta\a\SakuraWebApp\assets\sakura-oi-web-icon.png`.
+Por ejemplo, con el logo de este repositorio: `--logo C:\ruta\a\Sakura-OI-Web\assets\sakura-oi-web-icon.png`.
 
 `.\Scripts\python.exe` es una ruta relativa: solo funciona si la terminal está en la carpeta de Open WebUI. Desde cualquier otra carpeta, escribe las rutas completas con el operador `&` de PowerShell (las comillas son necesarias si la ruta tiene espacios):
 
 ```powershell
-& 'C:\ruta\a\Open WebUI\Scripts\python.exe' 'C:\ruta\a\SakuraWebApp\server\aplicar_icono.py' --logo 'C:\ruta\a\mi-logo.png'
+& 'C:\ruta\a\Open WebUI\Scripts\python.exe' 'C:\ruta\a\Sakura-OI-Web\server\aplicar_icono.py' --logo 'C:\ruta\a\mi-logo.png'
 ```
 
 Si todo va bien, muestra una línea `ok ...` por cada archivo y termina con `Listo.` Si no aparece nada, o PowerShell dice que no reconoce el comando, la ruta de `python.exe` es incorrecta.
@@ -33,7 +33,7 @@ No hace falta reiniciar Open WebUI: recarga la página con **Ctrl+F5**.
 Para volver a los iconos originales:
 
 ```powershell
-.\Scripts\python.exe C:\ruta\a\SakuraWebApp\server\aplicar_icono.py --restaurar
+.\Scripts\python.exe C:\ruta\a\Sakura-OI-Web\server\aplicar_icono.py --restaurar
 ```
 
 La primera vez guarda los originales en `open_webui/frontend/.iconos-originales`.

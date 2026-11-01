@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "SakuraWebApp"
+rootProject.name = "Sakura-OI-Web"
 include(":app")

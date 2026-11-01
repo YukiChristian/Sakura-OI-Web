@@ -17,7 +17,7 @@ Esta tabla distingue la versión de Android que puede instalar la app del SDK us
 | Android mínimo (minSdk) | API 23 / Android 6.0 | Versión mínima admitida por el APK |
 | Android objetivo (targetSdk) | API 36 / Android 16 | Comportamientos del sistema para los que se configura |
 | SDK de compilación (compileSdk) | API 37 / Android 17 | SDK que debe instalarse para compilar; el teléfono no requiere Android 17 |
-| Sakura OI Web | 0.2.2 (versionCode 26) | Versión actual del proyecto |
+| Sakura OI Web | 0.2.3 (versionCode 27) | Versión actual del proyecto |
 | Android Gradle Plugin | 9.4.1 | Plugin de compilación Android |
 | Gradle Wrapper | 9.6.0 | Versión incluida y usada por el proyecto |
 | Kotlin | 2.2.10 | Versión configurada del plugin de Kotlin |
@@ -147,7 +147,7 @@ Las pantallas de carga y de error, y la ventana que Android muestra mientras abr
 
 ## Carga y error de conexión
 
-Al abrir o reanudar una nueva instancia de Sakura OI Web, primero aparece una pantalla propia de carga con el logo, el nombre y la versión de la app, un indicador giratorio y el texto “Conectándose con el servidor…”, ambos en negro (en blanco si el teléfono está en modo oscuro). No es la pantalla de Open WebUI: es el estado de inicio de la app. Cuando el servidor responde, se oculta la carga y se muestra la interfaz completa de Open WebUI dentro del WebView. Si la página principal no carga en cinco segundos, la app presenta una pantalla propia de error “No hay conexión con Sakura”, en vez de dejar una página blanca o mostrar el error de Chromium. El botón **Reintentar** vuelve a mostrar la carga y realiza una nueva navegación. Android puede destruir el proceso en segundo plano; al abrir de nuevo, la carga vuelve a mostrarse.
+Al abrir o reanudar una nueva instancia de Sakura OI Web, primero aparece una pantalla propia de carga con el logo, el nombre y la versión de la app, un indicador giratorio y el texto “Conectándose con el servidor…”, ambos en negro (en blanco si el teléfono está en modo oscuro). No es la pantalla de Open WebUI: es el estado de inicio de la app. Cuando el servidor responde, se oculta la carga y se muestra la interfaz completa de Open WebUI dentro del WebView. Si la página principal no carga en cinco segundos, la app presenta una pantalla propia de error “No hay conexión con Sakura”, en vez de dejar una página blanca o mostrar el error de Chromium. El botón **Reintentar** (negro con la flecha blanca, o blanco con la flecha negra en modo oscuro) vuelve a mostrar la carga y realiza una nueva navegación. Android puede destruir el proceso en segundo plano; al abrir de nuevo, la carga vuelve a mostrarse.
 
 | Al conectar | Si no hay conexión |
 |:--:|:--:|

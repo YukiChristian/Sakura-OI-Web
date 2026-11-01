@@ -2,6 +2,13 @@
 
 Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 0.2.3 (versionCode 27) — 1 de noviembre de 2026
+
+### Cambiado
+- Pantalla de error: el botón Reintentar es negro con la flecha blanca y su texto es negro, en lugar de rosa. En modo oscuro se invierten los colores.
+- El repositorio pasa a llamarse **Sakura-OI-Web** (`rootProject.name` en `settings.gradle.kts` y rutas de ejemplo en las guías).
+- Captura de la pantalla de error actualizada en `docs/images/connection-error.png`.
+
 ## 0.2.2 (versionCode 26) — 1 de noviembre de 2026
 
 ### Cambiado
