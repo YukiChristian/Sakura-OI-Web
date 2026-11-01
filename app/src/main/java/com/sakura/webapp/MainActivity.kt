@@ -353,6 +353,19 @@ class MainActivity : ComponentActivity() {
         connectionView.visibility = View.GONE
         webView.visibility = View.VISIBLE
         cancelConnectionTimeout()
+        askForNotificationsOnce()
+    }
+
+    /**
+     * Open WebUI keeps its notification setting on the server, so a user who enabled it in
+     * another browser never triggers Notification.requestPermission() here. Ask Android directly.
+     */
+    private fun askForNotificationsOnce() {
+        if (Build.VERSION.SDK_INT >= 33 && pendingNotificationRequestId == null &&
+            notificationBridge.currentPermission() == "default"
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 
     private fun installMediaDiagnostics(view: WebView) {

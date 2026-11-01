@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import android.webkit.JavascriptInterface
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -46,7 +47,10 @@ class WebNotificationBridge(
 
     @JavascriptInterface
     fun show(id: String, title: String, body: String?, tag: String?): Boolean {
-        if (!isTrustedPage() || currentPermission() != "granted") return false
+        if (!isTrustedPage() || currentPermission() != "granted") {
+            Log.w(TAG, "Notification skipped: trusted=${isTrustedPage()}, permission=${currentPermission()}")
+            return false
+        }
         val openApp = PendingIntent.getActivity(
             context,
             0,
@@ -111,6 +115,7 @@ class WebNotificationBridge(
         const val JS_NAME = "SakuraNotifications"
         private const val CHANNEL_ID = "open_webui"
         private const val KEY_ASKED = "asked"
+        private const val TAG = "SakuraWebApp"
 
         /** Resolves a pending `Notification.requestPermission()` promise in the page. */
         fun resolveScript(requestId: String, state: String): String =

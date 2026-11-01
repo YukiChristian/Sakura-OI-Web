@@ -1,4 +1,4 @@
-# 🌸 SakuraWebApp 📱 v0.1.9
+# 🌸 SakuraWebApp 📱 v0.1.10
 
 ## ¿Qué es SakuraWebApp?
 
@@ -21,7 +21,7 @@ Compartir un ejemplo completo y una guía clara para que otras personas puedan c
 - Al tocar **Subir Archivos**, se abre el selector del sistema Android para elegir uno o varios archivos o imágenes.
 - Compatibilidad con el teclado de Android: la pantalla se reajusta para mantener visible el cuadro de mensaje y sus controles.
 - Permisos de micrófono y audio gestionados por Android y WebView.
-- Notificaciones de Android cuando Sakura termina de responder y la app está en segundo plano. Actívalas en Open WebUI (**Ajustes → Interfaz → Notificaciones**) y acepta el permiso de Android. Solo llegan mientras Android mantenga la app abierta en segundo plano.
+- Notificaciones de Android cuando Sakura termina de responder y la app está en segundo plano. La primera vez que carga Open WebUI, Android pregunta si permites notificaciones; acepta y activa también **Ajustes → Interfaz → Notificaciones** en Open WebUI. Solo llegan mientras Android mantenga la app abierta en segundo plano. Detalles en [Implementación Android](docs/ANDROID.md#notificaciones-de-android).
 - Icono de Sakura sobre fondo transparente; el arte original está en [assets/sakura-original.png](assets/sakura-original.png).
 - **TTS opcional:** Qwen3-TTS Fast es el proveedor usado en esta instalación de ejemplo. No es requisito; puedes configurar otro proveedor de texto a voz compatible con tu instancia de Open WebUI, o no usar TTS.
 
@@ -31,7 +31,7 @@ Compartir un ejemplo completo y una guía clara para que otras personas puedan c
 
 ## 🖼️ Capturas
 
-Las capturas muestran la animación de inicio mientras conecta, la pantalla de error si el servidor no responde, el inicio de sesión, la pantalla principal, el modo de voz, los ajustes de Open WebUI y el icono instalado en Android.
+Las capturas muestran la animación de inicio mientras conecta, la pantalla de error si el servidor no responde, el inicio de sesión, la pantalla principal, el modo de voz, los ajustes de Open WebUI, una notificación de respuesta y el icono instalado en Android.
 
 <details>
 <summary>Ver capturas de SakuraWebApp</summary>
@@ -48,15 +48,15 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 |:--:|:--:|
 | <img src="docs/images/voice-mode.png" alt="Modo de voz de Sakura" width="240"> | <img src="docs/images/settings.png" alt="Ajustes de Open WebUI en Android" width="240"> |
 
-| Icono en el lanzador |
-|:--:|
-| <img src="docs/images/launcher-preview.png" alt="Icono SakuraWebApp en el lanzador de Android" width="240"> |
+| Notificación de respuesta | Icono en el lanzador |
+|:--:|:--:|
+| <img src="docs/images/notification.png" alt="Notificación de Android con la respuesta de Sakura" width="240"> | <img src="docs/images/launcher-preview.png" alt="Icono SakuraWebApp en el lanzador de Android" width="240"> |
 
 </details>
 
 ## 📦 Versiones documentadas
 
-- App: SakuraWebApp **0.1.9** (versionCode 20).
+- App: SakuraWebApp **0.1.10** (versionCode 21).
 - Open WebUI: **0.12.3**, versión verificada en la instalación local.
 - Nombre visible del modelo en Open WebUI: **Sakura**. Los registros identifican **llama.cpp 0.7.0-dev**, compilado para x64 con CUDA desde el commit `ea0c4c2c8`, que carga `SoAIHQ/Qwen3.5-9B-GGUF:Q4_K_M` (Qwen 3.5 de 9B, cuantización Q4_K_M). llama.cpp es el servidor de inferencia; el modelo no pertenece a la familia Llama. El alias Sakura se configura en Open WebUI.
 - Voz de ejemplo (opcional): Qwen3-TTS Fast compatible con API de OpenAI, modelo **qwen3-tts-clone-0.6b**, puerto local **5052**. Puedes usar otro TTS compatible o no configurar voz.
@@ -69,7 +69,7 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 1. Prepara una instancia de Open WebUI y confirma que el teléfono pueda abrirla en la red.
 2. Configura HTTPS y un certificado confiable para el host que usarás. La guía explica cómo trabajar con una CA local.
 3. Clona este repositorio y compila la app con la URL de tu servidor.
-4. Instala el APK en Android y concede el permiso de micrófono si usarás voz.
+4. Instala el APK en Android, acepta el permiso de notificaciones y concede el de micrófono si usarás voz.
 5. Configura el TTS que prefieras dentro de Open WebUI si quieres respuestas habladas. No necesitas instalar el servidor Qwen de este ejemplo.
 
 Las guías detallan la instalación del servidor, las variables, los certificados, la URL que hay que cambiar, los permisos y los problemas de carga de archivos:
@@ -89,7 +89,7 @@ Instala Android Studio compatible con Android Gradle Plugin 9.4.1, Android SDK P
 | Android mínimo | API 23 / Android 6.0 | Versión mínima para instalar la app |
 | Android objetivo | API 36 / Android 16 | Comportamientos de Android para los que está configurada |
 | SDK de compilación | API 37 / Android 17 | Plataforma necesaria para compilar; no es requisito para el teléfono |
-| Versión de SakuraWebApp | 0.1.9 (versionCode 20) | Versión del APK de este repositorio |
+| Versión de SakuraWebApp | 0.1.10 (versionCode 21) | Versión del APK de este repositorio |
 
 La versión de Android de tu teléfono es independiente del SDK de compilación. En el dispositivo Android 16 de referencia, la app funciona con target API 36.
 

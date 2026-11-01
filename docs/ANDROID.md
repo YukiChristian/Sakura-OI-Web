@@ -17,7 +17,7 @@ Esta tabla distingue la versión de Android que puede instalar la app del SDK us
 | Android mínimo (minSdk) | API 23 / Android 6.0 | Versión mínima admitida por el APK |
 | Android objetivo (targetSdk) | API 36 / Android 16 | Comportamientos del sistema para los que se configura |
 | SDK de compilación (compileSdk) | API 37 / Android 17 | SDK que debe instalarse para compilar; el teléfono no requiere Android 17 |
-| SakuraWebApp | 0.1.7 (versionCode 18) | Versión actual del proyecto |
+| SakuraWebApp | 0.1.10 (versionCode 21) | Versión actual del proyecto |
 | Android Gradle Plugin | 9.4.1 | Plugin de compilación Android |
 | Gradle Wrapper | 9.6.0 | Versión incluida y usada por el proyecto |
 | Kotlin | 2.2.10 | Versión configurada del plugin de Kotlin |
@@ -37,6 +37,12 @@ Reemplaza el marcador por la dirección HTTPS que el teléfono pueda alcanzar y 
 El APK se genera en `app/build/outputs/apk/debug/` (normalmente `app-debug.apk`). Si Android SDK Platform API 37.0 no aparece instalado, Gradle informará el error; instálalo en SDK Manager y ejecuta de nuevo el comando. API 37.1 y las plataformas API 36, 35 o anteriores no son requisitos de compilación para esta configuración. Si el servidor usa una CA local, sigue primero la guía [HTTPS y certificados](HTTPS.md) y agrega su certificado público al build local.
 
 El comando incluye la URL de tu servidor. Si usas el menú **Build → Build APK(s)** sin configurar esa propiedad, el proyecto conserva el host de ejemplo y el APK no podrá encontrar tu Open WebUI.
+
+Para no escribir la URL en cada compilación, guárdala en el archivo de propiedades de Gradle de tu usuario, `%USERPROFILE%\.gradle\gradle.properties` en Windows. Está fuera del repositorio, así que tu dirección no acaba en Git, y Android Studio la usa también con **Build → Build APK(s)** y el botón **Run**:
+
+```properties
+SAKURA_WEBUI_URL=https://<IP-o-host-del-PC>:8081/
+```
 
 Referencias oficiales: [compatibilidad de Android Gradle Plugin](https://developer.android.com/build/releases/about-agp), [JDK para builds Android](https://developer.android.com/build/jdks), [Android 16 / API 36](https://developer.android.com/tools/releases/platforms#android_16), [Android 17 / API 37](https://developer.android.com/about/versions/17/release-notes).
 
@@ -70,7 +76,7 @@ Para una imagen que se muestra en una pantalla, agrega el archivo a `app/src/mai
 
 Hay dos autorizaciones independientes: Android debe conceder `RECORD_AUDIO` a SakuraWebApp y el WebView debe aprobar la solicitud de origen web.
 
-- `AndroidManifest.xml` declara `INTERNET`, `RECORD_AUDIO` y `MODIFY_AUDIO_SETTINGS`.
+- `AndroidManifest.xml` declara `INTERNET`, `RECORD_AUDIO`, `MODIFY_AUDIO_SETTINGS` y `POST_NOTIFICATIONS` (este último para las [notificaciones](#notificaciones-de-android)).
 - La app solicita `RECORD_AUDIO` en tiempo de ejecución mediante Activity Result API.
 - `WebChromeClient.onPermissionRequest` valida que el origen coincide con el host HTTPS configurado y concede solo `RESOURCE_AUDIO_CAPTURE`. Las demás solicitudes se rechazan.
 - `onPermissionRequestCanceled` limpia una solicitud pendiente.
@@ -86,6 +92,29 @@ Al tocar “Subir Archivos” en Open WebUI, SakuraWebApp abre el selector de do
 La app lanza `ACTION_OPEN_DOCUMENT` con `CATEGORY_OPENABLE`, tipo `*/*` y `EXTRA_ALLOW_MULTIPLE=true`. Al volver, procesa `ClipData` para varios elementos y `Intent.data` para un solo elemento, y entrega todos los URI al callback de la página. Android otorga acceso a los elementos que el usuario eligió, por lo que no se concede permiso general de almacenamiento. La elección del sistema admite seleccionar varias imágenes/archivos en una operación. Es el flujo recomendado de [ACTION_OPEN_DOCUMENT](https://developer.android.com/reference/android/content/Intent#ACTION_OPEN_DOCUMENT).
 
 Para que la página pueda cerrar una vista previa de imagen a pantalla completa, el botón Atrás envía Escape a los diálogos web antes de navegar hacia atrás o cerrar la app.
+
+## Notificaciones de Android
+
+Cuando Sakura termina de responder y SakuraWebApp está en segundo plano, o estás en otro chat, aparece una notificación de Android con el título del chat y el inicio de la respuesta.
+
+<img src="images/notification.png" alt="Notificación de Android con la respuesta de Sakura" width="420">
+
+Cómo funciona:
+
+- Open WebUI ya avisa con la API de notificaciones del navegador (`new Notification(...)`), pero el WebView de Android no la implementa. `WebNotificationBridge.kt` inyecta un sustituto de `window.Notification` en la página que reenvía cada aviso a la app mediante una interfaz JavaScript, y la app lo publica en el canal **Mensajes de Sakura**.
+- El puente solo responde mientras el WebView muestra el origen HTTPS configurado en `SAKURA_WEBUI_URL`.
+- Open WebUI guarda el ajuste de notificaciones en el servidor, por usuario. Si ya lo activaste en otro navegador, la página nunca pide permiso en el teléfono, así que la app solicita `POST_NOTIFICATIONS` por su cuenta la primera vez que carga Open WebUI (Android 13 o posterior).
+- Al volver a la app se borran los avisos pendientes, porque ya estás viendo Open WebUI.
+- Tocar una notificación abre la app donde la dejaste. Open WebUI no indica en el aviso a qué chat corresponde, así que no se abre ese chat directamente.
+
+Para activarlas:
+
+1. Acepta el permiso de notificaciones cuando Android lo pida. Si lo rechazaste, actívalo en **Ajustes → Aplicaciones → SakuraWebApp → Notificaciones**.
+2. En Open WebUI, activa **Ajustes → Interfaz → Notificaciones**.
+
+Limitación: los avisos dependen de que Android mantenga viva la app en segundo plano. Si el sistema la cierra para liberar memoria, no hay conexión con el servidor y no llega la notificación. Para avisos garantizados haría falta enviar notificaciones push desde el servidor, que este proyecto no implementa.
+
+Si no aparecen, filtra Logcat por la etiqueta `SakuraWebApp`: el puente registra cuándo descarta un aviso y si fue por el origen o por el permiso.
 
 ## Teclado, tamaño y navegación
 
@@ -107,6 +136,7 @@ El teléfono tiene que alcanzar el servidor: la IP local no funciona por datos m
 ## Recursos importantes del código
 
 - `app/src/main/java/com/sakura/webapp/MainActivity.kt`: WebView, carga, archivos, micrófono y navegación.
+- `app/src/main/java/com/sakura/webapp/WebNotificationBridge.kt`: notificaciones de Android para los avisos de Open WebUI.
 - `app/src/main/AndroidManifest.xml`: permisos y Activity.
 - `app/src/main/res/xml/network_security_config.xml`: CA aceptadas.
 - `app/build.gradle.kts`: versiones Android y URL de build.
