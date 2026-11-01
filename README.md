@@ -89,6 +89,7 @@ Las guías detallan la instalación del servidor, las variables, los certificado
 - [HTTPS y certificados](docs/HTTPS.md)
 - [Implementación Android, ícono, permisos, archivos y capturas](docs/ANDROID.md)
 - [Consejo: usar Sakura fuera de casa con Tailscale (CGNAT, sin IP pública)](docs/TAILSCALE.md)
+- [Cambiar el logo y el favicon de Open WebUI](docs/ICONO-OPENWEBUI.md)
 
 ## 🛠️ Compilar
 
