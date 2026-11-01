@@ -5,7 +5,7 @@ import android.annotation.SuppressLint
 import android.animation.ObjectAnimator
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.content.res.ColorStateList
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
@@ -33,7 +33,6 @@ import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import android.util.Log
@@ -42,6 +41,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -53,6 +53,11 @@ class MainActivity : ComponentActivity() {
     private lateinit var contentRoot: FrameLayout
     private lateinit var connectionView: FrameLayout
     private lateinit var loadingView: FrameLayout
+    private lateinit var statusBarScrim: View
+    private lateinit var navigationBarScrim: View
+    /** Open WebUI's background behind each system bar as 0xRRGGBB, or -1 if unknown. */
+    private var pageTopColor = -1
+    private var pageBottomColor = -1
     private lateinit var retryArrow: TextView
     private var retryAnimator: ObjectAnimator? = null
     private var pendingUploadCallback: ValueCallback<Array<Uri>>? = null
@@ -111,7 +116,15 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        contentRoot = FrameLayout(this).apply { setBackgroundColor(Color.WHITE) }
+        contentRoot = FrameLayout(this).apply { setBackgroundColor(screenBackground) }
+        statusBarScrim = View(this)
+        navigationBarScrim = View(this)
+        contentRoot.addView(statusBarScrim, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, 0, Gravity.TOP
+        ))
+        contentRoot.addView(navigationBarScrim, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, 0, Gravity.BOTTOM
+        ))
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true
             settings.mediaPlaybackRequiresUserGesture = false
@@ -134,7 +147,10 @@ class MainActivity : ComponentActivity() {
                 override fun onPageFinished(view: WebView, url: String) {
                     super.onPageFinished(view, url)
                     trustedPageLoaded = isOpenWebUiOrigin(Uri.parse(url))
-                    if (trustedPageLoaded) view.evaluateJavascript(WebNotificationBridge.SHIM_JS, null)
+                    if (trustedPageLoaded) {
+                        view.evaluateJavascript(WebNotificationBridge.SHIM_JS, null)
+                        view.evaluateJavascript(PageThemeBridge.WATCH_JS, null)
+                    }
                     if (!mainFrameLoadFailed) confirmPageLoaded(view)
                 }
                 override fun onReceivedError(
@@ -252,6 +268,16 @@ class MainActivity : ComponentActivity() {
             }
         )
         webView.addJavascriptInterface(notificationBridge, WebNotificationBridge.JS_NAME)
+        webView.addJavascriptInterface(
+            PageThemeBridge(isTrustedPage = { trustedPageLoaded }) { top, bottom ->
+                runOnUiThread {
+                    pageTopColor = top
+                    pageBottomColor = bottom
+                    updateSystemBars()
+                }
+            },
+            PageThemeBridge.JS_NAME
+        )
         contentRoot.addView(webView, FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
@@ -283,12 +309,11 @@ class MainActivity : ComponentActivity() {
                     setMargins(margins[0], margins[1], margins[2], margins[3])
                 }.also { view.layoutParams = it }
             }
+            statusBarScrim.layoutParams = statusBarScrim.layoutParams.apply { height = bars.top }
+            navigationBarScrim.layoutParams = navigationBarScrim.layoutParams.apply { height = bars.bottom }
             insets
         }
-        WindowInsetsControllerCompat(window, contentRoot).apply {
-            isAppearanceLightStatusBars = true
-            isAppearanceLightNavigationBars = true
-        }
+        updateSystemBars()
         ViewCompat.requestApplyInsets(contentRoot)
         CookieManager.getInstance().apply {
             setAcceptCookie(true)
@@ -352,6 +377,7 @@ class MainActivity : ComponentActivity() {
         loadingView.visibility = View.GONE
         connectionView.visibility = View.GONE
         webView.visibility = View.VISIBLE
+        updateSystemBars()
         cancelConnectionTimeout()
         askForNotificationsOnce()
     }
@@ -408,39 +434,47 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun createLoadingView(): FrameLayout {
-        val root = FrameLayout(this).apply { setBackgroundColor(Color.WHITE) }
+        val root = FrameLayout(this).apply { setBackgroundColor(screenBackground) }
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setPadding(dp(32), dp(24), dp(32), dp(24))
         }
-        val flower = TextView(this).apply {
-            text = "🌸"
-            textSize = 54f
-            gravity = Gravity.CENTER
-            contentDescription = "Sakura"
+        val logo = ImageView(this).apply {
+            setImageResource(R.drawable.sakura_logo)
+            contentDescription = getString(R.string.app_name)
+            scaleType = ImageView.ScaleType.FIT_CENTER
         }
-        content.addView(flower)
+        content.addView(logo, LinearLayout.LayoutParams(dp(96), dp(96)).apply {
+            gravity = Gravity.CENTER_HORIZONTAL
+        })
+        val name = TextView(this).apply {
+            text = getString(R.string.app_name)
+            textSize = 20f
+            setTextColor(themed(Color.rgb(32, 32, 32), Color.rgb(236, 236, 236)))
+            gravity = Gravity.CENTER
+            setPadding(0, dp(14), 0, 0)
+        }
+        content.addView(name)
         val version = TextView(this).apply {
             text = "Versión ${BuildConfig.VERSION_NAME}"
             textSize = 13f
-            setTextColor(Color.rgb(180, 125, 150))
+            setTextColor(themed(Color.rgb(120, 120, 120), Color.rgb(170, 170, 170)))
             gravity = Gravity.CENTER
             setPadding(0, dp(2), 0, dp(8))
         }
         content.addView(version)
-        val progress = ProgressBar(this).apply {
-            isIndeterminate = true
-            indeterminateTintList = ColorStateList.valueOf(Color.rgb(232, 80, 145))
+        val progress = LogoSpinnerView(this).apply {
+            contentDescription = getString(R.string.loading_description)
         }
         content.addView(progress, LinearLayout.LayoutParams(dp(44), dp(44)).apply {
             topMargin = dp(18)
             gravity = Gravity.CENTER_HORIZONTAL
         })
         val label = TextView(this).apply {
-            text = "Conectando con Sakura…"
+            text = "Conectándose con el servidor…"
             textSize = 18f
-            setTextColor(Color.rgb(110, 70, 90))
+            setTextColor(themed(Color.rgb(110, 70, 90), Color.rgb(240, 190, 215)))
             gravity = Gravity.CENTER
             setPadding(0, dp(16), 0, 0)
         }
@@ -454,22 +488,22 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun createConnectionView(): FrameLayout {
-        val root = FrameLayout(this).apply { setBackgroundColor(Color.WHITE) }
+        val root = FrameLayout(this).apply { setBackgroundColor(screenBackground) }
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setPadding(dp(32), dp(24), dp(32), dp(24))
         }
         val icon = ImageView(this).apply {
-            setImageResource(R.mipmap.ic_launcher)
+            setImageResource(R.drawable.sakura_logo)
             contentDescription = getString(R.string.connection_icon_description)
             scaleType = ImageView.ScaleType.FIT_CENTER
         }
-        content.addView(icon, LinearLayout.LayoutParams(dp(76), dp(76)))
+        content.addView(icon, LinearLayout.LayoutParams(dp(88), dp(88)))
         val title = TextView(this).apply {
             text = getString(R.string.connection_title)
             textSize = 24f
-            setTextColor(Color.rgb(32, 32, 32))
+            setTextColor(themed(Color.rgb(32, 32, 32), Color.rgb(236, 236, 236)))
             gravity = Gravity.CENTER
             setPadding(0, dp(20), 0, dp(12))
         }
@@ -477,7 +511,7 @@ class MainActivity : ComponentActivity() {
         val message = TextView(this).apply {
             text = getString(R.string.connection_message)
             textSize = 16f
-            setTextColor(Color.rgb(95, 95, 95))
+            setTextColor(themed(Color.rgb(95, 95, 95), Color.rgb(180, 180, 180)))
             gravity = Gravity.CENTER
             setLineSpacing(dp(3).toFloat(), 1f)
         }
@@ -503,7 +537,7 @@ class MainActivity : ComponentActivity() {
         val retryLabel = TextView(this).apply {
             text = getString(R.string.connection_retry)
             textSize = 15f
-            setTextColor(Color.rgb(110, 70, 90))
+            setTextColor(themed(Color.rgb(110, 70, 90), Color.rgb(240, 190, 215)))
             gravity = Gravity.CENTER
             setPadding(0, dp(8), 0, 0)
         }
@@ -545,6 +579,7 @@ class MainActivity : ComponentActivity() {
         connectionView.visibility = View.GONE
         loadingView.visibility = View.VISIBLE
         webView.visibility = View.VISIBLE
+        updateSystemBars()
         scheduleConnectionTimeout(CONNECTION_TIMEOUT_MS)
         if (loadPage) webView.loadUrl(HOME_URL)
     }
@@ -556,6 +591,7 @@ class MainActivity : ComponentActivity() {
             connectionView.visibility = View.GONE
             loadingView.visibility = View.VISIBLE
             webView.visibility = View.VISIBLE
+            updateSystemBars()
             val elapsed = SystemClock.elapsedRealtime() - loadStartedAtMs
             val remaining = (CONNECTION_TIMEOUT_MS - elapsed).coerceAtLeast(0L)
             scheduleConnectionTimeout(remaining)
@@ -582,16 +618,48 @@ class MainActivity : ComponentActivity() {
                 loadingView.visibility = View.GONE
                 webView.visibility = View.GONE
                 connectionView.visibility = View.VISIBLE
+                updateSystemBars()
             }
         }
     }
+
+    /**
+     * Colours the areas behind the status and navigation bars. While Open WebUI is shown
+     * they follow the page's own background (so its dark theme reaches the bars); on the
+     * loading and connection screens they follow the system light or dark mode.
+     */
+    private fun updateSystemBars() {
+        if (!::connectionView.isInitialized) return
+        val showingPage = loadingView.visibility != View.VISIBLE &&
+            connectionView.visibility != View.VISIBLE
+        val top = if (showingPage && pageTopColor >= 0) opaque(pageTopColor) else screenBackground
+        val bottom = if (showingPage && pageBottomColor >= 0) opaque(pageBottomColor) else screenBackground
+        statusBarScrim.setBackgroundColor(top)
+        navigationBarScrim.setBackgroundColor(bottom)
+        contentRoot.setBackgroundColor(bottom)
+        WindowInsetsControllerCompat(window, contentRoot).apply {
+            isAppearanceLightStatusBars = ColorUtils.calculateLuminance(top) > 0.5
+            isAppearanceLightNavigationBars = ColorUtils.calculateLuminance(bottom) > 0.5
+        }
+    }
+
+    private fun opaque(rgb: Int): Int = rgb or 0xFF000000.toInt()
+
+    private val nightMode: Boolean
+        get() = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+            Configuration.UI_MODE_NIGHT_YES
+
+    private val screenBackground: Int
+        get() = themed(Color.WHITE, Color.rgb(23, 23, 23))
+
+    private fun themed(light: Int, dark: Int): Int = if (nightMode) dark else light
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).roundToInt()
 
     private fun isOpenWebUiOrigin(origin: Uri): Boolean =
         origin.scheme.equals("https", ignoreCase = true) &&
             origin.host.equals(HOME_HOST, ignoreCase = true) &&
-            origin.port == HOME_PORT
+            httpsPort(origin) == HOME_PORT
 
     private fun requestNotificationPermission(requestId: String) {
         pendingNotificationRequestId?.let { resolveNotificationRequest() }
@@ -685,7 +753,10 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val HOME_URL = BuildConfig.WEBUI_URL
         private val HOME_HOST: String? = Uri.parse(HOME_URL).host
-        private val HOME_PORT: Int = Uri.parse(HOME_URL).port
+        private val HOME_PORT: Int = httpsPort(Uri.parse(HOME_URL))
+
+        /** A URL without a port (such as a Tailscale address) uses the HTTPS default, 443. */
+        private fun httpsPort(uri: Uri): Int = if (uri.port == -1) 443 else uri.port
         private const val CONNECTION_TIMEOUT_MS = 5_000L
         private const val SPLASH_MIN_DURATION_MS = 3_000L
         private const val TAG = "SakuraWebApp"

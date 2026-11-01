@@ -1,9 +1,10 @@
 <resources>
-    <string name="app_name">SakuraWebApp</string>
+    <string name="app_name">Sakura OI Web</string>
     <string name="connection_title">No hay conexión con Sakura</string>
     <string name="connection_message">El servidor Open WebUI no respondió. Verifica que esté encendido y que tu teléfono pueda acceder a la dirección de Sakura.</string>
     <string name="connection_retry">Reintentar</string>
     <string name="connection_icon_description">Sakura</string>
+    <string name="loading_description">Cargando</string>
     <string name="notification_channel_name">Mensajes de Sakura</string>
     <string name="notification_channel_description">Avisos de respuestas y mensajes de Open WebUI</string>
 </resources>
