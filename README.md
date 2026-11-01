@@ -1,14 +1,18 @@
-# 🌸 SakuraWebApp 📱 v0.1.10
+# 🌸 Sakura OI Web 📱 v0.2.1
 
-## ¿Qué es SakuraWebApp?
+<div align="center">
+  <img src="assets/sakura-oi-web-icon.png" alt="Logo de Sakura OI Web: flor con contorno arcoíris y las letras OI" width="160">
+</div>
 
-SakuraWebApp es una app para Android que mejora la experiencia de Open WebUI en el teléfono y lo abre dentro de la propia app. Open WebUI sigue funcionando en tu computadora o servidor; SakuraWebApp es la forma de usarlo desde el teléfono. Mientras Android mantenga la app abierta en segundo plano, conserva la sesión y el lugar donde estabas. Si Android la cierra para liberar memoria, la app vuelve a cargar la página al abrirla. Si no puede conectarse al servidor, muestra un aviso de que no hay conexión y ofrece volver a intentar.
+## ¿Qué es Sakura OI Web?
+
+Sakura OI Web (antes SakuraWebApp) es una app para Android que mejora la experiencia de Open WebUI en el teléfono y lo abre dentro de la propia app. Open WebUI sigue funcionando en tu computadora o servidor; Sakura OI Web es la forma de usarlo desde el teléfono. Mientras Android mantenga la app abierta en segundo plano, conserva la sesión y el lugar donde estabas. Si Android la cierra para liberar memoria, la app vuelve a cargar la página al abrirla. Si no puede conectarse al servidor, muestra un aviso de que no hay conexión y ofrece volver a intentar.
 
 ## ¿Qué problema resuelve?
 
 Si abres Open WebUI en Chrome y cambias a otra app, el teléfono puede cerrar esa pestaña para ahorrar memoria. Al regresar, Chrome puede cargar la página otra vez y hacerte perder el punto exacto donde estabas trabajando o tener que volver a buscar la conversación. Esto no borra el chat guardado en el servidor, pero interrumpe la continuidad de la actividad. Además, para que el micrófono, la selección de archivos y el teclado funcionen bien dentro de una app, Android necesita que esas funciones estén conectadas correctamente con la página.
 
-SakuraWebApp adapta Open WebUI para usarlo desde una app instalada en Android. Lo abre en una ventana interna y conecta con funciones del teléfono como el teclado, el micrófono, el audio y el selector de archivos e imágenes. Al iniciar muestra la flor y la versión mientras carga. Si no logra conectar con el servidor, enseña un mensaje con un botón para volver a intentarlo.
+Sakura OI Web adapta Open WebUI para usarlo desde una app instalada en Android. Lo abre en una ventana interna y conecta con funciones del teléfono como el teclado, el micrófono, el audio y el selector de archivos e imágenes. Al iniciar muestra el logo, el nombre y la versión mientras carga. Si no logra conectar con el servidor, enseña un mensaje con un botón para volver a intentarlo.
 
 ## Objetivo general
 
@@ -18,29 +22,30 @@ Compartir un ejemplo completo y una guía clara para que otras personas puedan c
 
 - Open WebUI se abre dentro de la app Android, que permite volver atrás y conserva la sesión mientras Android la mantenga activa.
 - Pantallas de carga y de error de conexión con opción para reintentar.
+- Tema oscuro completo: las barras de arriba y de abajo toman el color de Open WebUI, y las pantallas propias de la app siguen el modo oscuro del teléfono.
 - Al tocar **Subir Archivos**, se abre el selector del sistema Android para elegir uno o varios archivos o imágenes.
 - Compatibilidad con el teclado de Android: la pantalla se reajusta para mantener visible el cuadro de mensaje y sus controles.
 - Permisos de micrófono y audio gestionados por Android y WebView.
 - Notificaciones de Android cuando Sakura termina de responder y la app está en segundo plano. La primera vez que carga Open WebUI, Android pregunta si permites notificaciones; acepta y activa también **Ajustes → Interfaz → Notificaciones** en Open WebUI. Solo llegan mientras Android mantenga la app abierta en segundo plano. Detalles en [Implementación Android](docs/ANDROID.md#notificaciones-de-android).
-- Icono de Sakura sobre fondo transparente; el arte original está en [assets/sakura-original.png](assets/sakura-original.png).
+- Icono y logo de Sakura OI Web; el arte original está en [assets/sakura-oi-web-original.png](assets/sakura-oi-web-original.png).
 - **TTS opcional:** Qwen3-TTS Fast es el proveedor usado en esta instalación de ejemplo. No es requisito; puedes configurar otro proveedor de texto a voz compatible con tu instancia de Open WebUI, o no usar TTS.
 - **Uso fuera de casa:** guía para conectarte desde datos móviles aunque no tengas IP pública (CGNAT), con Tailscale Funnel. Ver [docs/TAILSCALE.md](docs/TAILSCALE.md).
 - **Logo y favicon de Open WebUI:** script [server/aplicar_icono.py](server/aplicar_icono.py) que cambia el icono de la pestaña, la barra lateral y la app instalada a partir de una sola imagen. Ver [docs/ICONO-OPENWEBUI.md](docs/ICONO-OPENWEBUI.md).
 
-<div align="center">
-  <img src="assets/sakura-icon.png" alt="Flor de Sakura con fondo transparente" width="160">
-</div>
-
 ## 🖼️ Capturas
 
-Las capturas muestran la animación de inicio mientras conecta, la pantalla de error si el servidor no responde, el inicio de sesión, la pantalla principal, el modo de voz, los ajustes de Open WebUI, una notificación de respuesta y el icono instalado en Android.
+Las capturas muestran la animación de inicio mientras conecta, la pantalla de error si el servidor no responde, Open WebUI en tema claro y oscuro, el inicio de sesión, la pantalla principal, el modo de voz, los ajustes de Open WebUI, una notificación de respuesta y el icono instalado en Android.
 
 <details>
-<summary>Ver capturas de SakuraWebApp</summary>
+<summary>Ver capturas de Sakura OI Web</summary>
 
 | Cargando Open WebUI | Sin conexión |
 |:--:|:--:|
-| <img src="docs/images/loading.png" alt="Pantalla de Sakura cargando y conectando con Open WebUI" width="240"> | <img src="docs/images/connection-error.png" alt="Pantalla de error de conexión con botón para reintentar" width="240"> |
+| <img src="docs/images/loading.png" alt="Pantalla de carga de Sakura OI Web con el logo, la versión y el indicador arcoíris" width="240"> | <img src="docs/images/connection-error.png" alt="Pantalla de error de conexión con botón para reintentar" width="240"> |
+
+| Tema claro y tema oscuro |
+|:--:|
+| <img src="docs/images/dark-mode.png" alt="Open WebUI en tema claro y oscuro con las barras del sistema del mismo color" width="480"> |
 
 | Iniciar sesión | Pantalla principal |
 |:--:|:--:|
@@ -52,14 +57,14 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 
 | Notificación de respuesta | Icono en el lanzador |
 |:--:|:--:|
-| <img src="docs/images/notification.png" alt="Notificación de Android con la respuesta de Sakura" width="240"> | <img src="docs/images/launcher-preview.png" alt="Icono SakuraWebApp en el lanzador de Android" width="240"> |
+| <img src="docs/images/notification.png" alt="Notificación de Android con la respuesta de Sakura" width="240"> | <img src="docs/images/launcher-preview.png" alt="Icono de Sakura OI Web en el lanzador de Android" width="160"> |
 
 </details>
 
 ## 📦 Versiones documentadas
 
-- App: SakuraWebApp **0.1.10** (versionCode 21). Historial completo en [CHANGELOG.md](CHANGELOG.md).
-- Notificaciones verificadas en el teléfono Android 16 de referencia con Open WebUI 0.12.3.
+- App: Sakura OI Web **0.2.1** (versionCode 25). Historial completo en [CHANGELOG.md](CHANGELOG.md).
+- Notificaciones verificadas en el teléfono Android 16 de referencia con Open WebUI 0.12.3. Pantallas, icono y barras en tema claro y oscuro de 0.2.1 verificados en el emulador de Android Studio (API 37).
 - Open WebUI: **0.12.3**, versión verificada en la instalación local.
 - Nombre visible del modelo en Open WebUI: **Sakura**. Los registros identifican **llama.cpp 0.7.0-dev**, compilado para x64 con CUDA desde el commit `ea0c4c2c8`, que carga `SoAIHQ/Qwen3.5-9B-GGUF:Q4_K_M` (Qwen 3.5 de 9B, cuantización Q4_K_M). llama.cpp es el servidor de inferencia; el modelo no pertenece a la familia Llama. El alias Sakura se configura en Open WebUI.
 - Voz de ejemplo (opcional): Qwen3-TTS Fast compatible con API de OpenAI, modelo **qwen3-tts-clone-0.6b**, puerto local **5052**. Puedes usar otro TTS compatible o no configurar voz.
@@ -67,9 +72,18 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 - Herramientas fijadas en el proyecto: Android Gradle Plugin 9.4.1, Gradle 9.6.0, Kotlin 2.2.10 y JDK 17 para ejecutar Gradle. El código Java usa compatibilidad de lenguaje 11.
 - La activación por palabra “Oye, Sakura” queda como idea futura; no está implementada.
 
-## 💡 Nuevas guías
+## 🆕 Novedades de la versión 0.2.1
 
-Cambios solo de documentación y del servidor; la app sigue en la versión 0.1.10.
+- **Nuevo nombre: Sakura OI Web.** Así aparece la app debajo del icono, en los ajustes de Android y en el aviso de permisos. El identificador interno (`com.sakura.webapp`) no cambia, por lo que el APK se instala encima de la versión anterior sin perder la sesión.
+- **Nueva identidad visual:** icono del lanzador, pantalla de carga y pantalla de error usan el logo de la flor con contorno arcoíris y las letras **OI**.
+- **Pantalla de carga renovada:** muestra el logo, el nombre y la versión, un indicador giratorio con los colores del logo y el texto “Conectándose con el servidor…”.
+- **Tema oscuro corregido:** la barra de arriba (hora y notificaciones) y la de abajo (la línea de gestos de Android) se quedaban blancas al cambiar Open WebUI al tema oscuro. Ahora toman el color de fondo de la página y cambian al momento cuando cambias de tema. Las pantallas de carga y de error, y la ventana de inicio, siguen el modo oscuro del teléfono.
+- **Direcciones sin puerto:** la app reconoce como propia una URL como `https://<tu-pc>.<tu-tailnet>.ts.net/` (puerto 443 implícito), necesaria para el micrófono, las notificaciones y el color de las barras al usar Tailscale.
+- **Documentación:** nombre e identidad actualizados, capturas nuevas de carga, error, tema oscuro e icono, y sección "Barras del sistema y tema oscuro" en [docs/ANDROID.md](docs/ANDROID.md#barras-del-sistema-y-tema-oscuro).
+
+## 💡 Guías del servidor
+
+Cambios solo de documentación y del servidor, publicados entre las versiones 0.1.10 y 0.2.1 de la app.
 
 - **Usar Sakura desde la calle con Tailscale:** si tu proveedor usa CGNAT y no puedes abrir puertos, publica Open WebUI con Tailscale Funnel, agrega esa dirección a `CORS_ALLOW_ORIGIN` (si no, la página carga pero las respuestas no llegan) y compila la app con `https://<tu-pc>.<tu-tailnet>.ts.net/`. Guía completa en [docs/TAILSCALE.md](docs/TAILSCALE.md).
 - **Cambiar el logo y el favicon de Open WebUI:** [server/aplicar_icono.py](server/aplicar_icono.py) genera todos los iconos desde una imagen, los aplica sin reiniciar y puede restaurar los originales con `--restaurar`. Desde cualquier carpeta:
@@ -80,7 +94,9 @@ Cambios solo de documentación y del servidor; la app sigue en la versión 0.1.1
 
   Detalles, licencia y cómo quitar el icono viejo de la caché en [docs/ICONO-OPENWEBUI.md](docs/ICONO-OPENWEBUI.md).
 
-## 🆕 Novedades de la versión 0.1.10
+## 🗂️ Novedades de versiones anteriores
+
+### 0.1.10
 
 - **Notificaciones de Android:** cuando Sakura termina de responder y la app está en segundo plano, o estás en otro chat, aparece una notificación con el título del chat y el inicio de la respuesta. Al volver a la app se borran los avisos pendientes.
 - **Permiso de notificaciones al abrir la app:** la primera vez que carga Open WebUI, la app pide el permiso de Android. Antes solo se pedía desde el interruptor de Open WebUI, y si ese ajuste ya estaba activado desde otro navegador, Android bloqueaba los avisos.
@@ -88,7 +104,20 @@ Cambios solo de documentación y del servidor; la app sigue en la versión 0.1.1
 - **Diagnóstico:** si un aviso no se muestra, Logcat registra el motivo con la etiqueta `SakuraWebApp`.
 - **Documentación:** nueva sección de notificaciones en [docs/ANDROID.md](docs/ANDROID.md#notificaciones-de-android), captura de la notificación y cómo guardar la URL en `%USERPROFILE%\.gradle\gradle.properties`.
 
-Los cambios de cada versión están en [CHANGELOG.md](CHANGELOG.md).
+## 📜 Historial de versiones
+
+Resumen de todos los cambios de la app. El detalle de cada versión está en [CHANGELOG.md](CHANGELOG.md).
+
+| Versión | versionCode | Cambios |
+|---|---:|---|
+| **0.2.1** | 25 | Nombre Sakura OI Web, nueva identidad (icono, logo y pantallas), indicador de carga con los colores del logo, texto “Conectándose con el servidor…”, barras del sistema que siguen el tema oscuro y reconocimiento de URLs sin puerto (Tailscale). |
+| 0.2.0 | 24 | Compilación local con el nombre Sakura OI Web; no se publicó por separado y sus cambios están en 0.2.1. |
+| 0.1.12 | 23 | Compilación local con la flor de Sakura en la pantalla de error; incluida en 0.2.1. |
+| 0.1.11 | 22 | Compilación local que acepta direcciones HTTPS sin puerto, como las de Tailscale; incluida en 0.2.1. |
+| 0.1.10 | 21 | La app pide el permiso de notificaciones al cargar Open WebUI por primera vez; registro en Logcat cuando se descarta un aviso. |
+| 0.1.9 | 20 | Compilación que incluye las notificaciones de Android; mismo código que 0.1.8. |
+| 0.1.8 | 19 | Notificaciones de Android para los avisos de Open WebUI y corrección de la URL de `SAKURA_WEBUI_URL`. |
+| 0.1.7 | 18 | Primera versión documentada: Open WebUI en un WebView, pantallas de carga y de error, selector de archivos, micrófono, ajuste al teclado e icono de Sakura. |
 
 ## 🚀 Pasos para usar o adaptar el proyecto
 
@@ -117,7 +146,7 @@ Instala Android Studio compatible con Android Gradle Plugin 9.4.1, Android SDK P
 | Android mínimo | API 23 / Android 6.0 | Versión mínima para instalar la app |
 | Android objetivo | API 36 / Android 16 | Comportamientos de Android para los que está configurada |
 | SDK de compilación | API 37 / Android 17 | Plataforma necesaria para compilar; no es requisito para el teléfono |
-| Versión de SakuraWebApp | 0.1.10 (versionCode 21) | Versión del APK de este repositorio |
+| Versión de Sakura OI Web | 0.2.1 (versionCode 25) | Versión del APK de este repositorio |
 
 La versión de Android de tu teléfono es independiente del SDK de compilación. En el dispositivo Android 16 de referencia, la app funciona con target API 36.
 

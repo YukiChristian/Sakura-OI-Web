@@ -1,6 +1,33 @@
 # Historial de versiones
 
-Cambios de SakuraWebApp por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
+Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
+
+## 0.2.1 (versionCode 25) — 1 de noviembre de 2026
+
+### Cambiado
+- La app se llama **Sakura OI Web**. El identificador `com.sakura.webapp` no cambia, así que se instala como actualización de SakuraWebApp.
+- Nueva identidad: icono adaptable y de versiones anteriores a Android 8, y logo de las pantallas de carga y de error, generados desde `assets/sakura-oi-web-original.png`.
+- La pantalla de carga muestra el logo, el nombre y la versión, un indicador giratorio con los colores del logo (`LogoSpinnerView.kt`) y el texto "Conectándose con el servidor…" en lugar de "Conectando con Sakura…".
+
+### Corregido
+- Con Open WebUI en tema oscuro, la barra de estado y la barra de navegación seguían blancas. `PageThemeBridge.kt` lee el color de fondo de la página arriba y abajo y la app colorea las dos barras con él, con iconos claros u oscuros según el contraste.
+- Las pantallas de carga y de error, y la ventana de inicio (`values-night/themes.xml`), siguen el modo oscuro del teléfono.
+- Las direcciones HTTPS sin puerto (por ejemplo, las de Tailscale) no se reconocían como el servidor configurado, así que el micrófono y las notificaciones se rechazaban. Ahora se toma el puerto 443 por defecto.
+
+### Documentación
+- README, CHANGELOG y guías con el nuevo nombre, tabla con el historial de versiones, sección "Barras del sistema y tema oscuro" en [docs/ANDROID.md](docs/ANDROID.md#barras-del-sistema-y-tema-oscuro) y capturas nuevas de carga, error, tema oscuro e icono.
+
+## 0.2.0 (versionCode 24) — compilación local
+
+- Primer APK con el nombre Sakura OI Web. No se publicó por separado; sus cambios están en 0.2.1.
+
+## 0.1.12 (versionCode 23) — compilación local
+
+- La pantalla de error muestra la flor de Sakura (`sakura_logo`) en lugar del icono del lanzador. Incluido en 0.2.1, ya con el logo nuevo.
+
+## 0.1.11 (versionCode 22) — compilación local
+
+- Acepta direcciones HTTPS sin puerto, como `https://<tu-pc>.<tu-tailnet>.ts.net/`. Incluido en 0.2.1.
 
 ## Sin versión de la app — 1 de noviembre de 2026
 

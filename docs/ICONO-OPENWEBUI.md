@@ -2,7 +2,7 @@
 
 Open WebUI no tiene una opción para cambiar su icono. [server/aplicar_icono.py](../server/aplicar_icono.py) reemplaza todas las imágenes que usa a partir de un solo logo.
 
-Esto cambia el icono de **Open WebUI** (pestaña del navegador, barra lateral, app instalada). El icono de la app Android SakuraWebApp es otro y se explica en [ANDROID.md](ANDROID.md#ícono-y-la-imagen-de-sakura).
+Esto cambia el icono de **Open WebUI** (pestaña del navegador, barra lateral, app instalada). El icono de la app Android Sakura OI Web es otro y se explica en [ANDROID.md](ANDROID.md#ícono-y-logo-de-sakura-oi-web).
 
 ## Licencia
 
@@ -16,7 +16,7 @@ Prepara una imagen cuadrada, de preferencia PNG con fondo transparente de 512×5
 .\Scripts\python.exe C:\ruta\a\SakuraWebApp\server\aplicar_icono.py --logo C:\ruta\a\mi-logo.png
 ```
 
-Por ejemplo, con la flor de este repositorio: `--logo C:\ruta\a\SakuraWebApp\assets\sakura-icon.png`.
+Por ejemplo, con el logo de este repositorio: `--logo C:\ruta\a\SakuraWebApp\assets\sakura-oi-web-icon.png`.
 
 `.\Scripts\python.exe` es una ruta relativa: solo funciona si la terminal está en la carpeta de Open WebUI. Desde cualquier otra carpeta, escribe las rutas completas con el operador `&` de PowerShell (las comillas son necesarias si la ruta tiene espacios):
 

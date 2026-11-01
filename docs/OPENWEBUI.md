@@ -46,7 +46,7 @@ Open WebUI guarda los datos de usuario en `DATA_DIR`. Si se inicia con una carpe
 
 ## TTS es opcional: configurar Qwen3-TTS u otro proveedor
 
-SakuraWebApp no incluye ni requiere un motor TTS específico. El texto a voz se configura en Open WebUI; puedes usar cualquier proveedor compatible con la versión de Open WebUI que tengas, o dejar la función desactivada. Revisa el endpoint, modelo, credenciales y requisitos de red del proveedor elegido. El ejemplo siguiente documenta Qwen3-TTS Fast porque es el que se usó en esta instalación; puedes omitirlo si usarás otro servicio.
+Sakura OI Web no incluye ni requiere un motor TTS específico. El texto a voz se configura en Open WebUI; puedes usar cualquier proveedor compatible con la versión de Open WebUI que tengas, o dejar la función desactivada. Revisa el endpoint, modelo, credenciales y requisitos de red del proveedor elegido. El ejemplo siguiente documenta Qwen3-TTS Fast porque es el que se usó en esta instalación; puedes omitirlo si usarás otro servicio.
 
 ### Ejemplo: Qwen3-TTS Fast
 
