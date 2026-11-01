@@ -518,14 +518,16 @@ class MainActivity : ComponentActivity() {
             setLineSpacing(dp(3).toFloat(), 1f)
         }
         content.addView(message)
+        // Black button with a white arrow, inverted in dark mode, like the loading screen.
+        val retryColor = themed(Color.BLACK, Color.WHITE)
         retryArrow = TextView(this).apply {
             text = "↻"
             textSize = 34f
             gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
+            setTextColor(themed(Color.WHITE, Color.BLACK))
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.rgb(232, 80, 145))
+                setColor(retryColor)
             }
             contentDescription = getString(R.string.connection_retry)
             isClickable = true
@@ -539,7 +541,7 @@ class MainActivity : ComponentActivity() {
         val retryLabel = TextView(this).apply {
             text = getString(R.string.connection_retry)
             textSize = 15f
-            setTextColor(themed(Color.rgb(110, 70, 90), Color.rgb(240, 190, 215)))
+            setTextColor(retryColor)
             gravity = Gravity.CENTER
             setPadding(0, dp(8), 0, 0)
         }
