@@ -22,3 +22,7 @@ local.properties
 **/server.key
 **/sakura-root-ca.key
 app/src/main/res/raw/sakura_ca.crt
+
+# Carbono theme on/off flag (local state)
+server/temas/carbono/ACTIVO
+**/temas/carbono/ACTIVO

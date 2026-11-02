@@ -123,6 +123,24 @@ Cambios solo de documentación y del servidor, publicados entre las versiones 0.
 
   Detalles, licencia y cómo quitar el icono viejo de la caché en [docs/ICONO-OPENWEBUI.md](docs/ICONO-OPENWEBUI.md).
 
+## 🎨 Tema sugerido: Carbono
+
+**Carbono** es la línea de estilo de Sakura OI Web para Open WebUI. Usa superficies neutras en tonos carbón y la acción principal en negro, con una jerarquía de texto clara y tamaños más legibles en el teléfono. Los colores del logo quedan solo para detalles. No modifica Open WebUI: el lanzador sirve dos archivos en lugar de los `custom.css` y `loader.js` vacíos que Open WebUI ya carga, y sobrevive a `pip install -U open-webui`.
+
+- Archivos de respaldo listos para copiar: [server/temas/carbono](server/temas/carbono) (`carbono.css`, `carbono.js`, `tema.py`, `Aplicar-Tema.cmd`, `Quitar-Tema.cmd`).
+- El lanzador [server/run_open_webui_https.py](server/run_open_webui_https.py) ya incluye el hook del tema.
+- Activar y quitar sin reiniciar (desde la carpeta de Open WebUI):
+
+  ```powershell
+  .\Scripts\python.exe .\temas\carbono\tema.py aplicar
+  ```
+
+  ```powershell
+  .\Scripts\python.exe .\temas\carbono\tema.py quitar
+  ```
+
+Colores, tipografía, qué cambia en cada pantalla, instalación y límites en [docs/TEMA-CARBONO.md](docs/TEMA-CARBONO.md).
+
 ## 🗂️ Novedades de versiones anteriores
 
 ### 0.1.10
