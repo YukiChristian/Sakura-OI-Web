@@ -86,7 +86,7 @@ Para una imagen que se muestra en una pantalla, agrega el archivo a `app/src/mai
 
 Hay dos autorizaciones independientes: Android debe conceder `RECORD_AUDIO` a Sakura OI Web y el WebView debe aprobar la solicitud de origen web.
 
-- `AndroidManifest.xml` declara `INTERNET`, `RECORD_AUDIO`, `MODIFY_AUDIO_SETTINGS` y `POST_NOTIFICATIONS` (este último para las [notificaciones](#notificaciones-de-android)).
+- `AndroidManifest.xml` declara `INTERNET`, `RECORD_AUDIO`, `MODIFY_AUDIO_SETTINGS` y `POST_NOTIFICATIONS`. Para mantener Open WebUI activa al cambiar de app, también declara `FOREGROUND_SERVICE` y `FOREGROUND_SERVICE_SPECIAL_USE`, usados por `SakuraKeepAliveService` y su [aviso de conexión en segundo plano](#notificaciones-de-android).
 - La app solicita `RECORD_AUDIO` en tiempo de ejecución mediante Activity Result API.
 - `WebChromeClient.onPermissionRequest` valida que el origen coincide con el host HTTPS configurado y concede solo `RESOURCE_AUDIO_CAPTURE`. Las demás solicitudes se rechazan.
 - `onPermissionRequestCanceled` limpia una solicitud pendiente.
