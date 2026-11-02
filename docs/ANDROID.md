@@ -17,7 +17,7 @@ Esta tabla distingue la versión de Android que puede instalar la app del SDK us
 | Android mínimo (minSdk) | API 23 / Android 6.0 | Versión mínima admitida por el APK |
 | Android objetivo (targetSdk) | API 36 / Android 16 | Comportamientos del sistema para los que se configura |
 | SDK de compilación (compileSdk) | API 37 / Android 17 | SDK que debe instalarse para compilar; el teléfono no requiere Android 17 |
-| Sakura OI Web | 0.2.6 (versionCode 30) | Versión actual del proyecto |
+| Sakura OI Web | 0.2.7 (versionCode 31) | Versión actual del proyecto |
 | Android Gradle Plugin | 9.4.1 | Plugin de compilación Android |
 | Gradle Wrapper | 9.6.0 | Versión incluida y usada por el proyecto |
 | Kotlin | 2.2.10 | Versión configurada del plugin de Kotlin |
@@ -111,17 +111,19 @@ Cuando Sakura termina de responder y la app está en segundo plano, o estás en 
 
 Cómo funciona:
 
-- Open WebUI ya avisa con la API de notificaciones del navegador (`new Notification(...)`), pero el WebView de Android no la implementa. `WebNotificationBridge.kt` inyecta un sustituto de `window.Notification` en la página que reenvía cada aviso a la app mediante una interfaz JavaScript, y la app lo publica en el canal **Mensajes de Sakura**.
+- Open WebUI ya avisa con la API de notificaciones del navegador (`new Notification(...)`), pero el WebView de Android no la implementa. `WebNotificationBridge.kt` inyecta un sustituto de `window.Notification` en la página que reenvía cada aviso a la app mediante una interfaz JavaScript, y la app lo publica en el canal **Mensajes de Sakura (sin sonido)**. El icono grande muestra `sakura_logo.png`; el icono pequeño de la barra de estado es monocromo por diseño de Android.
 - El puente solo responde mientras el WebView muestra el origen HTTPS configurado en `SAKURA_WEBUI_URL`.
 - Open WebUI guarda el ajuste de notificaciones en el servidor, por usuario. Si ya lo activaste en otro navegador, la página nunca pide permiso en el teléfono, así que la app solicita `POST_NOTIFICATIONS` por su cuenta la primera vez que carga Open WebUI (Android 13 o posterior).
 - Al volver a Sakura, el servicio de conexión en segundo plano se detiene. Los avisos de respuesta no se borran automáticamente; puedes abrirlos o descartarlos desde Android.
+- **El sonido es independiente:** el ajuste **Notificación Sonora** de Open WebUI controla la reproducción de audio de la página. No debe desactivar los avisos nativos de Android. El canal **Mensajes de Sakura (sin sonido)** es silencioso y visible; el interruptor **Notificaciones del Navegador** de Open WebUI debe permanecer activado.
+- Desde 0.2.7, el canal de respuesta es nuevo porque Android fija el sonido al crear cada canal. Si tenías un canal anterior, los avisos nuevos usan **Mensajes de Sakura (sin sonido)** en Ajustes de Android → Aplicaciones → Sakura OI Web → Notificaciones.
 - `SakuraKeepAliveService.kt` mantiene el proceso de la app en primer plano mientras el WebView queda detrás de otra app. Android exige una notificación visible para este servicio; el canal **Conexión en segundo plano** es silencioso y de prioridad baja.
 - Tocar una notificación abre la app donde la dejaste. Open WebUI no indica en el aviso a qué chat corresponde, así que no se abre ese chat directamente.
 
 Para activarlas:
 
 1. Acepta el permiso de notificaciones cuando Android lo pida. Si lo rechazaste, actívalo en **Ajustes → Aplicaciones → Sakura OI Web → Notificaciones**.
-2. En Open WebUI, activa **Ajustes → Interfaz → Notificaciones**.
+2. En Open WebUI, activa **Ajustes → Interfaz → Notificaciones del Navegador**. **Notificación Sonora** es opcional y no afecta a los avisos de Android.
 
 El servicio se inicia mientras la actividad aún está visible y se detiene al volver, conforme a las restricciones de Android para iniciar servicios en primer plano desde el fondo. Reduce la probabilidad de que el sistema mate el proceso y desconecte el WebView, pero no lo impide ni reserva RAM; cerrar la app desde recientes o aplicar restricciones agresivas de batería también puede interrumpir la sesión. Este aviso no usa sonido ni vibración y puede aumentar ligeramente el consumo mientras Sakura está fuera de pantalla. Para avisos garantizados incluso con la app cerrada harían falta notificaciones push desde el servidor; este proyecto no las implementa.
 
