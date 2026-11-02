@@ -34,7 +34,7 @@ Compartir un ejemplo completo y una guía clara para que otras personas puedan c
 
 ## 🖼️ Capturas
 
-Las capturas muestran la animación de inicio mientras conecta, la pantalla de error si el servidor no responde, Open WebUI en tema claro y oscuro, el inicio de sesión, la pantalla principal, el modo de voz, los ajustes de Open WebUI, una notificación de respuesta y el icono instalado en Android.
+Las capturas muestran la animación de inicio mientras conecta, la pantalla de error si el servidor no responde, Open WebUI en tema claro y oscuro, el inicio de sesión, la pantalla principal, el modo de voz, los ajustes de Open WebUI y el icono instalado en Android. La captura de notificación de respuesta de la versión 0.2.6 conserva el icono anterior; en 0.2.7 Android muestra el logo multicolor como icono grande.
 
 <details>
 <summary>Ver capturas de Sakura OI Web</summary>
@@ -55,9 +55,9 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 |:--:|:--:|
 | <img src="docs/images/voice-mode.png" alt="Modo de voz de Sakura" width="240"> | <img src="docs/images/settings.png" alt="Ajustes de Open WebUI en Android" width="240"> |
 
-| Notificación de respuesta | Icono en el lanzador |
+| Notificación de respuesta (captura 0.2.6) | Icono en el lanzador |
 |:--:|:--:|
-| <img src="docs/images/notification.png" alt="Notificación de Android con la respuesta de Sakura" width="240"> | <img src="docs/images/launcher-preview.png" alt="Icono de Sakura OI Web en el lanzador de Android" width="160"> |
+| <img src="docs/images/notification.png" alt="Captura de la notificación Android en 0.2.6, con el icono anterior; actualizado en 0.2.7" width="240"> | <img src="docs/images/launcher-preview.png" alt="Icono de Sakura OI Web en el lanzador de Android" width="160"> |
 
 </details>
 
