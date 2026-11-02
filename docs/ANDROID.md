@@ -4,7 +4,7 @@
 
 El objetivo general de Sakura OI Web (antes SakuraWebApp) es ofrecer Open WebUI como una aplicación Android completa y cómoda de usar, manteniendo la página dentro de un WebView propio en vez de abrirla como una pestaña de Chrome. Así, mientras Android mantenga vivo el proceso de la app, al volver a la app se conserva la página ya abierta y no se depende del ciclo de vida de una pestaña del navegador. Chrome puede descartar pestañas en segundo plano para liberar memoria y recargarlas al regresar.
 
-La app habilita cookies y DOM storage, y guarda/restaura el estado de navegación cuando Android recrea la actividad. Esto ayuda a conservar el inicio de sesión y continuar la navegación. No significa que la página quede permanentemente en RAM: Android puede cerrar cualquier app en segundo plano si necesita recursos. Si eso ocurre, Sakura OI Web vuelve a cargar Open WebUI; la sesión web y los datos del servidor son independientes de que la página siga cargada.
+La app habilita cookies y DOM storage, guarda/restaura el estado de navegación cuando Android recrea la actividad y recuerda la última dirección de Open WebUI. Desde la versión 0.2.6, al pasar a otra app inicia un servicio en primer plano con una notificación silenciosa; esto aumenta la prioridad del proceso para ayudar a conservar el WebView y la conexión. No reserva memoria ni garantiza que Android mantenga la página cargada: el sistema aún puede cerrar procesos si necesita recursos. Si eso ocurre, Sakura OI Web vuelve a mostrar su pantalla de carga y abre la última dirección guardada; la sesión y los datos del servidor son independientes de que la página siga cargada.
 
 Sakura OI Web es la capa Android y Open WebUI sigue siendo el servidor que contiene la interfaz, cuenta, chats y configuración. La app no copia ni sustituye el perfil del servidor. Al iniciar una actividad nueva, abre la página principal configurada. La pantalla de carga muestra el logo, el nombre, la versión y una animación durante al menos tres segundos; una conexión fallida pasa a un mensaje de error después de cinco segundos y ofrece reintentar.
 
@@ -17,7 +17,7 @@ Esta tabla distingue la versión de Android que puede instalar la app del SDK us
 | Android mínimo (minSdk) | API 23 / Android 6.0 | Versión mínima admitida por el APK |
 | Android objetivo (targetSdk) | API 36 / Android 16 | Comportamientos del sistema para los que se configura |
 | SDK de compilación (compileSdk) | API 37 / Android 17 | SDK que debe instalarse para compilar; el teléfono no requiere Android 17 |
-| Sakura OI Web | 0.2.3 (versionCode 27) | Versión actual del proyecto |
+| Sakura OI Web | 0.2.6 (versionCode 30) | Versión actual del proyecto |
 | Android Gradle Plugin | 9.4.1 | Plugin de compilación Android |
 | Gradle Wrapper | 9.6.0 | Versión incluida y usada por el proyecto |
 | Kotlin | 2.2.10 | Versión configurada del plugin de Kotlin |
@@ -114,7 +114,8 @@ Cómo funciona:
 - Open WebUI ya avisa con la API de notificaciones del navegador (`new Notification(...)`), pero el WebView de Android no la implementa. `WebNotificationBridge.kt` inyecta un sustituto de `window.Notification` en la página que reenvía cada aviso a la app mediante una interfaz JavaScript, y la app lo publica en el canal **Mensajes de Sakura**.
 - El puente solo responde mientras el WebView muestra el origen HTTPS configurado en `SAKURA_WEBUI_URL`.
 - Open WebUI guarda el ajuste de notificaciones en el servidor, por usuario. Si ya lo activaste en otro navegador, la página nunca pide permiso en el teléfono, así que la app solicita `POST_NOTIFICATIONS` por su cuenta la primera vez que carga Open WebUI (Android 13 o posterior).
-- Al volver a la app se borran los avisos pendientes, porque ya estás viendo Open WebUI.
+- Al volver a Sakura, el servicio de conexión en segundo plano se detiene. Los avisos de respuesta no se borran automáticamente; puedes abrirlos o descartarlos desde Android.
+- `SakuraKeepAliveService.kt` mantiene el proceso de la app en primer plano mientras el WebView queda detrás de otra app. Android exige una notificación visible para este servicio; el canal **Conexión en segundo plano** es silencioso y de prioridad baja.
 - Tocar una notificación abre la app donde la dejaste. Open WebUI no indica en el aviso a qué chat corresponde, así que no se abre ese chat directamente.
 
 Para activarlas:
@@ -122,7 +123,7 @@ Para activarlas:
 1. Acepta el permiso de notificaciones cuando Android lo pida. Si lo rechazaste, actívalo en **Ajustes → Aplicaciones → Sakura OI Web → Notificaciones**.
 2. En Open WebUI, activa **Ajustes → Interfaz → Notificaciones**.
 
-Limitación: los avisos dependen de que Android mantenga viva la app en segundo plano. Si el sistema la cierra para liberar memoria, no hay conexión con el servidor y no llega la notificación. Para avisos garantizados haría falta enviar notificaciones push desde el servidor, que este proyecto no implementa.
+El servicio se inicia mientras la actividad aún está visible y se detiene al volver, conforme a las restricciones de Android para iniciar servicios en primer plano desde el fondo. Reduce la probabilidad de que el sistema mate el proceso y desconecte el WebView, pero no lo impide ni reserva RAM; cerrar la app desde recientes o aplicar restricciones agresivas de batería también puede interrumpir la sesión. Este aviso no usa sonido ni vibración y puede aumentar ligeramente el consumo mientras Sakura está fuera de pantalla. Para avisos garantizados incluso con la app cerrada harían falta notificaciones push desde el servidor; este proyecto no las implementa.
 
 Si no aparecen, filtra Logcat por la etiqueta `SakuraWebApp`: el puente registra cuándo descarta un aviso y si fue por el origen o por el permiso.
 
@@ -159,6 +160,7 @@ El teléfono tiene que alcanzar el servidor: la IP local no funciona por datos m
 
 - `app/src/main/java/com/sakura/webapp/MainActivity.kt`: WebView, carga, archivos, micrófono y navegación.
 - `app/src/main/java/com/sakura/webapp/WebNotificationBridge.kt`: notificaciones de Android para los avisos de Open WebUI.
+- `app/src/main/java/com/sakura/webapp/SakuraKeepAliveService.kt`: mantiene el proceso con mayor prioridad y muestra el aviso silencioso mientras la app está en segundo plano.
 - `app/src/main/java/com/sakura/webapp/PageThemeBridge.kt`: color de las barras del sistema según el tema de Open WebUI.
 - `app/src/main/java/com/sakura/webapp/LogoSpinnerView.kt`: indicador giratorio de la pantalla de carga.
 - `app/src/main/AndroidManifest.xml`: permisos y Activity.

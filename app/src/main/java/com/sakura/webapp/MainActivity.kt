@@ -39,7 +39,6 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.ViewCompat
@@ -55,9 +54,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var loadingView: FrameLayout
     private lateinit var statusBarScrim: View
     private lateinit var navigationBarScrim: View
-    /** Open WebUI's background behind each system bar as 0xRRGGBB, or -1 if unknown. */
-    private var pageTopColor = -1
-    private var pageBottomColor = -1
+    /** Open WebUI's declared theme color (meta[name=theme-color]) as 0xRRGGBB, or -1 if unknown. */
+    private var pageThemeColor = -1
     private lateinit var retryArrow: TextView
     private var retryAnimator: ObjectAnimator? = null
     private var pendingUploadCallback: ValueCallback<Array<Uri>>? = null
@@ -132,11 +130,9 @@ class MainActivity : ComponentActivity() {
             settings.loadsImagesAutomatically = true
             settings.useWideViewPort = true
             settings.loadWithOverviewMode = true
-            settings.textZoom = 120
             settings.setSupportZoom(true)
             settings.builtInZoomControls = true
             settings.displayZoomControls = false
-            setInitialScale(110)
             webViewClient = object : WebViewClient() {
                 override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
                     super.onPageStarted(view, url, favicon)
@@ -147,6 +143,7 @@ class MainActivity : ComponentActivity() {
                 override fun onPageFinished(view: WebView, url: String) {
                     super.onPageFinished(view, url)
                     trustedPageLoaded = isOpenWebUiOrigin(Uri.parse(url))
+                    if (trustedPageLoaded) persistLastPageUrl(url)
                     if (trustedPageLoaded) {
                         view.evaluateJavascript(WebNotificationBridge.SHIM_JS, null)
                         view.evaluateJavascript(PageThemeBridge.WATCH_JS, null)
@@ -269,10 +266,9 @@ class MainActivity : ComponentActivity() {
         )
         webView.addJavascriptInterface(notificationBridge, WebNotificationBridge.JS_NAME)
         webView.addJavascriptInterface(
-            PageThemeBridge(isTrustedPage = { trustedPageLoaded }) { top, bottom ->
+            PageThemeBridge(isTrustedPage = { trustedPageLoaded }) { themeColor ->
                 runOnUiThread {
-                    pageTopColor = top
-                    pageBottomColor = bottom
+                    pageThemeColor = themeColor
                     updateSystemBars()
                 }
             },
@@ -331,7 +327,9 @@ class MainActivity : ComponentActivity() {
         if (restored) {
             beginHomeLoad(loadPage = false)
         } else {
-            beginHomeLoad()
+            // Android may have killed the process while the app was in the background.
+            // Reopen the last Open WebUI route behind the Sakura loading screen.
+            beginHomeLoad(lastKnownPageUrl())
         }
     }
 
@@ -556,7 +554,7 @@ class MainActivity : ComponentActivity() {
 
     private fun retryConnection() {
         startRetryAnimation()
-        beginHomeLoad()
+        beginHomeLoad(lastKnownPageUrl())
     }
     private fun startRetryAnimation() {
         stopRetryAnimation()
@@ -574,7 +572,7 @@ class MainActivity : ComponentActivity() {
         if (::retryArrow.isInitialized) retryArrow.rotation = 0f
     }
 
-    private fun beginHomeLoad(loadPage: Boolean = true) {
+    private fun beginHomeLoad(url: String = HOME_URL, loadPage: Boolean = true) {
         launchSplashRunnable?.let(mainHandler::removeCallbacks)
         launchSplashRunnable = null
         pageReadyWhileSplashIsVisible = false
@@ -585,7 +583,7 @@ class MainActivity : ComponentActivity() {
         webView.visibility = View.VISIBLE
         updateSystemBars()
         scheduleConnectionTimeout(CONNECTION_TIMEOUT_MS)
-        if (loadPage) webView.loadUrl(HOME_URL)
+        if (loadPage) webView.loadUrl(url)
     }
 
     private fun handleMainFrameFailure() {
@@ -628,26 +626,26 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Colours the areas behind the status and navigation bars. While Open WebUI is shown
-     * they follow the page's own background (so its dark theme reaches the bars); on the
-     * loading and connection screens they follow the system light or dark mode.
+     * Match both Android system bars to Open WebUI's explicit theme-color metadata.
+     * Never infer the theme from screen pixels: dialogs, images and dark overlays can
+     * make a light page look dark without changing the selected WebUI theme.
      */
     private fun updateSystemBars() {
         if (!::connectionView.isInitialized) return
         val showingPage = loadingView.visibility != View.VISIBLE &&
             connectionView.visibility != View.VISIBLE
-        val top = if (showingPage && pageTopColor >= 0) opaque(pageTopColor) else screenBackground
-        val bottom = if (showingPage && pageBottomColor >= 0) opaque(pageBottomColor) else screenBackground
-        statusBarScrim.setBackgroundColor(top)
-        navigationBarScrim.setBackgroundColor(bottom)
-        contentRoot.setBackgroundColor(bottom)
+        val barColor = if (showingPage && pageThemeColor >= 0) {
+            pageThemeColor or 0xFF000000.toInt()
+        } else screenBackground
+        statusBarScrim.setBackgroundColor(barColor)
+        navigationBarScrim.setBackgroundColor(barColor)
+        contentRoot.setBackgroundColor(barColor)
+        val useDarkIcons = ColorUtils.calculateLuminance(barColor) > 0.5
         WindowInsetsControllerCompat(window, contentRoot).apply {
-            isAppearanceLightStatusBars = ColorUtils.calculateLuminance(top) > 0.5
-            isAppearanceLightNavigationBars = ColorUtils.calculateLuminance(bottom) > 0.5
+            isAppearanceLightStatusBars = useDarkIcons
+            isAppearanceLightNavigationBars = useDarkIcons
         }
     }
-
-    private fun opaque(rgb: Int): Int = rgb or 0xFF000000.toInt()
 
     private val nightMode: Boolean
         get() = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
@@ -664,6 +662,23 @@ class MainActivity : ComponentActivity() {
         origin.scheme.equals("https", ignoreCase = true) &&
             origin.host.equals(HOME_HOST, ignoreCase = true) &&
             httpsPort(origin) == HOME_PORT
+
+    private fun persistLastPageUrl(url: String? = webView.url) {
+        val currentUrl = url ?: return
+        val uri = runCatching { Uri.parse(currentUrl) }.getOrNull() ?: return
+        if (!isOpenWebUiOrigin(uri)) return
+        getSharedPreferences(SESSION_PREFS, MODE_PRIVATE)
+            .edit()
+            .putString(KEY_LAST_PAGE_URL, currentUrl)
+            .apply()
+    }
+
+    private fun lastKnownPageUrl(): String {
+        val savedUrl = getSharedPreferences(SESSION_PREFS, MODE_PRIVATE)
+            .getString(KEY_LAST_PAGE_URL, null) ?: return HOME_URL
+        val uri = runCatching { Uri.parse(savedUrl) }.getOrNull() ?: return HOME_URL
+        return if (isOpenWebUiOrigin(uri)) savedUrl else HOME_URL
+    }
 
     private fun requestNotificationPermission(requestId: String) {
         pendingNotificationRequestId?.let { resolveNotificationRequest() }
@@ -720,11 +735,13 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
+        persistLastPageUrl()
         webView.saveState(outState)
         super.onSaveInstanceState(outState)
     }
 
     override fun onPause() {
+        persistLastPageUrl()
         webView.onPause()
         super.onPause()
     }
@@ -732,8 +749,23 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         if (::webView.isInitialized) webView.onResume()
-        // The user is looking at Open WebUI again, so its pending alerts are no longer news.
-        NotificationManagerCompat.from(this).cancelAll()
+        // Keep the service only while Open WebUI is outside the foreground.
+        stopService(Intent(this, SakuraKeepAliveService::class.java))
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        // Start while this Activity is still visible, before Android backgrounds it.
+        if (::webView.isInitialized && trustedPageLoaded && !isFinishing) {
+            try {
+                ContextCompat.startForegroundService(
+                    this,
+                    Intent(this, SakuraKeepAliveService::class.java)
+                )
+            } catch (error: Exception) {
+                Log.e(TAG, "Could not keep the Open WebUI session active in background", error)
+            }
+        }
     }
 
     override fun onDestroy() {
@@ -755,6 +787,8 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
+        private const val SESSION_PREFS = "sakura_session"
+        private const val KEY_LAST_PAGE_URL = "last_open_webui_url"
         private const val HOME_URL = BuildConfig.WEBUI_URL
         private val HOME_HOST: String? = Uri.parse(HOME_URL).host
         private val HOME_PORT: Int = httpsPort(Uri.parse(HOME_URL))

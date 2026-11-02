@@ -18,8 +18,8 @@ android {
         minSdk = 23
         targetSdk = 36
         buildConfigField("String", "WEBUI_URL", "\"$sakuraWebUiUrl\"")
-        versionCode = 27
-        versionName = "0.2.3"
+        versionCode = 30
+        versionName = "0.2.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

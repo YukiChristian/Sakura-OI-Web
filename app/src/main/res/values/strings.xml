@@ -7,4 +7,8 @@
     <string name="loading_description">Cargando</string>
     <string name="notification_channel_name">Mensajes de Sakura</string>
     <string name="notification_channel_description">Avisos de respuestas y mensajes de Open WebUI</string>
+    <string name="background_service_channel_name">Conexión en segundo plano</string>
+    <string name="background_service_description">Mantiene Open WebUI activa mientras usas otra app para recibir avisos de respuestas.</string>
+    <string name="background_service_title">Sakura sigue conectada</string>
+    <string name="background_service_text">Manteniendo la sesión de Open WebUI mientras usas otra app.</string>
 </resources>

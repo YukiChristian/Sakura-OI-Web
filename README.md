@@ -1,4 +1,4 @@
-# 🌸 Sakura OI Web 📱 v0.2.3
+# 🌸 Sakura OI Web 📱 v0.2.6
 
 <div align="center">
   <img src="assets/sakura-oi-web-icon.png" alt="Logo de Sakura OI Web: flor con contorno arcoíris y las letras OI" width="160">
@@ -6,7 +6,7 @@
 
 ## ¿Qué es Sakura OI Web?
 
-Sakura OI Web (antes SakuraWebApp) es una app para Android que mejora la experiencia de Open WebUI en el teléfono y lo abre dentro de la propia app. Open WebUI sigue funcionando en tu computadora o servidor; Sakura OI Web es la forma de usarlo desde el teléfono. Mientras Android mantenga la app abierta en segundo plano, conserva la sesión y el lugar donde estabas. Si Android la cierra para liberar memoria, la app vuelve a cargar la página al abrirla. Si no puede conectarse al servidor, muestra un aviso de que no hay conexión y ofrece volver a intentar.
+Sakura OI Web (antes SakuraWebApp) es una app para Android que mejora la experiencia de Open WebUI en el teléfono y lo abre dentro de la propia app. Open WebUI sigue funcionando en tu computadora o servidor; Sakura OI Web es la forma de usarlo desde el teléfono. Al pasar a otra app, la versión 0.2.6 mantiene el WebView activo con un servicio de Android y un aviso silencioso mientras Sakura queda en segundo plano. Esto ayuda a conservar la sesión, el lugar donde estabas y la conexión para recibir notificaciones. Si Android cierra la app para liberar memoria, Sakura vuelve a cargar la última dirección guardada al abrirla. Si no puede conectarse al servidor, muestra un aviso de que no hay conexión y ofrece volver a intentar.
 
 ## ¿Qué problema resuelve?
 
@@ -26,7 +26,7 @@ Compartir un ejemplo completo y una guía clara para que otras personas puedan c
 - Al tocar **Subir Archivos**, se abre el selector del sistema Android para elegir uno o varios archivos o imágenes.
 - Compatibilidad con el teclado de Android: la pantalla se reajusta para mantener visible el cuadro de mensaje y sus controles.
 - Permisos de micrófono y audio gestionados por Android y WebView.
-- Notificaciones de Android cuando Sakura termina de responder y la app está en segundo plano. La primera vez que carga Open WebUI, Android pregunta si permites notificaciones; acepta y activa también **Ajustes → Interfaz → Notificaciones** en Open WebUI. Solo llegan mientras Android mantenga la app abierta en segundo plano. Detalles en [Implementación Android](docs/ANDROID.md#notificaciones-de-android).
+- Notificaciones de Android cuando Sakura termina de responder. Al salir de la app, un servicio en primer plano muestra un aviso silencioso “Sakura sigue conectada” para ayudar a mantener el WebView y su conexión mientras usas otra app; se detiene al volver. Android aún puede cerrar procesos si necesita memoria, así que no garantiza avisos si la conexión se pierde. Activa el permiso en Android y **Ajustes → Interfaz → Notificaciones** en Open WebUI. Detalles en [Implementación Android](docs/ANDROID.md#notificaciones-de-android).
 - Icono y logo de Sakura OI Web; el arte original está en [assets/sakura-oi-web-original.png](assets/sakura-oi-web-original.png).
 - **TTS opcional:** Qwen3-TTS Fast es el proveedor usado en esta instalación de ejemplo. No es requisito; puedes configurar otro proveedor de texto a voz compatible con tu instancia de Open WebUI, o no usar TTS.
 - **Uso fuera de casa:** guía para conectarte desde datos móviles aunque no tengas IP pública (CGNAT), con Tailscale Funnel. Ver [docs/TAILSCALE.md](docs/TAILSCALE.md).
@@ -63,7 +63,7 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 
 ## 📦 Versiones documentadas
 
-- App: Sakura OI Web **0.2.3** (versionCode 27). Historial completo en [CHANGELOG.md](CHANGELOG.md).
+- App: Sakura OI Web **0.2.6** (versionCode 30). Historial completo en [CHANGELOG.md](CHANGELOG.md).
 - Notificaciones verificadas en el teléfono Android 16 de referencia con Open WebUI 0.12.3. Pantallas, icono y barras en tema claro y oscuro de 0.2.1 a 0.2.3 verificados en el emulador de Android Studio (API 37).
 - Open WebUI: **0.12.3**, versión verificada en la instalación local.
 - Nombre visible del modelo en Open WebUI: **Sakura**. Los registros identifican **llama.cpp 0.7.0-dev**, compilado para x64 con CUDA desde el commit `ea0c4c2c8`, que carga `SoAIHQ/Qwen3.5-9B-GGUF:Q4_K_M` (Qwen 3.5 de 9B, cuantización Q4_K_M). llama.cpp es el servidor de inferencia; el modelo no pertenece a la familia Llama. El alias Sakura se configura en Open WebUI.
@@ -72,7 +72,20 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 - Herramientas fijadas en el proyecto: Android Gradle Plugin 9.4.1, Gradle 9.6.0, Kotlin 2.2.10 y JDK 17 para ejecutar Gradle. El código Java usa compatibilidad de lenguaje 11.
 - La activación por palabra “Oye, Sakura” queda como idea futura; no está implementada.
 
-## 🆕 Novedades de la versión 0.2.3
+## 🆕 Novedades de la versión 0.2.6
+
+- **Conexión en segundo plano:** al salir de la app después de cargar Open WebUI, Sakura inicia un servicio en primer plano con un aviso silencioso persistente. Android le da mayor prioridad al proceso, lo que ayuda a conservar el WebView y la conexión mientras usas otra app. Al volver a Sakura, el servicio se detiene. Android aún puede terminar la app si necesita memoria.
+- **Notificaciones de respuestas:** ya no se borran todas al regresar a Sakura; los avisos quedan en el panel hasta que los abras o descartes.
+
+### Versión 0.2.5
+
+- **Continuidad de navegación:** guarda la última dirección de Open WebUI y la restaura tras recrear la actividad o reiniciar el proceso, mostrando la animación de carga mientras vuelve a conectar.
+
+### Versión 0.2.4
+
+- **Tema de las barras del sistema:** se toma el color declarado por Open WebUI y su tema (sistema, claro, oscuro, OLED o Her), sin inferirlo a partir de tonos oscuros de diálogos o imágenes.
+
+### Versión 0.2.3
 
 - **Botón Reintentar en negro:** en la pantalla “No hay conexión con Sakura”, el botón redondo es negro con la flecha blanca y el texto **Reintentar** es negro, igual que la pantalla de carga. En modo oscuro se invierten: botón blanco, flecha negra y texto blanco.
 - **Repositorio renombrado a Sakura-OI-Web:** las rutas de ejemplo de las guías usan la carpeta `Sakura-OI-Web` y el proyecto de Android Studio se llama igual. Los enlaces antiguos a `SakuraWebApp` redirigen al nuevo nombre.
@@ -109,7 +122,7 @@ Cambios solo de documentación y del servidor, publicados entre las versiones 0.
 
 ### 0.1.10
 
-- **Notificaciones de Android:** cuando Sakura termina de responder y la app está en segundo plano, o estás en otro chat, aparece una notificación con el título del chat y el inicio de la respuesta. Al volver a la app se borran los avisos pendientes.
+- **Notificaciones de Android:** cuando Sakura termina de responder y la app está en segundo plano, o estás en otro chat, aparece una notificación con el título del chat y el inicio de la respuesta. En 0.1.10 los avisos se borraban al volver; desde 0.2.6 permanecen hasta abrirlos o descartarlos.
 - **Permiso de notificaciones al abrir la app:** la primera vez que carga Open WebUI, la app pide el permiso de Android. Antes solo se pedía desde el interruptor de Open WebUI, y si ese ajuste ya estaba activado desde otro navegador, Android bloqueaba los avisos.
 - **La URL del servidor se toma de `SAKURA_WEBUI_URL`:** la app abría siempre el host de ejemplo aunque se compilara con otra dirección. Ahora la página inicial, la comprobación de carga y el permiso del micrófono usan la URL indicada al compilar.
 - **Diagnóstico:** si un aviso no se muestra, Logcat registra el motivo con la etiqueta `SakuraWebApp`.
@@ -121,7 +134,10 @@ Resumen de todos los cambios de la app. El detalle de cada versión está en [CH
 
 | Versión | versionCode | Cambios |
 |---|---:|---|
-| **0.2.3** | 27 | Botón y texto **Reintentar** en negro (invertidos en modo oscuro); repositorio y proyecto renombrados a Sakura-OI-Web. |
+| **0.2.6** | 30 | Servicio en primer plano mientras la app está fuera de pantalla; ayuda a conservar la conexión y las notificaciones de respuesta al regresar. |
+| 0.2.5 | 29 | Guarda y restaura la última dirección de Open WebUI al recrear el proceso. |
+| 0.2.4 | 28 | Las barras de Android siguen el color de tema declarado por Open WebUI, sin confundir diálogos/imágenes oscuras con el tema oscuro. |
+| 0.2.3 | 27 | Botón y texto **Reintentar** en negro (invertidos en modo oscuro); repositorio y proyecto renombrados a Sakura-OI-Web. |
 | 0.2.2 | 26 | Indicador de carga y texto “Conectándose con el servidor…” en negro (blanco en modo oscuro). |
 | 0.2.1 | 25 | Nombre Sakura OI Web, nueva identidad (icono, logo y pantallas), indicador de carga con los colores del logo, texto “Conectándose con el servidor…”, barras del sistema que siguen el tema oscuro y reconocimiento de URLs sin puerto (Tailscale). |
 | 0.2.0 | 24 | Compilación local con el nombre Sakura OI Web; no se publicó por separado y sus cambios están en 0.2.1. |
@@ -159,7 +175,7 @@ Instala Android Studio compatible con Android Gradle Plugin 9.4.1, Android SDK P
 | Android mínimo | API 23 / Android 6.0 | Versión mínima para instalar la app |
 | Android objetivo | API 36 / Android 16 | Comportamientos de Android para los que está configurada |
 | SDK de compilación | API 37 / Android 17 | Plataforma necesaria para compilar; no es requisito para el teléfono |
-| Versión de Sakura OI Web | 0.2.3 (versionCode 27) | Versión del APK de este repositorio |
+| Versión de Sakura OI Web | 0.2.6 (versionCode 30) | Versión del APK de este repositorio |
 
 La versión de Android de tu teléfono es independiente del SDK de compilación. En el dispositivo Android 16 de referencia, la app funciona con target API 36.
 

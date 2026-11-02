@@ -2,6 +2,29 @@
 
 Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 0.2.6 (versionCode 30) — 2 de noviembre de 2026
+
+### Añadido
+- Al salir de Sakura con Open WebUI cargado, `SakuraKeepAliveService` inicia un servicio en primer plano y muestra la notificación silenciosa **Sakura sigue conectada**. Se detiene al regresar a la app. Esto eleva la prioridad del proceso para ayudar a mantener WebView y la conexión mientras se cambia a otra app; Android todavía puede terminar el proceso si necesita memoria.
+- Canal Android independiente y silencioso **Conexión en segundo plano** para el aviso de servicio.
+
+### Corregido
+- Al regresar a Sakura ya no se borran todas las notificaciones de respuesta. El usuario puede abrirlas o descartarlas desde Android.
+
+### Documentación
+- Actualizados README, guía Android e historial para describir la conexión de fondo, el aviso persistente, el coste de batería y sus límites.
+
+
+## 0.2.5 (versionCode 29) — 2 de noviembre de 2026
+
+### Añadido
+- Guarda la última URL válida de Open WebUI y la usa al recrear el proceso, para regresar a la ruta en la que estaba el usuario. Muestra la pantalla Sakura de carga mientras se restablece la página.
+
+## 0.2.4 (versionCode 28) — 2 de noviembre de 2026
+
+### Corregido
+- Las barras de estado y navegación siguen el color declarado por Open WebUI para el tema elegido, en lugar de inferirlo a partir de zonas oscuras de la página. Esto evita activar apariencia oscura por diálogos o imágenes y responde al cambiar entre Sistema, Claro, Oscuro, OLED y Her.
+
 ## 0.2.3 (versionCode 27) — 1 de noviembre de 2026
 
 ### Cambiado
