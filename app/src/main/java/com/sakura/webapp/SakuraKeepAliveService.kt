@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
@@ -29,6 +30,7 @@ class SakuraKeepAliveService : Service() {
         )
         val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
+            .setLargeIcon(BitmapFactory.decodeResource(resources, R.drawable.sakura_logo))
             .setContentTitle(getString(R.string.background_service_title))
             .setContentText(getString(R.string.background_service_text))
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
@@ -74,3 +76,4 @@ class SakuraKeepAliveService : Service() {
         private const val NOTIFICATION_ID = 7001
     }
 }
+
