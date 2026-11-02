@@ -1,6 +1,7 @@
 package com.sakura.webapp
 
 import android.Manifest
+import android.graphics.BitmapFactory
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -61,16 +62,18 @@ class WebNotificationBridge(
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setColor(ContextCompat.getColor(context, R.color.notification_accent))
+            .setLargeIcon(BitmapFactory.decodeResource(context.resources, R.drawable.sakura_logo))
             .setContentTitle(title)
             .setContentText(body.orEmpty())
             .setStyle(NotificationCompat.BigTextStyle().bigText(body.orEmpty()))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setSilent(true)
             .setAutoCancel(true)
             .setContentIntent(openApp)
             .build()
         return try {
             NotificationManagerCompat.from(context).notify(notificationId(id, tag), notification)
+            Log.i(TAG, "Posted silent Android response notification")
             true
         } catch (_: SecurityException) {
             false
@@ -107,13 +110,17 @@ class WebNotificationBridge(
             CHANNEL_ID,
             context.getString(R.string.notification_channel_name),
             NotificationManager.IMPORTANCE_HIGH
-        ).apply { description = context.getString(R.string.notification_channel_description) }
+        ).apply {
+            description = context.getString(R.string.notification_channel_description)
+            setSound(null, null)
+            enableVibration(false)
+        }
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
     companion object {
         const val JS_NAME = "SakuraNotifications"
-        private const val CHANNEL_ID = "open_webui"
+        private const val CHANNEL_ID = "open_webui_silent_v2"
         private const val KEY_ASKED = "asked"
         private const val TAG = "SakuraWebApp"
 
@@ -193,3 +200,4 @@ class WebNotificationBridge(
         """.trimIndent()
     }
 }
+
