@@ -107,7 +107,9 @@ Para que la página pueda cerrar una vista previa de imagen a pantalla completa,
 
 Cuando Sakura termina de responder y la app está en segundo plano, o estás en otro chat, aparece una notificación de Android con el título del chat y el inicio de la respuesta.
 
-<img src="images/notification.png" alt="Notificación de Android con la respuesta de Sakura" width="420">
+La captura siguiente es de la versión 0.2.6 y conserva el icono anterior. Desde 0.2.7, Android muestra el logo multicolor de Sakura OI Web como icono grande de la notificación.
+
+<img src="images/notification.png" alt="Captura histórica 0.2.6 de la notificación Android; el icono se actualiza en 0.2.7" width="420">
 
 Cómo funciona:
 
