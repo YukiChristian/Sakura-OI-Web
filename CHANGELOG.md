@@ -2,6 +2,15 @@
 
 Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 0.2.7 (versionCode 31) — 2 de noviembre de 2026
+
+### Corregido
+- Las notificaciones de respuesta de Android ahora usan un canal nativo silencioso independiente de **Notificación Sonora** en Open WebUI. Se conservan visibles sin sonido ni vibración, siempre que estén activadas las notificaciones web en Open WebUI y el permiso de Android.
+- El canal usa un identificador nuevo porque Android no permite cambiar el sonido de un canal ya creado. En Android, los avisos nuevos aparecen bajo **Mensajes de Sakura (sin sonido)**.
+
+### Actualizado
+- Las notificaciones muestran el logo multicolor de Sakura OI Web como icono grande. El icono pequeño de la barra de estado sigue siendo monocromo, según el diseño de notificaciones de Android.
+
 ## 0.2.6 (versionCode 30) — 2 de noviembre de 2026
 
 ### Añadido
