@@ -21,34 +21,6 @@ import uvicorn
 from open_webui.env import UVICORN_WORKERS, UVICORN_WS_PER_MESSAGE_DEFLATE
 
 script_dir = Path(__file__).resolve().parent
-
-# Optional Carbono theme (see docs/TEMA-CARBONO.md). While temas/carbono/ACTIVO exists,
-# /static/custom.css and /static/loader.js are served from temas/carbono/ (outside
-# site-packages, so pip upgrades keep it). WEBUI_THEME_NAME optionally renames the app.
-from starlette.responses import Response
-
-tema_dir = script_dir / "temas" / "carbono"
-tema_archivos = {
-    "/static/custom.css": ("carbono.css", "text/css"),
-    "/static/loader.js": ("carbono.js", "text/javascript"),
-}
-tema_nombre = os.environ.get("WEBUI_THEME_NAME")
-nombre_original = open_webui.main.app.state.WEBUI_NAME
-
-
-@open_webui.main.app.middleware("http")
-async def tema_carbono(request, call_next):
-    activo = (tema_dir / "ACTIVO").exists()
-    if tema_nombre:
-        open_webui.main.app.state.WEBUI_NAME = tema_nombre if activo else nombre_original
-    if request.url.path not in tema_archivos:
-        return await call_next(request)
-    nombre, media_type = tema_archivos[request.url.path]
-    archivo = tema_dir / nombre
-    body = archivo.read_bytes() if activo and archivo.is_file() else b""
-    return Response(body, media_type=media_type, headers={"Cache-Control": "no-cache"})
-
-
 tls_dir = script_dir / "tls"
 cert_file = tls_dir / "server.crt"
 key_file = tls_dir / "server.key"
