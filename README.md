@@ -107,6 +107,8 @@ Cambios solo de documentación y del servidor, publicados entre las versiones 0.
 
 ## 🎨 Tema sugerido: Carbono
 
+> **Tema recomendado:** la versión actual de Carbono (0.80, con capturas de escritorio y móvil) vive en su propio repositorio: **[YukiChristian/Sakura-OI-Web-Carbono](https://github.com/YukiChristian/Sakura-OI-Web-Carbono)**. Los archivos de esta rama son una versión anterior; para instalar o actualizar el tema usa los de ese repositorio.
+
 **Carbono** es la línea de estilo de Sakura OI Web para Open WebUI. Usa superficies neutras en tonos carbón y la acción principal en negro, con una jerarquía de texto clara y tamaños más legibles en el teléfono. Los colores del logo quedan solo para detalles. No modifica Open WebUI: el lanzador sirve dos archivos en lugar de los `custom.css` y `loader.js` vacíos que Open WebUI ya carga, y sobrevive a `pip install -U open-webui`.
 
 - Archivos de respaldo listos para copiar: [server/temas/carbono](server/temas/carbono) (`carbono.css`, `carbono.js`, `tema.py`, `Aplicar-Tema.cmd`, `Quitar-Tema.cmd`).
