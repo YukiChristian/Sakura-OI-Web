@@ -3,6 +3,7 @@ package com.sakura.webapp
 import android.Manifest
 import android.annotation.SuppressLint
 import android.animation.ObjectAnimator
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
@@ -150,6 +151,21 @@ class MainActivity : ComponentActivity() {
                     }
                     if (!mainFrameLoadFailed) confirmPageLoaded(view)
                 }
+
+                /**
+                 * Links that leave Open WebUI open in the phone's default browser instead of
+                 * replacing the app's page. Server redirects stay inside the WebView so sign-in
+                 * flows that bounce through another host keep working.
+                 */
+                override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                    if (!request.isForMainFrame || request.isRedirect) return false
+                    val uri = request.url
+                    if (isOpenWebUiOrigin(uri)) return false
+                    if (uri.scheme?.lowercase() in IN_APP_SCHEMES) return false
+                    openExternally(uri)
+                    return true
+                }
+
                 override fun onReceivedError(
                     view: WebView,
                     request: WebResourceRequest,
@@ -663,6 +679,16 @@ class MainActivity : ComponentActivity() {
             origin.host.equals(HOME_HOST, ignoreCase = true) &&
             httpsPort(origin) == HOME_PORT
 
+    /** Hands [uri] to whichever app handles it: the default browser for web links, the mail app for mailto:, etc. */
+    private fun openExternally(uri: Uri) {
+        val intent = Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE)
+        try {
+            startActivity(intent)
+        } catch (_: ActivityNotFoundException) {
+            Toast.makeText(this, getString(R.string.external_link_unavailable), Toast.LENGTH_LONG).show()
+        }
+    }
+
     private fun persistLastPageUrl(url: String? = webView.url) {
         val currentUrl = url ?: return
         val uri = runCatching { Uri.parse(currentUrl) }.getOrNull() ?: return
@@ -798,6 +824,8 @@ class MainActivity : ComponentActivity() {
         private const val CONNECTION_TIMEOUT_MS = 5_000L
         private const val SPLASH_MIN_DURATION_MS = 3_000L
         private const val TAG = "SakuraWebApp"
+        /** Schemes the WebView handles itself (downloads, inline content); everything else opens outside. */
+        private val IN_APP_SCHEMES = setOf("blob", "data", "javascript", "about")
         private const val MEDIA_DIAGNOSTIC_PREFIX = "SAKURA_MEDIA_DIAG:"
         private const val MEDIA_READY_MESSAGE = "Micrófono disponible para WebView."
     }

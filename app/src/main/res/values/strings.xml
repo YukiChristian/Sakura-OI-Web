@@ -11,4 +11,5 @@
     <string name="background_service_description">Mantiene Open WebUI activa mientras usas otra app para recibir avisos de respuestas.</string>
     <string name="background_service_title">Sakura sigue conectada</string>
     <string name="background_service_text">Manteniendo la sesión de Open WebUI mientras usas otra app.</string>
+    <string name="external_link_unavailable">No hay ninguna app para abrir este enlace.</string>
 </resources>
