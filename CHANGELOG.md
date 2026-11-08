@@ -2,6 +2,15 @@
 
 Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 0.2.8 (versionCode 32) — 8 de noviembre de 2026
+
+### Añadido
+- Los enlaces que salen de Open WebUI se abren en el navegador predeterminado del teléfono (`Intent.ACTION_VIEW`) en lugar de cargarse dentro del WebView. También los que usan `target="_blank"`.
+- Los enlaces `mailto:`, `tel:` y otros esquemas se envían a la app que los maneja. Si no hay ninguna, se muestra el aviso "No hay ninguna app para abrir este enlace."
+
+### Sin cambios
+- Las páginas del servidor configurado en `SAKURA_WEBUI_URL` siguen dentro de la app. Las redirecciones del servidor y las descargas (`blob:`, `data:`) no se desvían al navegador.
+
 ## 0.2.7 (versionCode 31) — 2 de noviembre de 2026
 
 ### Corregido

@@ -17,7 +17,7 @@ Esta tabla distingue la versión de Android que puede instalar la app del SDK us
 | Android mínimo (minSdk) | API 23 / Android 6.0 | Versión mínima admitida por el APK |
 | Android objetivo (targetSdk) | API 36 / Android 16 | Comportamientos del sistema para los que se configura |
 | SDK de compilación (compileSdk) | API 37 / Android 17 | SDK que debe instalarse para compilar; el teléfono no requiere Android 17 |
-| Sakura OI Web | 0.2.7 (versionCode 31) | Versión actual del proyecto |
+| Sakura OI Web | 0.2.8 (versionCode 32) | Versión actual del proyecto |
 | Android Gradle Plugin | 9.4.1 | Plugin de compilación Android |
 | Gradle Wrapper | 9.6.0 | Versión incluida y usada por el proyecto |
 | Kotlin | 2.2.10 | Versión configurada del plugin de Kotlin |
@@ -136,6 +136,15 @@ Si no aparecen, filtra Logcat por la etiqueta `SakuraWebApp`: el puente registra
 - El Activity usa `windowSoftInputMode="adjustResize"`.
 - Los insets de Android se aplican al WebView y a las pantallas de carga para que el teclado no tape el compositor.
 - `settings.textZoom = 120` y `setInitialScale(110)` mantienen el tamaño de lectura ampliado.
+
+## Enlaces externos
+
+Desde la versión 0.2.8, `shouldOverrideUrlLoading` en `MainActivity.kt` revisa cada navegación de la página principal. Si el destino no es el servidor configurado en `SAKURA_WEBUI_URL`, la app no lo carga en el WebView: lo envía a Android con `Intent.ACTION_VIEW`, que lo abre en el navegador predeterminado (por ejemplo, Chrome). Así, una fuente citada en una respuesta o cualquier enlace a otro sitio no reemplaza Open WebUI, y al volver la app sigue en la misma página. Los enlaces con `target="_blank"` reciben el mismo trato.
+
+- Las páginas del propio servidor siguen dentro de la app.
+- Las redirecciones del servidor no se desvían, para no interrumpir un inicio de sesión que pase por otro dominio.
+- `mailto:` y `tel:` abren la app de correo o de teléfono. Las descargas `blob:` y `data:` las sigue manejando el WebView.
+- Si ninguna app puede abrir el enlace, aparece el aviso "No hay ninguna app para abrir este enlace."
 
 ## Barras del sistema y tema oscuro
 

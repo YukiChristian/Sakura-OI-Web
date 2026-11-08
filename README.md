@@ -1,4 +1,4 @@
-# 🌸 Sakura OI Web 📱 v0.2.7
+# 🌸 Sakura OI Web 📱 v0.2.8
 
 <div align="center">
   <img src="assets/sakura-oi-web-icon.png" alt="Logo de Sakura OI Web: flor con contorno arcoíris y las letras OI" width="160">
@@ -22,6 +22,7 @@ Compartir un ejemplo completo y una guía clara para que otras personas puedan c
 
 - Open WebUI se abre dentro de la app Android, que permite volver atrás y conserva la sesión mientras Android la mantenga activa.
 - Pantallas de carga y de error de conexión con opción para reintentar.
+- Los enlaces a otros sitios se abren en el navegador predeterminado del teléfono (por ejemplo, Chrome); las páginas de tu Open WebUI siguen dentro de la app.
 - Tema oscuro completo: las barras de arriba y de abajo toman el color de Open WebUI, y las pantallas propias de la app siguen el modo oscuro del teléfono.
 - Al tocar **Subir Archivos**, se abre el selector del sistema Android para elegir uno o varios archivos o imágenes.
 - Compatibilidad con el teclado de Android: la pantalla se reajusta para mantener visible el cuadro de mensaje y sus controles.
@@ -63,7 +64,7 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 
 ## 📦 Versiones documentadas
 
-- App: Sakura OI Web **0.2.7** (versionCode 31). Historial completo en [CHANGELOG.md](CHANGELOG.md).
+- App: Sakura OI Web **0.2.8** (versionCode 32). Historial completo en [CHANGELOG.md](CHANGELOG.md).
 - Notificaciones verificadas en el teléfono Android 16 de referencia con Open WebUI 0.12.3. Pantallas, icono y barras en tema claro y oscuro de 0.2.1 a 0.2.3 verificados en el emulador de Android Studio (API 37).
 - Open WebUI: **0.12.3**, versión verificada en la instalación local.
 - Nombre visible del modelo en Open WebUI: **Sakura**. Los registros identifican **llama.cpp 0.7.0-dev**, compilado para x64 con CUDA desde el commit `ea0c4c2c8`, que carga `SoAIHQ/Qwen3.5-9B-GGUF:Q4_K_M` (Qwen 3.5 de 9B, cuantización Q4_K_M). llama.cpp es el servidor de inferencia; el modelo no pertenece a la familia Llama. El alias Sakura se configura en Open WebUI.
@@ -72,7 +73,13 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 - Herramientas fijadas en el proyecto: Android Gradle Plugin 9.4.1, Gradle 9.6.0, Kotlin 2.2.10 y JDK 17 para ejecutar Gradle. El código Java usa compatibilidad de lenguaje 11.
 - La activación por palabra “Oye, Sakura” queda como idea futura; no está implementada.
 
-## 🆕 Novedades de la versión 0.2.7
+## 🆕 Novedades de la versión 0.2.8
+
+- **Enlaces externos en el navegador:** al tocar un enlace que lleva a otro sitio (por ejemplo, una fuente citada en una respuesta), se abre en el navegador predeterminado del teléfono, como Chrome, en lugar de reemplazar Open WebUI dentro de la app. Al volver, Sakura sigue en la misma página.
+- Las páginas de tu propio servidor de Open WebUI se siguen abriendo dentro de la app, y las redirecciones del servidor (por ejemplo, durante un inicio de sesión) no se interrumpen.
+- Los enlaces `mailto:` y `tel:` abren la app de correo o de teléfono. Si ninguna app puede abrir un enlace, Sakura muestra un aviso.
+
+### Versión 0.2.7
 
 - **Avisos sin sonido:** las notificaciones de respuesta se publican en un canal nativo de Android silencioso y visible, separado del sonido de Open WebUI. Se usa un canal nuevo para respetar que Android conserva la configuración de canales anteriores.
 - **Logo actualizado en las notificaciones:** el icono grande muestra el logo multicolor de Sakura OI Web. El icono pequeño de estado conserva el formato monocromo que Android exige.
@@ -139,7 +146,8 @@ Resumen de todos los cambios de la app. El detalle de cada versión está en [CH
 
 | Versión | versionCode | Cambios |
 |---|---:|---|
-| **0.2.7** | 31 | Notificaciones nativas silenciosas independientes del sonido de Open WebUI y logo multicolor en el icono ampliado. |
+| **0.2.8** | 32 | Los enlaces a otros sitios se abren en el navegador predeterminado del teléfono; las páginas de Open WebUI siguen dentro de la app. |
+| 0.2.7 | 31 | Notificaciones nativas silenciosas independientes del sonido de Open WebUI y logo multicolor en el icono ampliado. |
 | 0.2.6 | 30 | Servicio en primer plano mientras la app está fuera de pantalla; ayuda a conservar la conexión y las notificaciones de respuesta al regresar. |
 | 0.2.5 | 29 | Guarda y restaura la última dirección de Open WebUI al recrear el proceso. |
 | 0.2.4 | 28 | Las barras de Android siguen el color de tema declarado por Open WebUI, sin confundir diálogos/imágenes oscuras con el tema oscuro. |
@@ -181,7 +189,7 @@ Instala Android Studio compatible con Android Gradle Plugin 9.4.1, Android SDK P
 | Android mínimo | API 23 / Android 6.0 | Versión mínima para instalar la app |
 | Android objetivo | API 36 / Android 16 | Comportamientos de Android para los que está configurada |
 | SDK de compilación | API 37 / Android 17 | Plataforma necesaria para compilar; no es requisito para el teléfono |
-| Versión de Sakura OI Web | 0.2.7 (versionCode 31) | Versión del APK de este repositorio |
+| Versión de Sakura OI Web | 0.2.8 (versionCode 32) | Versión del APK de este repositorio |
 
 La versión de Android de tu teléfono es independiente del SDK de compilación. En el dispositivo Android 16 de referencia, la app funciona con target API 36.
 
