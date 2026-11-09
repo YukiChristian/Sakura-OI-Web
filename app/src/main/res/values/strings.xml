@@ -12,4 +12,8 @@
     <string name="background_service_title">Sakura sigue conectada</string>
     <string name="background_service_text">Manteniendo la sesión de Open WebUI mientras usas otra app.</string>
     <string name="external_link_unavailable">No hay ninguna app para abrir este enlace.</string>
+    <string name="download_saved">Guardado en Descargas/Sakura OI Web: %1$s</string>
+    <string name="download_started">Descargando %1$s…</string>
+    <string name="download_failed">No se pudo guardar el archivo.</string>
+    <string name="download_retry">Permiso concedido. Vuelve a tocar Descargar.</string>
 </resources>

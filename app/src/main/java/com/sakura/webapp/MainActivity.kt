@@ -3,6 +3,7 @@ package com.sakura.webapp
 import android.Manifest
 import android.annotation.SuppressLint
 import android.animation.ObjectAnimator
+import android.app.DownloadManager
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -13,6 +14,7 @@ import android.net.Uri
 import android.net.http.SslError
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -29,6 +31,7 @@ import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.SslErrorHandler
+import android.webkit.URLUtil
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
@@ -47,6 +50,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import kotlin.math.roundToInt
+import org.json.JSONObject
 
 class MainActivity : ComponentActivity() {
     private lateinit var webView: WebView
@@ -71,6 +75,7 @@ class MainActivity : ComponentActivity() {
     private var pageReadyWhileSplashIsVisible = false
     private var launchSplashRunnable: Runnable? = null
     private lateinit var notificationBridge: WebNotificationBridge
+    private lateinit var downloadBridge: DownloadBridge
     @Volatile private var trustedPageLoaded = false
     private var pendingNotificationRequestId: String? = null
 
@@ -79,6 +84,13 @@ class MainActivity : ComponentActivity() {
     ) { _ ->
         notificationBridge.markAsked()
         resolveNotificationRequest()
+    }
+
+    /** Android 9 and older only: saving to Downloads needs this permission. */
+    private val storagePermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) showToast(getString(R.string.download_retry))
     }
 
     private val fileChooserLauncher = registerForActivityResult(
@@ -138,7 +150,10 @@ class MainActivity : ComponentActivity() {
                 override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
                     super.onPageStarted(view, url, favicon)
                     trustedPageLoaded = isOpenWebUiOrigin(Uri.parse(url))
-                    if (trustedPageLoaded) view.evaluateJavascript(WebNotificationBridge.SHIM_JS, null)
+                    if (trustedPageLoaded) {
+                        view.evaluateJavascript(WebNotificationBridge.SHIM_JS, null)
+                        view.evaluateJavascript(DownloadBridge.SHIM_JS, null)
+                    }
                 }
 
                 override fun onPageFinished(view: WebView, url: String) {
@@ -147,6 +162,7 @@ class MainActivity : ComponentActivity() {
                     if (trustedPageLoaded) persistLastPageUrl(url)
                     if (trustedPageLoaded) {
                         view.evaluateJavascript(WebNotificationBridge.SHIM_JS, null)
+                        view.evaluateJavascript(DownloadBridge.SHIM_JS, null)
                         view.evaluateJavascript(PageThemeBridge.WATCH_JS, null)
                     }
                     if (!mainFrameLoadFailed) confirmPageLoaded(view)
@@ -281,6 +297,21 @@ class MainActivity : ComponentActivity() {
             }
         )
         webView.addJavascriptInterface(notificationBridge, WebNotificationBridge.JS_NAME)
+        downloadBridge = DownloadBridge(
+            context = applicationContext,
+            isTrustedPage = { trustedPageLoaded },
+            hasLegacyStoragePermission = ::hasLegacyStoragePermission,
+            onResult = { savedName, error ->
+                when {
+                    savedName != null -> showToast(getString(R.string.download_saved, savedName))
+                    error != null -> showToast(getString(R.string.download_failed))
+                }
+            }
+        )
+        webView.addJavascriptInterface(downloadBridge, DownloadBridge.JS_NAME)
+        webView.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
+            handleDownload(url, userAgent, contentDisposition, mimeType)
+        }
         webView.addJavascriptInterface(
             PageThemeBridge(isTrustedPage = { trustedPageLoaded }) { themeColor ->
                 runOnUiThread {
@@ -687,6 +718,49 @@ class MainActivity : ComponentActivity() {
         } catch (_: ActivityNotFoundException) {
             Toast.makeText(this, getString(R.string.external_link_unavailable), Toast.LENGTH_LONG).show()
         }
+    }
+
+    /**
+     * Downloads that reach the WebView itself: data: URLs are decoded here, blob: URLs are
+     * read back by the page shim, and http(s) files go to Android's download manager with
+     * the WebView's cookies so Open WebUI's protected files still download.
+     */
+    private fun handleDownload(url: String, userAgent: String?, contentDisposition: String?, mimeType: String?) {
+        when {
+            url.startsWith("data:") -> downloadBridge.saveDataUrl(url, null)
+            url.startsWith("blob:") -> webView.evaluateJavascript(
+                "window.__sakuraSaveUrl && window.__sakuraSaveUrl(${JSONObject.quote(url)}, '')",
+                null
+            )
+            url.startsWith("https://") || url.startsWith("http://") -> {
+                if (!hasLegacyStoragePermission()) return
+                val name = URLUtil.guessFileName(url, contentDisposition, mimeType)
+                val request = DownloadManager.Request(Uri.parse(url)).apply {
+                    setMimeType(mimeType)
+                    CookieManager.getInstance().getCookie(url)?.let { addRequestHeader("Cookie", it) }
+                    userAgent?.let { addRequestHeader("User-Agent", it) }
+                    setTitle(name)
+                    setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                    setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "${DownloadBridge.FOLDER}/$name")
+                }
+                getSystemService(DownloadManager::class.java).enqueue(request)
+                showToast(getString(R.string.download_started, name))
+            }
+        }
+    }
+
+    /** True on Android 10+; on older versions asks for WRITE_EXTERNAL_STORAGE and returns false until granted. */
+    private fun hasLegacyStoragePermission(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) return true
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
+            PackageManager.PERMISSION_GRANTED
+        ) return true
+        runOnUiThread { storagePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE) }
+        return false
+    }
+
+    private fun showToast(message: String) {
+        runOnUiThread { Toast.makeText(this, message, Toast.LENGTH_LONG).show() }
     }
 
     private fun persistLastPageUrl(url: String? = webView.url) {
