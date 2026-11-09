@@ -2,6 +2,20 @@
 
 Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 0.3.0 (versionCode 36) — 8 de noviembre de 2026
+
+### Corregido
+- En el teléfono, el botón de descarga del visor de imágenes no hacía nada: la librería de zoom del visor (panzoom) llama a `preventDefault()` en `touchstart`, y Android no genera el `click`. El script de `DownloadBridge.kt` detecta un toque corto sobre un botón de un diálogo cuyo `touchstart` se canceló así y hace el clic.
+- Las descargas sobrescribían o descartaban archivos con el mismo nombre, porque Open WebUI llama a todas las imágenes `generated_image.png`. Ahora cada descarga se guarda como `yyyyMMdd` más cuatro caracteres alfanuméricos al azar (por ejemplo `20261108Bn21.png`), también las que pasan por el gestor de descargas de Android.
+
+## 0.2.11 (versionCode 35) — compilación local
+
+- Nombres únicos de descarga. Incluido en 0.3.0.
+
+## 0.2.10 (versionCode 34) — compilación local
+
+- Repite el toque en los botones del visor de imágenes. Incluido en 0.3.0.
+
 ## 0.2.9 (versionCode 33) — 8 de noviembre de 2026
 
 ### Corregido

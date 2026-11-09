@@ -17,7 +17,7 @@ Esta tabla distingue la versión de Android que puede instalar la app del SDK us
 | Android mínimo (minSdk) | API 23 / Android 6.0 | Versión mínima admitida por el APK |
 | Android objetivo (targetSdk) | API 36 / Android 16 | Comportamientos del sistema para los que se configura |
 | SDK de compilación (compileSdk) | API 37 / Android 17 | SDK que debe instalarse para compilar; el teléfono no requiere Android 17 |
-| Sakura OI Web | 0.2.9 (versionCode 33) | Versión actual del proyecto |
+| Sakura OI Web | 0.3.0 (versionCode 36) | Versión actual del proyecto |
 | Android Gradle Plugin | 9.4.1 | Plugin de compilación Android |
 | Gradle Wrapper | 9.6.0 | Versión incluida y usada por el proyecto |
 | Kotlin | 2.2.10 | Versión configurada del plugin de Kotlin |
@@ -146,7 +146,8 @@ Desde la versión 0.2.9, `DownloadBridge.kt` instala en la página un script que
 - En Android 10 o posterior no se necesita ningún permiso.
 - En Android 9 o anterior la app pide `WRITE_EXTERNAL_STORAGE` la primera vez; después hay que volver a tocar **Descargar**.
 - Solo la página del servidor configurado en `SAKURA_WEBUI_URL` puede guardar archivos.
-- Si Android detecta que la extensión no coincide con el tipo del archivo, la corrige (por ejemplo, una imagen WebP queda como `.webp`).
+- Desde la versión 0.3.0, cada archivo se guarda con un nombre único: la fecha (`yyyyMMdd`) más cuatro letras o números al azar, por ejemplo `20261108Bn21.png`. La extensión se toma del nombre que propone la página o, si no tiene, del tipo del archivo.
+- El visor de imágenes de Open WebUI usa una librería de zoom con los dedos que cancela el inicio de cada toque, y Android no convierte ese toque en clic. Desde 0.3.0, si un toque corto sobre un botón de un diálogo se cancela así, la app hace el clic; el zoom con los dedos no cambia.
 
 ## Enlaces externos
 
