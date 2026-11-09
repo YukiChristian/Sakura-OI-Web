@@ -108,16 +108,20 @@ class DownloadBridge(
         return file.name
     }
 
+    /**
+     * Open WebUI names every image "generated_image.png", so each download gets its own key
+     * instead: the date plus four random letters or digits (20261108Bn21.png). The extension
+     * comes from the page's file name, or from the MIME type when it has none.
+     */
     private fun fileNameFor(requested: String?, mime: String): String {
-        val clean = requested.orEmpty()
+        val requestedExt = requested.orEmpty()
             .substringAfterLast('/')
-            .replace(Regex("[\\\\:*?\"<>|\\p{Cntrl}]"), "_")
-            .trim()
-            .take(120)
-        val base = clean.ifEmpty { "sakura_${System.currentTimeMillis()}" }
-        if (base.contains('.')) return base
-        val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(mime) ?: return base
-        return "$base.$ext"
+            .substringAfterLast('.', "")
+            .lowercase()
+            .takeIf { it.isNotEmpty() && it.length <= 8 && it.all(Char::isLetterOrDigit) }
+        val ext = requestedExt ?: MimeTypeMap.getSingleton().getExtensionFromMimeType(mime)
+        val key = downloadKey()
+        return if (ext != null) "$key.$ext" else key
     }
 
     private fun uniqueFile(dir: File, name: String): File {
@@ -134,6 +138,15 @@ class DownloadBridge(
         const val JS_NAME = "SakuraDownloads"
         const val FOLDER = "Sakura OI Web"
         private const val TAG = "SakuraWebApp"
+        private const val KEY_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+        private val random = java.security.SecureRandom()
+
+        /** Today's date as yyyyMMdd followed by four random letters or digits, e.g. 20261108Bn21. */
+        fun downloadKey(): String {
+            val date = java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US).format(java.util.Date())
+            val suffix = String(CharArray(4) { KEY_CHARS[random.nextInt(KEY_CHARS.length)] })
+            return date + suffix
+        }
 
         /**
          * Intercepts download links (file-saver creates an `<a download>` and clicks it, often
@@ -192,6 +205,25 @@ class DownloadBridge(
                     event.preventDefault();
                     event.stopImmediatePropagation();
                     save(a);
+                }, true);
+                // The image viewer's pinch-zoom (panzoom) calls preventDefault() on touchstart,
+                // so a tap on its Download button never becomes a click. Replay short taps on
+                // buttons inside dialogs whose touchstart was cancelled that way.
+                let tap = null;
+                document.addEventListener('touchstart', function(event) {
+                    const button = event.target && event.target.closest ? event.target.closest('[role="dialog"] button') : null;
+                    tap = button && event.touches.length === 1 ? {
+                        event: event, button: button, x: event.touches[0].clientX, y: event.touches[0].clientY, time: Date.now()
+                    } : null;
+                }, true);
+                document.addEventListener('touchend', function(event) {
+                    const t = tap;
+                    tap = null;
+                    if (!t || !t.event.defaultPrevented || Date.now() - t.time > 600) return;
+                    const touch = event.changedTouches[0];
+                    if (!touch || Math.abs(touch.clientX - t.x) > 12 || Math.abs(touch.clientY - t.y) > 12) return;
+                    if (!t.button.contains(document.elementFromPoint(touch.clientX, touch.clientY))) return;
+                    setTimeout(function() { t.button.click(); }, 0);
                 }, true);
             })();
         """.trimIndent()

@@ -734,7 +734,9 @@ class MainActivity : ComponentActivity() {
             )
             url.startsWith("https://") || url.startsWith("http://") -> {
                 if (!hasLegacyStoragePermission()) return
-                val name = URLUtil.guessFileName(url, contentDisposition, mimeType)
+                val guessed = URLUtil.guessFileName(url, contentDisposition, mimeType)
+                val ext = guessed.substringAfterLast('.', "")
+                val name = DownloadBridge.downloadKey() + if (ext.isNotEmpty()) ".$ext" else ""
                 val request = DownloadManager.Request(Uri.parse(url)).apply {
                     setMimeType(mimeType)
                     CookieManager.getInstance().getCookie(url)?.let { addRequestHeader("Cookie", it) }
