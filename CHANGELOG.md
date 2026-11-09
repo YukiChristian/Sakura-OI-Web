@@ -2,6 +2,16 @@
 
 Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 0.2.9 (versionCode 33) — 8 de noviembre de 2026
+
+### Corregido
+- El botón de descarga de Open WebUI (por ejemplo, en el visor de imágenes) no guardaba nada. Open WebUI usa file-saver, que crea un enlace `<a download>` con una URL `blob:` y le hace clic; el WebView de Android ignora esas descargas. `DownloadBridge.kt` intercepta esos enlaces (y los `data:` y los del propio servidor), lee el archivo en la página y lo guarda en Descargas/Sakura OI Web con MediaStore.
+
+### Añadido
+- `setDownloadListener`: las descargas http(s) se envían al `DownloadManager` de Android con las cookies del WebView; las `data:` se decodifican y las `blob:` se leen desde la página.
+- Avisos "Guardado en Descargas/Sakura OI Web", "Descargando…" y "No se pudo guardar el archivo."
+- Permiso `WRITE_EXTERNAL_STORAGE` solo para Android 9 o anterior (`maxSdkVersion="28"`).
+
 ## 0.2.8 (versionCode 32) — 8 de noviembre de 2026
 
 ### Añadido

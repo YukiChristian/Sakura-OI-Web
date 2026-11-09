@@ -17,7 +17,7 @@ Esta tabla distingue la versión de Android que puede instalar la app del SDK us
 | Android mínimo (minSdk) | API 23 / Android 6.0 | Versión mínima admitida por el APK |
 | Android objetivo (targetSdk) | API 36 / Android 16 | Comportamientos del sistema para los que se configura |
 | SDK de compilación (compileSdk) | API 37 / Android 17 | SDK que debe instalarse para compilar; el teléfono no requiere Android 17 |
-| Sakura OI Web | 0.2.8 (versionCode 32) | Versión actual del proyecto |
+| Sakura OI Web | 0.2.9 (versionCode 33) | Versión actual del proyecto |
 | Android Gradle Plugin | 9.4.1 | Plugin de compilación Android |
 | Gradle Wrapper | 9.6.0 | Versión incluida y usada por el proyecto |
 | Kotlin | 2.2.10 | Versión configurada del plugin de Kotlin |
@@ -137,6 +137,17 @@ Si no aparecen, filtra Logcat por la etiqueta `SakuraWebApp`: el puente registra
 - Los insets de Android se aplican al WebView y a las pantallas de carga para que el teclado no tape el compositor.
 - `settings.textZoom = 120` y `setInitialScale(110)` mantienen el tamaño de lectura ampliado.
 
+## Descargas
+
+El WebView de Android no descarga archivos por sí mismo. Open WebUI guarda las imágenes y los archivos exportados con la librería file-saver, que crea un enlace `<a download>` con una URL `blob:` y le hace clic; en Chrome eso inicia la descarga, pero en un WebView no pasa nada si la app no lo maneja.
+
+Desde la versión 0.2.9, `DownloadBridge.kt` instala en la página un script que detecta esos enlaces (con URL `blob:`, `data:` o del propio servidor), lee el archivo y lo pasa a la app como `window.SakuraDownloads`. La app lo guarda en **Descargas/Sakura OI Web** mediante MediaStore y muestra un aviso con el nombre del archivo. Las descargas http(s) que llegan al WebView por otra vía se envían al gestor de descargas de Android con las cookies de la sesión.
+
+- En Android 10 o posterior no se necesita ningún permiso.
+- En Android 9 o anterior la app pide `WRITE_EXTERNAL_STORAGE` la primera vez; después hay que volver a tocar **Descargar**.
+- Solo la página del servidor configurado en `SAKURA_WEBUI_URL` puede guardar archivos.
+- Si Android detecta que la extensión no coincide con el tipo del archivo, la corrige (por ejemplo, una imagen WebP queda como `.webp`).
+
 ## Enlaces externos
 
 Desde la versión 0.2.8, `shouldOverrideUrlLoading` en `MainActivity.kt` revisa cada navegación de la página principal. Si el destino no es el servidor configurado en `SAKURA_WEBUI_URL`, la app no lo carga en el WebView: lo envía a Android con `Intent.ACTION_VIEW`, que lo abre en el navegador predeterminado (por ejemplo, Chrome). Así, una fuente citada en una respuesta o cualquier enlace a otro sitio no reemplaza Open WebUI, y al volver la app sigue en la misma página. Los enlaces con `target="_blank"` reciben el mismo trato.
@@ -176,6 +187,7 @@ El teléfono tiene que alcanzar el servidor: la IP local no funciona por datos m
 - `app/src/main/java/com/sakura/webapp/SakuraKeepAliveService.kt`: mantiene el proceso con mayor prioridad y muestra el aviso silencioso mientras la app está en segundo plano.
 - `app/src/main/java/com/sakura/webapp/PageThemeBridge.kt`: color de las barras del sistema según el tema de Open WebUI.
 - `app/src/main/java/com/sakura/webapp/LogoSpinnerView.kt`: indicador giratorio de la pantalla de carga.
+- `app/src/main/java/com/sakura/webapp/DownloadBridge.kt`: guarda en Descargas los archivos que Open WebUI descarga.
 - `app/src/main/AndroidManifest.xml`: permisos y Activity.
 - `app/src/main/res/xml/network_security_config.xml`: CA aceptadas.
 - `app/build.gradle.kts`: versiones Android y URL de build.
