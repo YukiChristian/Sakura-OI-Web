@@ -15,9 +15,6 @@ import android.net.http.SslError
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
-import android.os.Handler
-import android.os.Looper
-import android.os.SystemClock
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -56,24 +53,18 @@ class MainActivity : ComponentActivity() {
     private lateinit var webView: WebView
     private lateinit var contentRoot: FrameLayout
     private lateinit var connectionView: FrameLayout
-    private lateinit var loadingView: FrameLayout
     private lateinit var statusBarScrim: View
     private lateinit var navigationBarScrim: View
     /** Open WebUI's declared theme color (meta[name=theme-color]) as 0xRRGGBB, or -1 if unknown. */
     private var pageThemeColor = -1
+    private lateinit var assetCache: ImmutableAssetCache
     private lateinit var retryArrow: TextView
     private var retryAnimator: ObjectAnimator? = null
     private var pendingUploadCallback: ValueCallback<Array<Uri>>? = null
     private var pendingAudioPermissionRequest: PermissionRequest? = null
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
-    private val mainHandler = Handler(Looper.getMainLooper())
-    private var connectionTimeout: Runnable? = null
     private var mainFrameLoadFailed = false
-    private var loadStartedAtMs = 0L
-    private var launchSplashDeadlineMs = 0L
-    private var pageReadyWhileSplashIsVisible = false
-    private var launchSplashRunnable: Runnable? = null
     private lateinit var notificationBridge: WebNotificationBridge
     private lateinit var downloadBridge: DownloadBridge
     @Volatile private var trustedPageLoaded = false
@@ -136,7 +127,11 @@ class MainActivity : ComponentActivity() {
         contentRoot.addView(navigationBarScrim, FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, 0, Gravity.BOTTOM
         ))
+        assetCache = ImmutableAssetCache(applicationContext, ::isOpenWebUiOrigin)
+        Thread { assetCache.prune() }.start()
         webView = WebView(this).apply {
+            // Shown while the first page loads, so dark mode does not flash white.
+            setBackgroundColor(screenBackground)
             settings.javaScriptEnabled = true
             settings.mediaPlaybackRequiresUserGesture = false
             settings.domStorageEnabled = true
@@ -165,7 +160,7 @@ class MainActivity : ComponentActivity() {
                         view.evaluateJavascript(DownloadBridge.SHIM_JS, null)
                         view.evaluateJavascript(PageThemeBridge.WATCH_JS, null)
                     }
-                    if (!mainFrameLoadFailed) confirmPageLoaded(view)
+                    if (!mainFrameLoadFailed) revealLoadedPage(view)
                 }
 
                 /**
@@ -181,6 +176,11 @@ class MainActivity : ComponentActivity() {
                     openExternally(uri)
                     return true
                 }
+
+                override fun shouldInterceptRequest(
+                    view: WebView,
+                    request: WebResourceRequest
+                ): WebResourceResponse? = assetCache.intercept(request)
 
                 override fun onReceivedError(
                     view: WebView,
@@ -326,11 +326,6 @@ class MainActivity : ComponentActivity() {
             ViewGroup.LayoutParams.MATCH_PARENT
         ))
 
-        loadingView = createLoadingView()
-        contentRoot.addView(loadingView, FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT
-        ))
         connectionView = createConnectionView().apply { visibility = View.GONE }
         contentRoot.addView(connectionView, FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -347,7 +342,7 @@ class MainActivity : ComponentActivity() {
                 bars.right,
                 maxOf(bars.bottom, ime.bottom)
             )
-            listOf(webView, loadingView, connectionView).forEach { view ->
+            listOf(webView, connectionView).forEach { view ->
                 (view.layoutParams as FrameLayout.LayoutParams).apply {
                     setMargins(margins[0], margins[1], margins[2], margins[3])
                 }.also { view.layoutParams = it }
@@ -369,61 +364,28 @@ class MainActivity : ComponentActivity() {
             }
         })
 
-        launchSplashDeadlineMs = SystemClock.elapsedRealtime() + SPLASH_MIN_DURATION_MS
         val restored = savedInstanceState != null && webView.restoreState(savedInstanceState) != null
         if (restored) {
             beginHomeLoad(loadPage = false)
         } else {
             // Android may have killed the process while the app was in the background.
-            // Reopen the last Open WebUI route behind the Sakura loading screen.
+            // Reopen the last Open WebUI route.
             beginHomeLoad(lastKnownPageUrl())
         }
     }
 
 
-    private fun confirmPageLoaded(view: WebView) {
-        val script = """
-            (function() {
-                const text = (document.body && document.body.innerText || '').trim();
-                const html = (document.documentElement && document.documentElement.innerHTML) || '';
-                const title = document.title || '';
-                const browserError = /web page not available|net::err_|err_ssl_protocol_error|err_connection_/i;
-                return location.hostname === '$HOME_HOST' &&
-                    !browserError.test(text + ' ' + title) && html.length > 300;
-            })();
-        """.trimIndent()
-        view.evaluateJavascript(script) { result ->
-            if (isFinishing || mainFrameLoadFailed || loadingView.visibility != View.VISIBLE) return@evaluateJavascript
-            if (result == "true") {
-                installMediaDiagnostics(view)
-                val splashRemainingMs = launchSplashDeadlineMs - SystemClock.elapsedRealtime()
-                if (splashRemainingMs > 0L) {
-                    pageReadyWhileSplashIsVisible = true
-                    if (launchSplashRunnable == null) {
-                        launchSplashRunnable = Runnable {
-                            launchSplashRunnable = null
-                            if (pageReadyWhileSplashIsVisible && !mainFrameLoadFailed) {
-                                revealLoadedPage()
-                            }
-                        }.also { mainHandler.postDelayed(it, splashRemainingMs) }
-                    }
-                    return@evaluateJavascript
-                }
-                revealLoadedPage()
-            } else {
-                handleMainFrameFailure()
-            }
-        }
-    }
-    private fun revealLoadedPage() {
+    /**
+     * The page finished loading without a network error: show it (and hide the connection
+     * screen if a retry just succeeded).
+     */
+    private fun revealLoadedPage(view: WebView) {
         if (isFinishing || mainFrameLoadFailed) return
-        pageReadyWhileSplashIsVisible = false
+        installMediaDiagnostics(view)
         stopRetryAnimation()
-        loadingView.visibility = View.GONE
         connectionView.visibility = View.GONE
         webView.visibility = View.VISIBLE
         updateSystemBars()
-        cancelConnectionTimeout()
         askForNotificationsOnce()
     }
 
@@ -476,62 +438,6 @@ class MainActivity : ComponentActivity() {
             })();
         """.trimIndent()
         view.evaluateJavascript(script, null)
-    }
-
-    private fun createLoadingView(): FrameLayout {
-        val root = FrameLayout(this).apply { setBackgroundColor(screenBackground) }
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(dp(32), dp(24), dp(32), dp(24))
-        }
-        val logo = ImageView(this).apply {
-            setImageResource(R.drawable.sakura_logo)
-            contentDescription = getString(R.string.app_name)
-            scaleType = ImageView.ScaleType.FIT_CENTER
-        }
-        content.addView(logo, LinearLayout.LayoutParams(dp(96), dp(96)).apply {
-            gravity = Gravity.CENTER_HORIZONTAL
-        })
-        val name = TextView(this).apply {
-            text = getString(R.string.app_name)
-            textSize = 20f
-            setTextColor(themed(Color.rgb(32, 32, 32), Color.rgb(236, 236, 236)))
-            gravity = Gravity.CENTER
-            setPadding(0, dp(14), 0, 0)
-        }
-        content.addView(name)
-        val version = TextView(this).apply {
-            text = "Versión ${BuildConfig.VERSION_NAME}"
-            textSize = 13f
-            setTextColor(themed(Color.rgb(120, 120, 120), Color.rgb(170, 170, 170)))
-            gravity = Gravity.CENTER
-            setPadding(0, dp(2), 0, dp(8))
-        }
-        content.addView(version)
-        // Black on the light screen; white in dark mode, where black would not show.
-        val loadingColor = themed(Color.BLACK, Color.WHITE)
-        val progress = LogoSpinnerView(this, loadingColor).apply {
-            contentDescription = getString(R.string.loading_description)
-        }
-        content.addView(progress, LinearLayout.LayoutParams(dp(44), dp(44)).apply {
-            topMargin = dp(18)
-            gravity = Gravity.CENTER_HORIZONTAL
-        })
-        val label = TextView(this).apply {
-            text = "Conectándose con el servidor…"
-            textSize = 18f
-            setTextColor(loadingColor)
-            gravity = Gravity.CENTER
-            setPadding(0, dp(16), 0, 0)
-        }
-        content.addView(label)
-        root.addView(content, FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            Gravity.CENTER
-        ))
-        return root
     }
 
     private fun createConnectionView(): FrameLayout {
@@ -619,52 +525,27 @@ class MainActivity : ComponentActivity() {
         if (::retryArrow.isInitialized) retryArrow.rotation = 0f
     }
 
+    /**
+     * Shows Open WebUI straight away while it loads. The connection screen stays up only
+     * during a retry, until the page either loads or fails again.
+     */
     private fun beginHomeLoad(url: String = HOME_URL, loadPage: Boolean = true) {
-        launchSplashRunnable?.let(mainHandler::removeCallbacks)
-        launchSplashRunnable = null
-        pageReadyWhileSplashIsVisible = false
         mainFrameLoadFailed = false
-        loadStartedAtMs = SystemClock.elapsedRealtime()
-        connectionView.visibility = View.GONE
-        loadingView.visibility = View.VISIBLE
-        webView.visibility = View.VISIBLE
+        if (connectionView.visibility != View.VISIBLE) webView.visibility = View.VISIBLE
         updateSystemBars()
-        scheduleConnectionTimeout(CONNECTION_TIMEOUT_MS)
         if (loadPage) webView.loadUrl(url)
     }
 
+    /** Called only for real failures: no network, DNS or TLS errors, or the server answering 5xx. */
     private fun handleMainFrameFailure() {
         mainFrameLoadFailed = true
-        runOnUiThread {
-            if (isFinishing || !::loadingView.isInitialized) return@runOnUiThread
-            connectionView.visibility = View.GONE
-            loadingView.visibility = View.VISIBLE
-            webView.visibility = View.VISIBLE
-            updateSystemBars()
-            val elapsed = SystemClock.elapsedRealtime() - loadStartedAtMs
-            val remaining = (CONNECTION_TIMEOUT_MS - elapsed).coerceAtLeast(0L)
-            scheduleConnectionTimeout(remaining)
-        }
-    }
-
-    private fun scheduleConnectionTimeout(delayMs: Long) {
-        cancelConnectionTimeout()
-        connectionTimeout = Runnable {
-            if (loadingView.visibility == View.VISIBLE) showConnectionError()
-        }.also { mainHandler.postDelayed(it, delayMs) }
-    }
-
-    private fun cancelConnectionTimeout() {
-        connectionTimeout?.let(mainHandler::removeCallbacks)
-        connectionTimeout = null
+        showConnectionError()
     }
 
     private fun showConnectionError() {
         runOnUiThread {
             if (!isFinishing && ::connectionView.isInitialized) {
-                cancelConnectionTimeout()
                 stopRetryAnimation()
-                loadingView.visibility = View.GONE
                 webView.visibility = View.GONE
                 connectionView.visibility = View.VISIBLE
                 updateSystemBars()
@@ -679,8 +560,7 @@ class MainActivity : ComponentActivity() {
      */
     private fun updateSystemBars() {
         if (!::connectionView.isInitialized) return
-        val showingPage = loadingView.visibility != View.VISIBLE &&
-            connectionView.visibility != View.VISIBLE
+        val showingPage = connectionView.visibility != View.VISIBLE
         val barColor = if (showingPage && pageThemeColor >= 0) {
             pageThemeColor or 0xFF000000.toInt()
         } else screenBackground
@@ -871,9 +751,6 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        cancelConnectionTimeout()
-        launchSplashRunnable?.let(mainHandler::removeCallbacks)
-        launchSplashRunnable = null
         stopRetryAnimation()
         pendingUploadCallback?.onReceiveValue(null)
         pendingUploadCallback = null
@@ -897,8 +774,6 @@ class MainActivity : ComponentActivity() {
 
         /** A URL without a port (such as a Tailscale address) uses the HTTPS default, 443. */
         private fun httpsPort(uri: Uri): Int = if (uri.port == -1) 443 else uri.port
-        private const val CONNECTION_TIMEOUT_MS = 5_000L
-        private const val SPLASH_MIN_DURATION_MS = 3_000L
         private const val TAG = "SakuraWebApp"
         /** Schemes the WebView handles itself (downloads, inline content); everything else opens outside. */
         private val IN_APP_SCHEMES = setOf("blob", "data", "javascript", "about")
