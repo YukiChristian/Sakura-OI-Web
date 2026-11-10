@@ -1,4 +1,4 @@
-# 🌸 Sakura OI Web 📱 v0.3.0
+# 🌸 Sakura OI Web 📱 v0.3.2
 
 <div align="center">
   <img src="assets/sakura-oi-web-icon.png" alt="Logo de Sakura OI Web: flor con contorno arcoíris y las letras OI" width="160">
@@ -12,7 +12,7 @@ Sakura OI Web (antes SakuraWebApp) es una app para Android que mejora la experie
 
 Si abres Open WebUI en Chrome y cambias a otra app, el teléfono puede cerrar esa pestaña para ahorrar memoria. Al regresar, Chrome puede cargar la página otra vez y hacerte perder el punto exacto donde estabas trabajando o tener que volver a buscar la conversación. Esto no borra el chat guardado en el servidor, pero interrumpe la continuidad de la actividad. Además, para que el micrófono, la selección de archivos y el teclado funcionen bien dentro de una app, Android necesita que esas funciones estén conectadas correctamente con la página.
 
-Sakura OI Web adapta Open WebUI para usarlo desde una app instalada en Android. Lo abre en una ventana interna y conecta con funciones del teléfono como el teclado, el micrófono, el audio y el selector de archivos e imágenes. Al iniciar muestra el logo, el nombre y la versión mientras carga. Si no logra conectar con el servidor, enseña un mensaje con un botón para volver a intentarlo.
+Sakura OI Web adapta Open WebUI para usarlo desde una app instalada en Android. Lo abre en una ventana interna y conecta con funciones del teléfono como el teclado, el micrófono, el audio y el selector de archivos e imágenes. Al iniciar abre Open WebUI directamente, sin pantalla de carga propia. Si no logra conectar con el servidor, enseña un mensaje con un botón para volver a intentarlo.
 
 ## Objetivo general
 
@@ -21,7 +21,8 @@ Compartir un ejemplo completo y una guía clara para que otras personas puedan c
 ## ✨ Qué incluye
 
 - Open WebUI se abre dentro de la app Android, que permite volver atrás y conserva la sesión mientras Android la mantenga activa.
-- Pantallas de carga y de error de conexión con opción para reintentar.
+- Apertura directa de Open WebUI y pantalla de error de conexión, con opción para reintentar, solo cuando de verdad no hay conexión.
+- Los archivos de Open WebUI que no cambian se guardan en el teléfono para no descargarlos en cada arranque.
 - Los enlaces a otros sitios se abren en el navegador predeterminado del teléfono (por ejemplo, Chrome); las páginas de tu Open WebUI siguen dentro de la app.
 - El botón de descarga de Open WebUI guarda imágenes y archivos en **Descargas/Sakura OI Web**, cada uno con un nombre único (fecha y cuatro caracteres al azar, por ejemplo `20261108Bn21.png`).
 - Tema oscuro completo: las barras de arriba y de abajo toman el color de Open WebUI, y las pantallas propias de la app siguen el modo oscuro del teléfono.
@@ -41,9 +42,9 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 <details>
 <summary>Ver capturas de Sakura OI Web</summary>
 
-| Cargando Open WebUI | Sin conexión |
-|:--:|:--:|
-| <img src="docs/images/loading.png" alt="Pantalla de carga de Sakura OI Web con el logo, la versión y el indicador arcoíris" width="240"> | <img src="docs/images/connection-error.png" alt="Pantalla de error de conexión con botón para reintentar" width="240"> |
+| Sin conexión |
+|:--:|
+| <img src="docs/images/connection-error.png" alt="Pantalla de error de conexión con botón para reintentar" width="240"> |
 
 | Tema claro y tema oscuro |
 |:--:|
@@ -65,7 +66,7 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 
 ## 📦 Versiones documentadas
 
-- App: Sakura OI Web **0.3.0** (versionCode 36). Historial completo en [CHANGELOG.md](CHANGELOG.md).
+- App: Sakura OI Web **0.3.2** (versionCode 38). Historial completo en [CHANGELOG.md](CHANGELOG.md).
 - Notificaciones verificadas en el teléfono Android 16 de referencia con Open WebUI 0.12.3. Pantallas, icono y barras en tema claro y oscuro de 0.2.1 a 0.2.3 verificados en el emulador de Android Studio (API 37).
 - Open WebUI: **0.12.3**, versión verificada en la instalación local.
 - Nombre visible del modelo en Open WebUI: **Sakura**. Los registros identifican **llama.cpp 0.7.0-dev**, compilado para x64 con CUDA desde el commit `ea0c4c2c8`, que carga `SoAIHQ/Qwen3.5-9B-GGUF:Q4_K_M` (Qwen 3.5 de 9B, cuantización Q4_K_M). llama.cpp es el servidor de inferencia; el modelo no pertenece a la familia Llama. El alias Sakura se configura en Open WebUI.
@@ -74,7 +75,15 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 - Herramientas fijadas en el proyecto: Android Gradle Plugin 9.4.1, Gradle 9.6.0, Kotlin 2.2.10 y JDK 17 para ejecutar Gradle. El código Java usa compatibilidad de lenguaje 11.
 - La activación por palabra “Oye, Sakura” queda como idea futura; no está implementada.
 
-## 🆕 Novedades de la versión 0.3.0
+## 🆕 Novedades de la versión 0.3.2
+
+- **Apertura directa:** se quitó la pantalla de carga propia de la app (logo, versión y espera mínima de 3 segundos). Open WebUI se muestra desde el primer momento.
+- **"Sin conexión" solo cuando de verdad no hay conexión:** antes aparecía si la página tardaba más de 5 segundos, aunque el servidor respondiera. Ahora solo sale ante un error real: sin internet, servidor inalcanzable, error de certificado o el servidor responde con un error 5xx. Al tocar **Reintentar**, la flecha gira hasta que la página carga o vuelve a fallar.
+- **Menos descarga en cada arranque:** los archivos de Open WebUI en `/_app/immutable/` llevan su versión en el nombre y nunca cambian, pero el servidor los envía sin caché ni compresión. La app los guarda en el teléfono la primera vez: en las pruebas, cada arranque pasó de descargar 812 KB a 52 KB, lo que se nota sobre todo con datos móviles.
+- **Consejo para el servidor:** gran parte de la espera al abrir es Open WebUI armando la lista de modelos, porque consulta en cada carga todas las conexiones configuradas. Activar **Panel de administración → Ajustes → Conexiones → Cachear lista de modelos** bajó esa petición de 2.6 s a 0.24 s y el arranque completo de unos 10 s a unos 7.5 s. A cambio, los modelos nuevos de un servidor no aparecen hasta reiniciar Open WebUI o volver a guardar las conexiones.
+- Incluye los cambios de la compilación local 0.3.1, que no se publicó por separado.
+
+### Versión 0.3.0
 
 - **El botón de descarga del visor de imágenes ya responde al toque.** El visor usa una librería de zoom con los dedos que cancela el inicio de cada toque, así que en el teléfono el botón nunca recibía el clic (con el mouse en la PC sí funcionaba). Ahora, si un toque corto sobre un botón del visor se cancela de esa forma, la app hace el clic. El zoom con los dedos sigue funcionando.
 - **Cada descarga tiene un nombre único.** Open WebUI llama a todas las imágenes `generated_image.png`, así que se repetía el nombre y no se guardaban más. Ahora cada descarga se guarda como fecha (año, mes, día) más cuatro letras o números al azar, por ejemplo `20261108Bn21.png`, en Descargas/Sakura OI Web.
@@ -159,7 +168,9 @@ Resumen de todos los cambios de la app. El detalle de cada versión está en [CH
 
 | Versión | versionCode | Cambios |
 |---|---:|---|
-| **0.3.0** | 36 | El botón de descarga del visor responde al toque y cada descarga se guarda con un nombre único (fecha + 4 caracteres al azar). |
+| **0.3.2** | 38 | Apertura directa sin pantalla de carga, aviso de sin conexión solo ante errores reales y caché permanente de los archivos de Open WebUI que no cambian. |
+| 0.3.1 | 37 | Compilación local sin pantalla de carga; incluida en 0.3.2. |
+| 0.3.0 | 36 | El botón de descarga del visor responde al toque y cada descarga se guarda con un nombre único (fecha + 4 caracteres al azar). |
 | 0.2.11 | 35 | Compilación local con los nombres únicos de descarga; incluida en 0.3.0. |
 | 0.2.10 | 34 | Compilación local que repite el toque en los botones del visor de imágenes; incluida en 0.3.0. |
 | 0.2.9 | 33 | El botón de descarga guarda imágenes y archivos en Descargas/Sakura OI Web. |
@@ -206,7 +217,7 @@ Instala Android Studio compatible con Android Gradle Plugin 9.4.1, Android SDK P
 | Android mínimo | API 23 / Android 6.0 | Versión mínima para instalar la app |
 | Android objetivo | API 36 / Android 16 | Comportamientos de Android para los que está configurada |
 | SDK de compilación | API 37 / Android 17 | Plataforma necesaria para compilar; no es requisito para el teléfono |
-| Versión de Sakura OI Web | 0.3.0 (versionCode 36) | Versión del APK de este repositorio |
+| Versión de Sakura OI Web | 0.3.2 (versionCode 38) | Versión del APK de este repositorio |
 
 La versión de Android de tu teléfono es independiente del SDK de compilación. En el dispositivo Android 16 de referencia, la app funciona con target API 36.
 

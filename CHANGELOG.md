@@ -2,6 +2,23 @@
 
 Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 0.3.2 (versionCode 38) — 10 de noviembre de 2026
+
+### Cambiado
+- Se quitó la pantalla de carga propia de la app (`createLoadingView`, `LogoSpinnerView.kt` y la espera mínima de 3 s). El WebView se muestra desde el inicio con el fondo del tema del teléfono.
+- La pantalla "No hay conexión con Sakura" ya no sale por tiempo de espera (antes, a los 5 s). Solo aparece con `onReceivedError` del documento principal, errores TLS o respuestas 5xx. Durante un reintento la pantalla se queda con la flecha girando hasta que la página carga o vuelve a fallar.
+
+### Añadido
+- `ImmutableAssetCache.kt`: los archivos de `/_app/immutable/` (con hash en el nombre) se guardan en la caché de la app la primera vez y se sirven desde el teléfono en `shouldInterceptRequest`. Los que no se usan en 30 días se borran.
+
+### Documentación
+- Consejo para activar **Cachear lista de modelos** en Open WebUI, que redujo la carga de la lista de modelos de 2.6 s a 0.24 s en las pruebas.
+- Se quitó la captura de la pantalla de carga.
+
+## 0.3.1 (versionCode 37) — compilación local
+
+- Apertura directa sin pantalla de carga y aviso de sin conexión solo ante errores reales. Incluido en 0.3.2.
+
 ## 0.3.0 (versionCode 36) — 8 de noviembre de 2026
 
 ### Corregido

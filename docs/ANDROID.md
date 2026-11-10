@@ -6,7 +6,7 @@ El objetivo general de Sakura OI Web (antes SakuraWebApp) es ofrecer Open WebUI 
 
 La app habilita cookies y DOM storage, guarda/restaura el estado de navegación cuando Android recrea la actividad y recuerda la última dirección de Open WebUI. Desde la versión 0.2.6, al pasar a otra app inicia un servicio en primer plano con una notificación silenciosa; esto aumenta la prioridad del proceso para ayudar a conservar el WebView y la conexión. No reserva memoria ni garantiza que Android mantenga la página cargada: el sistema aún puede cerrar procesos si necesita recursos. Si eso ocurre, Sakura OI Web vuelve a mostrar su pantalla de carga y abre la última dirección guardada; la sesión y los datos del servidor son independientes de que la página siga cargada.
 
-Sakura OI Web es la capa Android y Open WebUI sigue siendo el servidor que contiene la interfaz, cuenta, chats y configuración. La app no copia ni sustituye el perfil del servidor. Al iniciar una actividad nueva, abre la página principal configurada. La pantalla de carga muestra el logo, el nombre, la versión y una animación durante al menos tres segundos; una conexión fallida pasa a un mensaje de error después de cinco segundos y ofrece reintentar.
+Sakura OI Web es la capa Android y Open WebUI sigue siendo el servidor que contiene la interfaz, cuenta, chats y configuración. La app no copia ni sustituye el perfil del servidor. Al iniciar una actividad nueva, abre directamente la última página de Open WebUI. Si la conexión falla de verdad, muestra un mensaje de error y ofrece reintentar.
 
 ## Compilar la app Android
 
@@ -17,7 +17,7 @@ Esta tabla distingue la versión de Android que puede instalar la app del SDK us
 | Android mínimo (minSdk) | API 23 / Android 6.0 | Versión mínima admitida por el APK |
 | Android objetivo (targetSdk) | API 36 / Android 16 | Comportamientos del sistema para los que se configura |
 | SDK de compilación (compileSdk) | API 37 / Android 17 | SDK que debe instalarse para compilar; el teléfono no requiere Android 17 |
-| Sakura OI Web | 0.3.0 (versionCode 36) | Versión actual del proyecto |
+| Sakura OI Web | 0.3.2 (versionCode 38) | Versión actual del proyecto |
 | Android Gradle Plugin | 9.4.1 | Plugin de compilación Android |
 | Gradle Wrapper | 9.6.0 | Versión incluida y usada por el proyecto |
 | Kotlin | 2.2.10 | Versión configurada del plugin de Kotlin |
@@ -173,11 +173,16 @@ Las pantallas de carga y de error, y la ventana que Android muestra mientras abr
 
 ## Carga y error de conexión
 
-Al abrir o reanudar una nueva instancia de Sakura OI Web, primero aparece una pantalla propia de carga con el logo, el nombre y la versión de la app, un indicador giratorio y el texto “Conectándose con el servidor…”, ambos en negro (en blanco si el teléfono está en modo oscuro). No es la pantalla de Open WebUI: es el estado de inicio de la app. Cuando el servidor responde, se oculta la carga y se muestra la interfaz completa de Open WebUI dentro del WebView. Si la página principal no carga en cinco segundos, la app presenta una pantalla propia de error “No hay conexión con Sakura”, en vez de dejar una página blanca o mostrar el error de Chromium. El botón **Reintentar** (negro con la flecha blanca, o blanco con la flecha negra en modo oscuro) vuelve a mostrar la carga y realiza una nueva navegación. Android puede destruir el proceso en segundo plano; al abrir de nuevo, la carga vuelve a mostrarse.
+Desde la versión 0.3.2 la app no tiene pantalla de carga propia: al abrirla se muestra Open WebUI directamente, con el fondo del tema del teléfono mientras llega la página. El logo y el círculo que puedan verse al principio son la carga del propio Open WebUI; el instante con el icono de la flor es la pantalla de inicio que Android muestra en todas las apps desde Android 12.
 
-| Al conectar | Si no hay conexión |
-|:--:|:--:|
-| <img src="images/loading.png" alt="Pantalla de carga de Sakura mientras conecta con Open WebUI" width="240"> | <img src="images/connection-error.png" alt="Pantalla de error de conexión y botón para reintentar" width="240"> |
+La pantalla “No hay conexión con Sakura” solo aparece ante un error real del documento principal: sin red, servidor inalcanzable, error de DNS o de certificado, o una respuesta 5xx. Una conexión lenta ya no la provoca. El botón **Reintentar** (negro con la flecha blanca, o blanco con la flecha negra en modo oscuro) vuelve a cargar la página; la flecha gira hasta que carga o vuelve a fallar.
+
+<img src="images/connection-error.png" alt="Pantalla de error de conexión y botón para reintentar" width="240">
+
+### Tiempo de apertura
+
+- Los archivos de Open WebUI en `/_app/immutable/` llevan un hash en el nombre y nunca cambian, pero el servidor los envía sin caché ni compresión. `ImmutableAssetCache.kt` los guarda en la caché de la app la primera vez y los sirve desde el teléfono en `shouldInterceptRequest`; los que no se usan en 30 días se borran. En las pruebas, cada arranque pasó de descargar 812 KB a 52 KB.
+- Buena parte de la espera es del servidor: Open WebUI no muestra el chat hasta tener la lista de modelos, y por defecto la vuelve a pedir a todas las conexiones en cada carga. Activar **Panel de administración → Ajustes → Conexiones → Cachear lista de modelos** redujo esa petición de 2.6 s a 0.24 s y el arranque completo de unos 10 s a unos 7.5 s. Los modelos nuevos de un servidor no aparecerán hasta reiniciar Open WebUI o volver a guardar las conexiones.
 
 El teléfono tiene que alcanzar el servidor: la IP local no funciona por datos móviles salvo que el servidor esté expuesto de forma segura o haya VPN/ruta. El texto de conexión no inicia el servidor.
 
@@ -187,7 +192,7 @@ El teléfono tiene que alcanzar el servidor: la IP local no funciona por datos m
 - `app/src/main/java/com/sakura/webapp/WebNotificationBridge.kt`: notificaciones de Android para los avisos de Open WebUI.
 - `app/src/main/java/com/sakura/webapp/SakuraKeepAliveService.kt`: mantiene el proceso con mayor prioridad y muestra el aviso silencioso mientras la app está en segundo plano.
 - `app/src/main/java/com/sakura/webapp/PageThemeBridge.kt`: color de las barras del sistema según el tema de Open WebUI.
-- `app/src/main/java/com/sakura/webapp/LogoSpinnerView.kt`: indicador giratorio de la pantalla de carga.
+- `app/src/main/java/com/sakura/webapp/ImmutableAssetCache.kt`: guarda en el teléfono los archivos de Open WebUI que no cambian.
 - `app/src/main/java/com/sakura/webapp/DownloadBridge.kt`: guarda en Descargas los archivos que Open WebUI descarga.
 - `app/src/main/AndroidManifest.xml`: permisos y Activity.
 - `app/src/main/res/xml/network_security_config.xml`: CA aceptadas.
