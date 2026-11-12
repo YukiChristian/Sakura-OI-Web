@@ -53,7 +53,7 @@
             android:label="@string/app_name"
             android:launchMode="singleTop"
             android:theme="@style/Theme.SakuraWebApp"
-            android:windowSoftInputMode="adjustResize|stateHidden">
+            android:windowSoftInputMode="adjustResize|stateAlwaysHidden">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

@@ -7,11 +7,13 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
+import android.util.SizeF
 import android.view.View
 import android.widget.RemoteViews
 
@@ -58,7 +60,7 @@ class VoiceTileService : TileService() {
 }
 
 /**
- * Home screen widget, from "Widgets · 1, 3 y 8 modelos, con Notas y Calendario". Its size picks the layout:
+ * Home screen widget, from "Widgets · 1, 3 y 8 modelos, con Notas y Calendario". Its real size picks the layout:
  * large (4 × 2): avatar, model name and the blue mic, a row with the avatars of the models (not shown with
  * a single model; when they do not fit, the last place becomes «+N»), and the bar Nuevo · Calendario ·
  * Notas · Último. Medium (one row): the mic, the model and round Nuevo chat, Calendario and Notas buttons.
@@ -86,8 +88,8 @@ class VoiceWidgetProvider : AppWidgetProvider() {
             R.id.widget_slot_0, R.id.widget_slot_1, R.id.widget_slot_2, R.id.widget_slot_3,
             R.id.widget_slot_4, R.id.widget_slot_5, R.id.widget_slot_6,
         )
-        /** Below this height (dp) the large widget leaves out the row of avatars so the rest fits. */
-        private const val ROW_MIN_HEIGHT = 200
+        /** Height (dp) the large widget needs to show the row of avatars as well. */
+        private const val ROW_HEIGHT = 200f
 
         /** Redraws every widget, e.g. after the list of models changed. */
         fun refreshAll(context: Context) {
@@ -96,99 +98,136 @@ class VoiceWidgetProvider : AppWidgetProvider() {
                 .forEach { update(context, manager, it) }
         }
 
+        /**
+         * Android 12 and later get every layout with the smallest size it needs, and the launcher shows
+         * the largest one that fits the widget's real size (the sizes launchers report are not always
+         * right, which hid the row of avatars with room to spare). Older versions choose here from the
+         * reported size.
+         */
         fun update(context: Context, manager: AppWidgetManager, id: Int) {
-            // Portrait size in dp (0 before the launcher reports it: the large layout, as placed).
-            val options = manager.getAppWidgetOptions(id)
-            val width = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH) ?: 0
-            val height = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT) ?: 0
-            val layout = when {
-                height in 1 until 120 -> R.layout.widget_medium
-                width in 1 until 250 -> R.layout.widget_small
-                else -> R.layout.widget_large
-            }
-            if (BuildConfig.DEBUG) android.util.Log.d("SakuraWidget", "widget $id: $width x $height dp")
-            val model = ChatModels.forWidget(context, id)
-            val models = ChatModels.available(context).let { list -> if (list.any { it.id == model.id }) list else list + model }
-            val several = models.size > 1
-            val density = context.resources.displayMetrics.density
-            fun px(dp: Int) = (dp * density).toInt()
-            val views = RemoteViews(context.packageName, layout)
-            // Request codes are unique per widget and button, so each keeps its own PendingIntent.
-            val code = id * 32
-            val picker = QuickVoice.activity(context, code + 11, WidgetModelPickerActivity.intent(context, id))
-            val chat = chatIntent(context, id, model, code + 10)
-
-            views.setOnClickPendingIntent(R.id.widget_mic, QuickVoice.pendingIntent(context, code, model.id))
-            views.setContentDescription(R.id.widget_mic, context.getString(R.string.widget_talk_to, model.name))
-            val avatarDp = when (layout) { R.layout.widget_large -> 48; R.layout.widget_small -> 46; else -> 30 }
-            views.setImageViewBitmap(R.id.widget_avatar, ChatModels.avatar(context, model, px(avatarDp)))
-            views.setTextViewText(R.id.widget_model_name, ChatModels.shortName(model))
-            val arrow = if (layout == R.layout.widget_large) R.drawable.widget_arrow_17 else R.drawable.widget_arrow_15
-            views.setTextViewCompoundDrawablesRelative(R.id.widget_model_name, 0, 0, if (several) arrow else 0, 0)
-            views.setOnClickPendingIntent(R.id.widget_model, if (several) picker else chat)
-            views.setContentDescription(
-                R.id.widget_model,
-                context.getString(if (several) R.string.widget_change_model else R.string.widget_open_chat, model.name)
-            )
-            views.setOnClickPendingIntent(
-                R.id.widget_new_chat,
-                QuickVoice.activity(context, code + 1, QuickVoice.appIntent(context, IncomingIntents.ACTION_NEW_CHAT, model.id))
-            )
-            views.setOnClickPendingIntent(R.id.widget_calendar, page(context, IncomingIntents.ACTION_CALENDAR, code + 12))
-
-            when (layout) {
-                R.layout.widget_large -> {
-                    views.setOnClickPendingIntent(R.id.widget_avatar, chat)
-                    views.setOnClickPendingIntent(R.id.widget_notes, page(context, IncomingIntents.ACTION_NOTES, code + 13))
-                    views.setOnClickPendingIntent(R.id.widget_last_chat, page(context, IncomingIntents.ACTION_LAST_CHAT, code + 2))
-                    val showRow = several && (height == 0 || height >= ROW_MIN_HEIGHT)
-                    views.setViewVisibility(R.id.widget_slots, if (showRow) View.VISIBLE else View.GONE)
-                    if (showRow) fillSlots(context, views, id, code, model, models, width, picker)
-                }
-                R.layout.widget_medium -> {
-                    views.setOnClickPendingIntent(R.id.widget_notes, page(context, IncomingIntents.ACTION_NOTES, code + 13))
-                    // Round buttons by importance, as many as fit next to the mic and the model's name.
-                    val room = if (width == 0) 3 else ((width - 186) / 50).coerceIn(0, 3)
-                    intArrayOf(R.id.widget_new_chat, R.id.widget_calendar, R.id.widget_notes).forEachIndexed { i, button ->
-                        views.setViewVisibility(button, if (i < room) View.VISIBLE else View.GONE)
+            val w = Widget(context, id)
+            val views = if (Build.VERSION.SDK_INT >= 31) {
+                val layouts = linkedMapOf<SizeF, RemoteViews>()
+                layouts[SizeF(140f, 110f)] = w.small()
+                // One row: the mic and the model need about 180 dp; each round button 50 more.
+                for (buttons in 0..3) layouts[SizeF(150f + 50f * buttons, 50f)] = w.medium(buttons)
+                layouts[SizeF(250f, 140f)] = w.large(places = 0)
+                if (w.several) {
+                    // Wider widgets fit more avatars (5 to 7); a wider layout wins when it fits.
+                    for (places in 5..minOf(7, maxOf(5, w.models.size))) {
+                        layouts[SizeF(28f + 44f * places - 2f, ROW_HEIGHT)] = w.large(places)
                     }
                 }
-                else -> views.setOnClickPendingIntent(R.id.widget_avatar, chat)
+                RemoteViews(layouts)
+            } else {
+                // Portrait size in dp (0 before the launcher reports it: the large layout, as placed).
+                val options = manager.getAppWidgetOptions(id)
+                val width = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH) ?: 0
+                val height = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT) ?: 0
+                when {
+                    height in 1 until 120 -> w.medium(if (width == 0) 3 else ((width - 186) / 50).coerceIn(0, 3))
+                    width in 1 until 250 -> w.small()
+                    else -> w.large(
+                        if (!w.several || (height in 1 until ROW_HEIGHT.toInt())) 0
+                        else if (width == 0) SLOTS.size else ((width - 28 + 2) / 44).coerceIn(2, SLOTS.size)
+                    )
+                }
             }
             manager.updateAppWidget(id, views)
         }
 
-        /**
-         * The row of avatars: 42 dp places (a 34 dp avatar and room for the ring) 2 dp apart, as many as
-         * fit the width, up to 7. If there are more models, the last place is «+N» and opens the picker;
-         * the widget's model is always among those shown, with its ring.
-         */
-        private fun fillSlots(
-            context: Context, views: RemoteViews, id: Int, code: Int, model: ChatModel, models: List<ChatModel>,
-            width: Int, picker: PendingIntent,
-        ) {
-            val size = (42 * context.resources.displayMetrics.density).toInt()
-            val places = if (width == 0) SLOTS.size else ((width - 28 + 2) / 44).coerceIn(2, SLOTS.size)
-            var shown = if (models.size <= places) models else models.take(places - 1)
-            if (shown.none { it.id == model.id }) shown = shown.dropLast(1) + model
-            val hidden = models.size - shown.size
-            SLOTS.forEachIndexed { i, slot ->
-                when {
-                    i < shown.size -> {
-                        val m = shown[i]
-                        views.setViewVisibility(slot, View.VISIBLE)
-                        views.setImageViewBitmap(slot, ChatModels.avatar(context, m, size, ring = m.id == model.id, padded = true))
-                        views.setOnClickPendingIntent(slot, chatIntent(context, id, m, code + 3 + i))
-                        views.setContentDescription(slot, context.getString(R.string.widget_open_chat, m.name))
-                    }
-                    i == shown.size && hidden > 0 -> {
-                        views.setViewVisibility(slot, View.VISIBLE)
-                        views.setImageViewBitmap(slot, ChatModels.more(context, hidden, size))
-                        views.setOnClickPendingIntent(slot, picker)
-                        views.setContentDescription(slot, context.getString(R.string.widget_more_models, hidden))
-                    }
-                    else -> views.setViewVisibility(slot, View.GONE)
+        /** Builds the widget's layouts; the avatars are drawn once and shared by all of them. */
+        private class Widget(val context: Context, val id: Int) {
+            val model = ChatModels.forWidget(context, id)
+            val models = ChatModels.available(context).let { list -> if (list.any { it.id == model.id }) list else list + model }
+            val several = models.size > 1
+            private val density = context.resources.displayMetrics.density
+            // Request codes are unique per widget and button, so each keeps its own PendingIntent.
+            val code = id * 32
+            val picker = QuickVoice.activity(context, code + 11, WidgetModelPickerActivity.intent(context, id))
+            val chat = chatIntent(context, id, model, code + 10)
+            private val avatars = HashMap<Int, Bitmap>()
+
+            private fun avatar(dp: Int) = avatars.getOrPut(dp) { ChatModels.avatar(context, model, (dp * density).toInt()) }
+
+            private fun base(layout: Int, avatarDp: Int, arrow: Int): RemoteViews {
+                val views = RemoteViews(context.packageName, layout)
+                views.setOnClickPendingIntent(R.id.widget_mic, QuickVoice.pendingIntent(context, code, model.id))
+                views.setContentDescription(R.id.widget_mic, context.getString(R.string.widget_talk_to, model.name))
+                views.setImageViewBitmap(R.id.widget_avatar, avatar(avatarDp))
+                views.setTextViewText(R.id.widget_model_name, ChatModels.shortName(model))
+                views.setTextViewCompoundDrawablesRelative(R.id.widget_model_name, 0, 0, if (several) arrow else 0, 0)
+                views.setOnClickPendingIntent(R.id.widget_model, if (several) picker else chat)
+                views.setContentDescription(
+                    R.id.widget_model,
+                    context.getString(if (several) R.string.widget_change_model else R.string.widget_open_chat, model.name)
+                )
+                views.setOnClickPendingIntent(
+                    R.id.widget_new_chat,
+                    QuickVoice.activity(
+                        context, code + 1,
+                        QuickVoice.appIntent(context, IncomingIntents.ACTION_NEW_CHAT, model.id).putExtra(IncomingIntents.EXTRA_FOCUS, true)
+                    )
+                )
+                views.setOnClickPendingIntent(R.id.widget_calendar, page(context, IncomingIntents.ACTION_CALENDAR, code + 12))
+                return views
+            }
+
+            fun small(): RemoteViews = base(R.layout.widget_small, 46, R.drawable.widget_arrow_15).apply {
+                setOnClickPendingIntent(R.id.widget_avatar, chat)
+            }
+
+            /** One row with the round buttons by importance: Nuevo chat, Calendario, Notas. */
+            fun medium(buttons: Int): RemoteViews = base(R.layout.widget_medium, 30, R.drawable.widget_arrow_15).apply {
+                setOnClickPendingIntent(R.id.widget_notes, page(context, IncomingIntents.ACTION_NOTES, code + 13))
+                intArrayOf(R.id.widget_new_chat, R.id.widget_calendar, R.id.widget_notes).forEachIndexed { i, button ->
+                    setViewVisibility(button, if (i < buttons) View.VISIBLE else View.GONE)
                 }
+            }
+
+            /** The large widget with a row of [places] avatars (none: no row). */
+            fun large(places: Int): RemoteViews = base(R.layout.widget_large, 48, R.drawable.widget_arrow_17).apply {
+                setOnClickPendingIntent(R.id.widget_avatar, chat)
+                setOnClickPendingIntent(R.id.widget_notes, page(context, IncomingIntents.ACTION_NOTES, code + 13))
+                setOnClickPendingIntent(R.id.widget_last_chat, page(context, IncomingIntents.ACTION_LAST_CHAT, code + 2))
+                setViewVisibility(R.id.widget_slots, if (places > 0) View.VISIBLE else View.GONE)
+                if (places > 0) fillSlots(this, places)
+            }
+
+            /**
+             * The row of avatars: 42 dp places (a 34 dp avatar and room for the ring) 2 dp apart. If there
+             * are more models than places, the last place is «+N» and opens the picker; the widget's model
+             * is always among those shown, with its ring.
+             */
+            private fun fillSlots(views: RemoteViews, places: Int) {
+                val size = (42 * density).toInt()
+                var shown = if (models.size <= places) models else models.take(places - 1)
+                if (shown.none { it.id == model.id }) shown = shown.dropLast(1) + model
+                val hidden = models.size - shown.size
+                SLOTS.forEachIndexed { i, slot ->
+                    when {
+                        i < shown.size -> {
+                            val m = shown[i]
+                            views.setViewVisibility(slot, View.VISIBLE)
+                            views.setImageViewBitmap(slot, slotAvatar(m, size))
+                            views.setOnClickPendingIntent(slot, chatIntent(context, id, m, code + 3 + i))
+                            views.setContentDescription(slot, context.getString(R.string.widget_open_chat, m.name))
+                        }
+                        i == shown.size && hidden > 0 -> {
+                            views.setViewVisibility(slot, View.VISIBLE)
+                            views.setImageViewBitmap(slot, ChatModels.more(context, hidden, size))
+                            views.setOnClickPendingIntent(slot, picker)
+                            views.setContentDescription(slot, context.getString(R.string.widget_more_models, hidden))
+                        }
+                        else -> views.setViewVisibility(slot, View.GONE)
+                    }
+                }
+            }
+
+            private val slotAvatars = HashMap<String, Bitmap>()
+
+            private fun slotAvatar(m: ChatModel, size: Int) = slotAvatars.getOrPut(m.id) {
+                ChatModels.avatar(context, m, size, ring = m.id == model.id, padded = true)
             }
         }
 

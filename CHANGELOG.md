@@ -2,6 +2,15 @@
 
 Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 0.9.0 (versionCode 60) — 12 de noviembre de 2026
+
+Reúne las compilaciones locales 0.8.8 y 0.8.9. Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v0.9.0).
+
+### Cambiado
+- **El teclado solo se abre cuando tocas el cuadro de mensaje.** Open WebUI pone el cursor ahí al cargar, al abrir o crear un chat, al terminar una respuesta y al volver a la app; `NO_AUTOFOCUS_JS` ya no lo permite en ningún momento (antes solo durante 4 s tras abrir un chat), salvo que el último toque o tecla haya sido en el cuadro o sus botones. Al cerrar el teclado el cuadro suelta el cursor, para que nada lo vuelva a abrir. `MainActivity` usa `stateAlwaysHidden`. Editar un mensaje, las notas y el buscador no cambian.
+- **Única excepción:** el botón **Nuevo** del widget y el acceso directo **Chat nuevo** abren el chat con el cursor en el cuadro y el teclado listo (`IncomingIntents.EXTRA_FOCUS`, `FOCUS_COMPOSER_JS` y `SakuraApp.showKeyboard`), con la app abierta o cerrada.
+- **Widget:** el diseño se elige por el tamaño real del widget. En Android 12 o superior la app entrega todos los diseños (`RemoteViews` con tamaños) y el launcher muestra el más grande que cabe; antes se decidía con la altura que reporta el launcher, y algunos la reportan menor, lo que ocultaba la fila de modelos del 4 × 2 aunque había espacio. Los widgets más anchos muestran más avatares (5 a 7) y el mediano los botones que quepan.
+
 ## 0.8.7 (versionCode 57) — 12 de noviembre de 2026
 
 Sigue el diseño "Widgets · 1, 3 y 8 modelos, con Notas y Calendario". Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v0.8.7).

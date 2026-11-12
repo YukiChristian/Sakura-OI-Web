@@ -9,7 +9,12 @@
         <intent
             android:action="com.sakura.webapp.action.NEW_CHAT"
             android:targetPackage="com.sakura.webapp"
-            android:targetClass="com.sakura.webapp.MainActivity" />
+            android:targetClass="com.sakura.webapp.MainActivity">
+            <!-- Opens with the keyboard up, ready to write (IncomingIntents.EXTRA_FOCUS). -->
+            <extra
+                android:name="com.sakura.webapp.extra.FOCUS"
+                android:value="true" />
+        </intent>
     </shortcut>
     <shortcut
         android:shortcutId="voice"

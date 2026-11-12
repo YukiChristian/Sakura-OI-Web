@@ -1,4 +1,4 @@
-# 🌸 Sakura OI Web 📱 v0.8.7
+# 🌸 Sakura OI Web 📱 v0.9.0
 
 <div align="center">
   <img src="assets/sakura-oi-web-icon.png" alt="Logo de Sakura OI Web: flor con contorno arcoíris y las letras OI" width="160">
@@ -71,7 +71,7 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 
 ## 📦 Versiones documentadas
 
-- App: Sakura OI Web **0.8.7** (versionCode 57). Historial completo en [CHANGELOG.md](CHANGELOG.md).
+- App: Sakura OI Web **0.9.0** (versionCode 60). Historial completo en [CHANGELOG.md](CHANGELOG.md).
 - Notificaciones verificadas en el teléfono Android 16 de referencia con Open WebUI 0.12.3. Pantallas, icono y barras en tema claro y oscuro de 0.2.1 a 0.2.3 verificados en el emulador de Android Studio (API 37).
 - Open WebUI: **0.12.3**, versión verificada en la instalación local.
 - Nombre visible del modelo en Open WebUI: **Sakura**. Los registros identifican **llama.cpp 0.7.0-dev**, compilado para x64 con CUDA desde el commit `ea0c4c2c8`, que carga `SoAIHQ/Qwen3.5-9B-GGUF:Q4_K_M` (Qwen 3.5 de 9B, cuantización Q4_K_M). llama.cpp es el servidor de inferencia; el modelo no pertenece a la familia Llama. El alias Sakura se configura en Open WebUI.
@@ -80,9 +80,15 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 - Herramientas fijadas en el proyecto: Android Gradle Plugin 9.4.1, Gradle 9.6.0, Kotlin 2.2.10 y JDK 17 para ejecutar Gradle. El código Java usa compatibilidad de lenguaje 11.
 - Ideas en desarrollo y pendientes, incluida la activación por voz “Oye, Sakura”, en [docs/IDEAS.md](docs/IDEAS.md).
 
-## 🆕 Novedades de la versión 0.8.7
+## 🆕 Novedades de la versión 0.9.0
 
 **Descarga el APK firmado en [Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/latest).** Si ya tienes la app, Sakura te avisa sola y se actualiza encima.
+
+- **El teclado ya no se abre solo:** ni al abrir Sakura, ni al cambiar de chat, ni al terminar una respuesta, ni al volver a la app. Sale cuando tocas el cuadro de mensaje.
+- **Excepto para escribir de inmediato:** el botón **Nuevo** del widget y el acceso directo **Chat nuevo** abren el chat con el teclado listo.
+- **Widget:** la fila de modelos aparece en el tamaño 4 × 2 normal en cualquier launcher, y si lo haces más ancho caben más avatares.
+
+### Versión 0.8.7
 
 **Widget nuevo, en tres tamaños.** Se acomoda solo según cómo lo dejes en la pantalla de inicio:
 
@@ -295,7 +301,8 @@ Resumen de todos los cambios de la app. El detalle de cada versión está en [CH
 
 | Versión | versionCode | Cambios |
 |---|---:|---|
-| **0.8.7** | 57 | Widget rediseñado en tres tamaños con tus modelos de Open WebUI, «+N», selector en cuadrícula y accesos a Calendario y Notas. |
+| **0.9.0** | 60 | El teclado solo se abre al tocar el cuadro (salvo Nuevo del widget y el acceso directo Chat nuevo); el widget elige su diseño por el tamaño real. |
+| 0.8.7 | 57 | Widget rediseñado en tres tamaños con tus modelos de Open WebUI, «+N», selector en cuadrícula y accesos a Calendario y Notas. |
 | 0.8.6 | 56 | APK de 35.4 a 6.6 MB, sin teclado al abrir la app o un chat, sin recargar al deslizar, botones Chat nuevo y Último chat más visibles y chips del widget que abren el chat de cada modelo. |
 | 0.8.0 | 50 | Primer APK firmado en Releases, bloqueo con huella, avisos con la app cerrada (ntfy), buscar actualizaciones con aviso diario y certificados instalados en Android. |
 | 0.7.7 | 49 | El widget grande ya no muestra “«Oye, Sakura» activo”. |
@@ -352,7 +359,7 @@ Instala Android Studio compatible con Android Gradle Plugin 9.4.1, Android SDK P
 | Android mínimo | API 23 / Android 6.0 | Versión mínima para instalar la app |
 | Android objetivo | API 36 / Android 16 | Comportamientos de Android para los que está configurada |
 | SDK de compilación | API 37 / Android 17 | Plataforma necesaria para compilar; no es requisito para el teléfono |
-| Versión de Sakura OI Web | 0.8.7 (versionCode 57) | Versión del APK de este repositorio |
+| Versión de Sakura OI Web | 0.9.0 (versionCode 60) | Versión del APK de este repositorio |
 
 La versión de Android de tu teléfono es independiente del SDK de compilación. En el dispositivo Android 16 de referencia, la app funciona con target API 36.
 

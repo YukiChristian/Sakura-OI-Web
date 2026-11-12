@@ -21,6 +21,11 @@ object IncomingIntents {
     /** Opens a page of Open WebUI (a chat from a push notice): EXTRA_PATH = "/c/<id>". */
     const val ACTION_OPEN_PATH = "com.sakura.webapp.action.OPEN_PATH"
     const val EXTRA_PATH = "com.sakura.webapp.extra.PATH"
+    /**
+     * A new chat that opens with the cursor in the message box and the keyboard up: the widget's Nuevo
+     * button and the Chat nuevo shortcut. Everywhere else the keyboard only opens when the box is touched.
+     */
+    const val EXTRA_FOCUS = "com.sakura.webapp.extra.FOCUS"
     /** Open WebUI model id to use for voice mode or a new chat (from the widgets). */
     const val EXTRA_MODEL = "com.sakura.webapp.extra.MODEL"
     /** Sent by headsets and Bluetooth earbuds (long press) to the voice command app. */
@@ -31,12 +36,14 @@ object IncomingIntents {
         val path: String?,
         /** Shared content: files to read and attach once the chat is ready. */
         val streams: List<Uri> = emptyList(),
+        /** Put the cursor in the message box and open the keyboard once the chat is on screen. */
+        val focusComposer: Boolean = false,
     )
 
     fun parse(intent: Intent?): Request? {
         intent ?: return null
         return when (intent.action) {
-            ACTION_NEW_CHAT -> Request(withModel("/", intent))
+            ACTION_NEW_CHAT -> Request(withModel("/", intent), focusComposer = wantsFocus(intent))
             ACTION_VOICE, Intent.ACTION_ASSIST, Intent.ACTION_VOICE_COMMAND, VOICE_SEARCH_HANDS_FREE ->
                 Request(withModel("/?call=true", intent))
             ACTION_LAST_CHAT -> Request(null)
@@ -65,6 +72,10 @@ object IncomingIntents {
         }
         return Request(if (message.isBlank()) "/" else newChatWith(message), streams)
     }
+
+    /** The launcher shortcut hands the extra over as text ("true"), the widget as a boolean. */
+    @Suppress("DEPRECATION")
+    private fun wantsFocus(intent: Intent): Boolean = intent.extras?.get(EXTRA_FOCUS)?.toString() == "true"
 
     /** Adds Open WebUI's ?models= for the model the widget chose; "/?models=lain&call=true". */
     private fun withModel(path: String, intent: Intent): String {

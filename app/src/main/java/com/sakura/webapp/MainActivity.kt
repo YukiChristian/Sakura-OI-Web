@@ -23,6 +23,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.LinearInterpolator
 import android.webkit.CookieManager
+import android.view.inputmethod.InputMethodManager
 import android.webkit.JavascriptInterface
 import android.webkit.ConsoleMessage
 import android.webkit.PermissionRequest
@@ -76,6 +77,8 @@ class MainActivity : ComponentActivity() {
     /** False until the first page is opened; a share or shortcut arriving earlier waits here. */
     private var firstLoadStarted = true
     private var requestBeforeFirstLoad: IncomingIntents.Request? = null
+    /** A Nuevo chat that should open with the keyboard, waiting for the page to finish loading. */
+    private var focusComposerPending = false
     /** "wifi" or "other"; address checks only run when this changes, not on every signal update. */
     private var lastTransport: String? = null
     private val reconcileAddressTask = Runnable { reconcileAddress() }
@@ -215,6 +218,10 @@ class MainActivity : ComponentActivity() {
                         // is accepted as soon as it shows, however the page was opened.
                         view.evaluateJavascript(CONFIRM_VOICE_JS, null)
                         if (keepKeyboardClosed(url)) view.evaluateJavascript(NO_AUTOFOCUS_JS, null)
+                        if (focusComposerPending) {
+                            focusComposerPending = false
+                            view.evaluateJavascript(FOCUS_COMPOSER_JS, null)
+                        }
                         if (Uri.parse(url).getQueryParameter("q") != null) {
                             view.evaluateJavascript(DROP_QUERY_JS, null)
                         }
@@ -390,6 +397,15 @@ class MainActivity : ComponentActivity() {
         webView.addJavascriptInterface(sessionSync, SessionSync.JS_NAME)
         webView.addJavascriptInterface(object {
             @JavascriptInterface
+            fun showKeyboard() {
+                if (!trustedPageLoaded) return
+                runOnUiThread {
+                    webView.requestFocus()
+                    getSystemService(InputMethodManager::class.java)?.showSoftInput(webView, InputMethodManager.SHOW_IMPLICIT)
+                }
+            }
+
+            @JavascriptInterface
             fun openSettings() {
                 if (!trustedPageLoaded) return
                 runOnUiThread { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) }
@@ -519,7 +535,14 @@ class MainActivity : ComponentActivity() {
             if (!pageReady) beginHomeLoad(lastKnownPageUrl())
             return
         }
-        if (request != null && openInPage(request)) return
+        focusComposerPending = request?.focusComposer == true
+        if (request != null && openInPage(request)) {
+            if (focusComposerPending) {
+                focusComposerPending = false
+                webView.evaluateJavascript(FOCUS_COMPOSER_JS, null)
+            }
+            return
+        }
         val url = request?.path?.let(ServerAddress::at) ?: lastKnownPageUrl()
         request?.streams?.let(shareBridge::prepare)
         beginHomeLoad(url)
@@ -1207,50 +1230,93 @@ class MainActivity : ComponentActivity() {
         """.trimIndent()
 
         /**
-         * Open WebUI puts the cursor in the message box whenever a chat opens (a page load, a chat chosen
-         * in the sidebar, a new chat), and Android then opens the keyboard over half the screen. For a
-         * few seconds after any of those, a focus on the box is undone unless the user's last touch (or
-         * key) was on the box or its own buttons, so tapping the box, typing and sending work as always.
+         * Nuevo chat from the widget or the launcher shortcut: once the new chat's message box is on screen,
+         * put the cursor in it and ask the app to open the keyboard (a focus from a script alone does not).
+         */
+        private const val FOCUS_COMPOSER_JS = """
+            (function() {
+                const guard = window.__sakuraNoAutofocus;
+                if (guard && guard.allow) guard.allow();
+                const focus = function() {
+                    const box = document.getElementById('chat-input');
+                    if (!box || !box.getClientRects().length) return false;
+                    if (guard && guard.allow) guard.allow();
+                    box.focus();
+                    if (window.SakuraApp && window.SakuraApp.showKeyboard) window.SakuraApp.showKeyboard();
+                    return true;
+                };
+                let tries = 0, done = false;
+                // A moment first: a new chat opened inside the page replaces the box that is on screen.
+                setTimeout(function tick() {
+                    if (!done) done = focus();
+                    else {
+                        const box = document.getElementById('chat-input');
+                        if (box && !box.contains(document.activeElement)) focus();
+                        return;
+                    }
+                    if (++tries < 60) setTimeout(tick, done ? 700 : 100);
+                }, 400);
+            })();
+        """
+
+        /**
+         * The message box takes the cursor (and Android opens the keyboard) only when the user touches it.
+         * Open WebUI puts the cursor there by itself in many moments: a page load, a chat opened from the
+         * sidebar, a new chat, the end of a reply, the return to the app. Any focus on the box is undone
+         * unless the user's last touch (or key) was on the box or its own buttons. When the user closes
+         * the keyboard, the box lets go of the cursor too, so nothing can bring the keyboard back later.
+         * Other fields (editing a message, notes, search) are not touched.
          */
         private const val NO_AUTOFOCUS_JS = """
             (function() {
-                if (window.__sakuraNoAutofocus) { window.__sakuraNoAutofocus.arm(); return; }
-                let until = 0, touchedAt = 0, touchedComposer = false;
+                if (window.__sakuraNoAutofocus) return;
+                let touchedAt = 0, touchedComposer = false, allowUntil = 0;
                 const composer = function() {
                     const box = document.getElementById('chat-input');
                     return box ? (box.closest('form') || box) : null;
                 };
-                const typing = function(el) {
-                    return !!el && (el.id === 'chat-input' || el.tagName === 'TEXTAREA' || el.isContentEditable ||
-                        (el.closest && !!el.closest('#chat-input')));
+                const inBox = function(el) {
+                    return !!el && el.nodeType === 1 && (el.id === 'chat-input' || !!el.closest('#chat-input'));
                 };
-                const asked = function() { return touchedComposer && Date.now() - touchedAt < 1500; };
+                const asked = function() {
+                    return Date.now() < allowUntil || (touchedComposer && Date.now() - touchedAt < 1500);
+                };
+                const release = function() {
+                    const el = document.activeElement;
+                    if (inBox(el)) el.blur();
+                };
                 const guard = function(el) {
-                    if (Date.now() < until && !asked() && typing(el)) setTimeout(function() { el.blur(); }, 0);
+                    if (inBox(el) && !asked()) setTimeout(function() { if (!asked()) el.blur(); }, 0);
                 };
                 document.addEventListener('pointerdown', function(e) {
                     const area = composer();
                     touchedAt = Date.now();
                     touchedComposer = !!area && area.contains(e.target);
                 }, true);
-                document.addEventListener('keydown', function() { touchedAt = Date.now(); touchedComposer = true; }, true);
+                document.addEventListener('keydown', function(e) {
+                    if (inBox(e.target) || !inBox(document.activeElement)) { touchedAt = Date.now(); touchedComposer = true; }
+                }, true);
                 document.addEventListener('focusin', function(e) { guard(e.target); }, true);
-                const arm = function() {
-                    until = Date.now() + 4000;
-                    guard(document.activeElement);
-                };
-                // Chats change inside the page (sidebar, new chat, back) without a page load.
-                ['pushState', 'replaceState'].forEach(function(name) {
-                    const original = history[name];
-                    history[name] = function() {
-                        const result = original.apply(this, arguments);
-                        arm();
-                        return result;
-                    };
+                // Back in the app: the box keeps no cursor it was given while away.
+                document.addEventListener('visibilitychange', function() {
+                    if (document.visibilityState === 'visible' && !asked()) release();
                 });
-                window.addEventListener('popstate', arm);
-                window.__sakuraNoAutofocus = { arm: arm };
-                arm();
+                window.addEventListener('focus', function() { if (!asked()) release(); });
+                // The user closed the keyboard: let go of the cursor so it cannot reopen by itself.
+                if (window.visualViewport) {
+                    let tallest = window.visualViewport.height;
+                    window.visualViewport.addEventListener('resize', function() {
+                        const h = window.visualViewport.height;
+                        if (h > tallest - 80 && inBox(document.activeElement) && !asked()) release();
+                        tallest = Math.max(tallest, h);
+                    });
+                }
+                window.__sakuraNoAutofocus = {
+                    arm: function() { if (!asked()) release(); },
+                    // Nuevo chat from the widget or the shortcut: the box may take the cursor for a moment.
+                    allow: function() { allowUntil = Date.now() + 3000; }
+                };
+                window.__sakuraNoAutofocus.arm();
             })();
         """
 
