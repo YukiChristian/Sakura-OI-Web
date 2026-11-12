@@ -136,7 +136,8 @@ Si no aparecen, filtra Logcat por la etiqueta `SakuraWebApp`: el puente registra
 
 ## Teclado, tamaño y navegación
 
-- El Activity usa `windowSoftInputMode="adjustResize"`.
+- El Activity usa `windowSoftInputMode="adjustResize|stateHidden"`.
+- Open WebUI enfoca el cuadro de mensaje al abrir cada chat y Android abriría el teclado. `NO_AUTOFOCUS_JS` (en `MainActivity.kt`) quita ese foco durante 4 s después de cargar la página o de cambiar de chat dentro de ella (`pushState`, `replaceState`, `popstate`), salvo que el último toque o tecla haya sido en el cuadro o sus botones. No se aplica al compartir texto ni con `?q=`.
 - Los insets de Android se aplican al WebView y a las pantallas de carga para que el teclado no tape el compositor.
 - `settings.textZoom = 120` y `setInitialScale(110)` mantienen el tamaño de lectura ampliado.
 
@@ -218,10 +219,10 @@ La dirección de casa necesita HTTPS con un certificado en el que confíe el tel
 - **Accesos directos** (`res/xml/shortcuts.xml`): Chat nuevo, Modo de voz (`/?call=true`), Último chat y Ajustes. Al abrir el modo de voz, la app pulsa sola la confirmación “Start a voice call…” de Open WebUI en cada carga de la página (también si se recarga al cambiar a la dirección de casa), durante 30 s como máximo.
 - **Asistente del teléfono** (`VoiceAssistant.kt`): Android solo lista como asistente digital las apps con `VoiceInteractionService`, una sesión y un reconocedor; la sesión abre Sakura en modo de voz. Se elige en **Apps predeterminadas → Asistente digital**.
 
-## Aviso sin conexión y deslizar para recargar
+## Aviso sin conexión
 
 - Mientras el teléfono no tiene red aparece la barra “Sin conexión. Reconectando…”. Al volver la red, si la página había fallado, se reintenta sola. Open WebUI muestra además su propio aviso de reconexión.
-- Deslizar hacia abajo recarga la página solo si el chat está arriba del todo y no hay un diálogo abierto; Open WebUI desplaza sus paneles por dentro, así que la página informa a la app de antemano (`REFRESH_JS`).
+- Desde 0.8.2 deslizar hacia abajo solo desplaza el chat; la app ya no recarga la página con ese gesto.
 
 ## “Oye, Sakura”
 
@@ -235,7 +236,7 @@ Opcional y desactivado por defecto. Tiene pantalla propia (`WakeWordSettingsActi
 
 ## Widget, ajuste rápido y audífonos
 
-- **Widget** (`VoiceWidgetProvider` en `QuickVoice.kt`, `res/layout/widget_small.xml` y `widget_large.xml`): nace en 4 × 2 y se puede achicar a una fila. Los colores siguen el tema del teléfono (`values-night/widget_colors.xml`). Como Android no permite desenfoque en los widgets, el fondo es casi opaco y los botones tienen relleno sólido y borde para leerse sobre cualquier fondo de pantalla. Cada widget guarda su modelo (`ChatModels.kt`); los chips de Sakura, Lain y Yoko lo cambian de un toque y la cápsula del widget de una fila abre `WidgetModelPickerActivity`, que puede pedir al servidor la lista completa de modelos visibles con la sesión guardada. El modo de voz y los chats nuevos se abren con `?models=<id>`.
+- **Widget** (`VoiceWidgetProvider` en `QuickVoice.kt`, `res/layout/widget_small.xml` y `widget_large.xml`): nace en 4 × 2 y se puede achicar a una fila. Los colores siguen el tema del teléfono (`values-night/widget_colors.xml`). Como Android no permite desenfoque en los widgets, el fondo es casi opaco y los botones tienen relleno sólido y borde para leerse sobre cualquier fondo de pantalla. Cada widget guarda su modelo (`ChatModels.kt`). En el widget grande el modo de voz se abre solo con el micrófono azul; “Habla con <modelo>” y los chips de Sakura, Lain y Yoko abren un chat nuevo con ese modelo y lo dejan como modelo del widget (`VoiceWidgetProvider.remember`, llamado desde `MainActivity`) y la cápsula del widget de una fila abre `WidgetModelPickerActivity`, que puede pedir al servidor la lista completa de modelos visibles con la sesión guardada. El modo de voz y los chats nuevos se abren con `?models=<id>`.
 - **Ajuste rápido** (`VoiceTileService`): “Hablar con Sakura” en el panel de notificaciones; en Android 13 o superior la pantalla «Oye, Sakura» lo agrega con un toque.
 - **Audífonos:** con Sakura como asistente digital, `VOICE_COMMAND` y `VOICE_SEARCH_HANDS_FREE` abren el modo de voz.
 - **Prueba sin voz:** la compilación de depuración trae `WakeActivationTestReceiver`, que reproduce la activación con `adb shell am broadcast -a com.sakura.webapp.debug.WAKE -n com.sakura.webapp/.WakeActivationTestReceiver`. Solo responde a quien tiene el permiso `DUMP` (adb).
@@ -257,6 +258,7 @@ Opcional y desactivado por defecto. Tiene pantalla propia (`WakeWordSettingsActi
 ## Actualizaciones y firma
 
 - `Updates.kt` consulta `releases/latest` de este repositorio una vez al día (si **Revisar cada día** está activo) y con **Buscar actualizaciones**. Compara el número de versión sin sufijo, así una compilación personal “0.8.0c” también recibe el aviso de 0.8.1. `UpdatePrompt.kt` muestra “Hay una actualización”; **Actualizar** descarga el APK del Release con `DownloadManager` y abre el instalador (permiso `REQUEST_INSTALL_PACKAGES`; Android pide permitir instalar desde Sakura la primera vez).
+- El build `release` usa R8 con reducción de recursos; `app/proguard-rules.pro` conserva los métodos `@JavascriptInterface` y las clases de Vosk/JNA, que se buscan por nombre. La librería de voz va comprimida (`useLegacyPackaging`) y el APK publicado solo trae `arm64-v8a` y `armeabi-v7a` (unos 6.6 MB); `assembleDebug` agrega `x86_64` para el emulador.
 - El APK publicado se compila con `assembleRelease` y se firma con la llave indicada en `~/.gradle/gradle.properties` (`SAKURA_KEYSTORE_FILE`, `SAKURA_KEYSTORE_PASSWORD`, `SAKURA_KEY_ALIAS`, `SAKURA_KEY_PASSWORD`). Con esas propiedades, `assembleDebug` firma con la misma llave, así la versión personal y la publicada se instalan una sobre otra. Sin ellas, la depuración usa la llave de depuración de Android Studio y el release queda sin firmar. Guarda una copia de la llave: sin ella no se pueden publicar actualizaciones que se instalen encima.
 - `network_security_config.xml` confía en los certificados del sistema y en los que el usuario instala en Android, así un servidor de casa con certificado propio funciona con el APK publicado.
 

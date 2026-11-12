@@ -59,8 +59,9 @@ class VoiceTileService : TileService() {
 /**
  * Home screen widget, from "App Android · widgets y «Oye, Sakura»". One row: avatar with a mic badge
  * (voice mode), "Habla con" and the model capsule (opens «¿Con quién quieres hablar?»), and round
- * Nuevo chat / Último chat buttons. Two rows or more: "Habla con <modelo>" and the blue mic, Sakura /
- * Lain / Yoko as chips to switch with one tap, and the two chat buttons.
+ * Nuevo chat / Último chat buttons. Two rows or more: "Habla con <modelo>" (opens a chat with it) and
+ * the blue mic (the only way to voice mode there), Sakura / Lain / Yoko as chips that open a chat with
+ * each and make it the widget's model, and the two chat buttons.
  * Each widget remembers its model; voice mode and new chats open with it.
  */
 class VoiceWidgetProvider : AppWidgetProvider() {
@@ -92,7 +93,7 @@ class VoiceWidgetProvider : AppWidgetProvider() {
     companion object {
         private const val ACTION_SELECT = "com.sakura.webapp.widget.SELECT_MODEL"
         private const val EXTRA_MODEL_ID = "model_id"
-        private const val EXTRA_MODEL_NAME = "model_name"
+        const val EXTRA_MODEL_NAME = "model_name"
         private val CHIPS = listOf(
             Triple(R.id.widget_chip_0, R.id.widget_chip_avatar_0, R.id.widget_chip_name_0),
             Triple(R.id.widget_chip_1, R.id.widget_chip_avatar_1, R.id.widget_chip_name_1),
@@ -129,7 +130,11 @@ class VoiceWidgetProvider : AppWidgetProvider() {
             if (large) {
                 views.setImageViewBitmap(R.id.widget_avatar, ChatModels.avatar(context, model, (60 * density).toInt(), ring = true))
                 views.setTextViewText(R.id.widget_title, context.getString(R.string.widget_talk_to, model.name))
+                // Voice mode only from the blue mic; the avatar and the name open a chat with the model.
                 views.setOnClickPendingIntent(R.id.widget_mic, voice)
+                views.setContentDescription(R.id.widget_mic, context.getString(R.string.widget_talk_to, model.name))
+                views.setOnClickPendingIntent(R.id.widget_voice, chatIntent(context, id, model, code + 7))
+                views.setContentDescription(R.id.widget_voice, context.getString(R.string.widget_open_chat, model.name))
                 ChatModels.PERSONAS.forEachIndexed { i, persona ->
                     val (chip, avatar, name) = CHIPS[i]
                     val selected = persona.id == model.id
@@ -145,7 +150,8 @@ class VoiceWidgetProvider : AppWidgetProvider() {
                             name, context.getColor(if (selected) R.color.widget_chip_selected_ink else R.color.widget_ink)
                         )
                     }
-                    views.setOnClickPendingIntent(chip, selectIntent(context, id, persona, code + 3 + i))
+                    views.setOnClickPendingIntent(chip, chatIntent(context, id, persona, code + 3 + i))
+                    views.setContentDescription(chip, context.getString(R.string.widget_open_chat, persona.name))
                 }
             } else {
                 views.setImageViewBitmap(R.id.widget_avatar, ChatModels.avatar(context, model, (58 * density).toInt()))
@@ -157,6 +163,28 @@ class VoiceWidgetProvider : AppWidgetProvider() {
                 )
             }
             manager.updateAppWidget(id, views)
+        }
+
+        /**
+         * A new chat with [model], which also becomes the widget's model (MainActivity saves it), so the
+         * blue mic then talks to it. Opens the app directly: Android 12+ blocks a broadcast from starting it.
+         */
+        private fun chatIntent(context: Context, widgetId: Int, model: ChatModel, requestCode: Int): PendingIntent =
+            QuickVoice.activity(
+                context, requestCode,
+                QuickVoice.appIntent(context, IncomingIntents.ACTION_NEW_CHAT, model.id)
+                    .setData(Uri.parse("sakura-widget://$widgetId/chat/${model.id}"))
+                    .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+                    .putExtra(EXTRA_MODEL_NAME, model.name)
+            )
+
+        /** Called by MainActivity for a chat opened from a widget: remember the model and redraw it. */
+        fun remember(context: Context, intent: Intent) {
+            val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+            val model = intent.getStringExtra(IncomingIntents.EXTRA_MODEL) ?: return
+            if (id == AppWidgetManager.INVALID_APPWIDGET_ID) return
+            ChatModels.setForWidget(context, id, ChatModels.find(model, intent.getStringExtra(EXTRA_MODEL_NAME) ?: model))
+            update(context, AppWidgetManager.getInstance(context), id)
         }
 
         private fun selectIntent(context: Context, widgetId: Int, model: ChatModel, requestCode: Int): PendingIntent =

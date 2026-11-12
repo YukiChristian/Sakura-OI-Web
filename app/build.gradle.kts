@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.compose)
 }
 
 // Server addresses are optional at build time: without them the app opens its setup
@@ -41,14 +40,14 @@ android {
         targetSdk = 36
         buildConfigField("String", "WEBUI_URL", "\"$sakuraWebUiUrl\"")
         buildConfigField("String", "WEBUI_LAN_URL", "\"$sakuraWebUiLanUrl\"")
-        versionCode = 50
-        versionName = "0.8.0$sakuraVersionSuffix"
+        versionCode = 56
+        versionName = "0.8.6$sakuraVersionSuffix"
         applicationIdSuffix = sakuraApplicationIdSuffix
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        // Phones (64- and 32-bit ARM) and the x86_64 emulator; skips the rarely used 32-bit x86
-        // copy of the speech recognition library to keep the APK smaller.
-        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
+        // Phones: 64- and 32-bit ARM. Debug builds add x86_64 for the emulator (see below); the
+        // published APK leaves out that 9 MB copy of the speech library, which no phone uses.
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
 
     signingConfigs {
@@ -63,47 +62,42 @@ android {
     }
 
     buildTypes {
-        if (sakuraKeystoreFile.isNotEmpty()) {
-            getByName("debug") { signingConfig = signingConfigs.getByName("sakura") }
+        getByName("debug") {
+            if (sakuraKeystoreFile.isNotEmpty()) signingConfig = signingConfigs.getByName("sakura")
+            ndk { abiFilters += "x86_64" }
         }
         release {
             if (sakuraKeystoreFile.isNotEmpty()) signingConfig = signingConfigs.getByName("sakura")
-            // No R8 for now: optimizing only androidx/kotlin made app classes lose access to the
-            // optimized Kotlin classes (IllegalAccessError at start-up). The release is the same code
-            // as the debug builds that are tested, signed and not debuggable.
-            optimization {
-                enable = false
-            }
+            // R8 over the whole app (code and unused resources). Optimizing only androidx/kotlin broke
+            // start-up; the whole program optimized together does not. proguard-rules.pro keeps what
+            // is reached by name: the JavaScript bridges and the speech library (Vosk/JNA).
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
+    }
+
+    packaging {
+        // The speech library goes compressed in the APK (about 8.6 MB to 2.8 MB per copy); Android
+        // unpacks the one copy the phone needs when it installs the app.
+        jniLibs { useLegacyPackaging = true }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
     buildFeatures {
-        compose = true
         buildConfig = true
     }
 }
 
 dependencies {
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.activity)
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.swiperefreshlayout)
     // Offline speech recognition for the optional "Oye, Sakura" wake phrase.
     implementation(libs.vosk.android)
     implementation(libs.jna) { artifact { type = "aar" } }
     testImplementation(libs.junit)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
-    debugImplementation(libs.androidx.compose.ui.tooling)
 }

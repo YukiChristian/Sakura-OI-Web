@@ -50,7 +50,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import kotlin.math.roundToInt
 import org.json.JSONObject
 
@@ -65,11 +64,10 @@ class MainActivity : ComponentActivity() {
     private lateinit var assetCache: ImmutableAssetCache
     private lateinit var shareBridge: ShareBridge
     private lateinit var sessionSync: SessionSync
-    /** Pull-to-refresh around the WebView (Open WebUI scrolls inside the page, see REFRESH_JS). */
-    private lateinit var swipeLayout: SwipeRefreshLayout
+    /** Container of the WebView. Pull-to-refresh is off: swiping down never reloads the page. */
+    private lateinit var swipeLayout: FrameLayout
     /** Thin bar shown while the phone has no network. */
     private lateinit var offlineBanner: TextView
-    @Volatile private var pageCanScrollUp = true
     /** Voice mode was asked for (shortcut, assistant, "Oye, Sakura"): accept Open WebUI's prompt. */
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private var online = true
@@ -186,7 +184,6 @@ class MainActivity : ComponentActivity() {
             webViewClient = object : WebViewClient() {
                 override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
                     super.onPageStarted(view, url, favicon)
-                    pageCanScrollUp = true
                     pageReady = false
                     trustedPageLoaded = isOpenWebUiOrigin(Uri.parse(url))
                     if (trustedPageLoaded) {
@@ -200,6 +197,7 @@ class MainActivity : ComponentActivity() {
                 override fun onPageCommitVisible(view: WebView, url: String) {
                     super.onPageCommitVisible(view, url)
                     if (isOpenWebUiOrigin(Uri.parse(url))) view.evaluateJavascript(CONFIRM_VOICE_JS, null)
+                    if (isOpenWebUiOrigin(Uri.parse(url)) && keepKeyboardClosed(url)) view.evaluateJavascript(NO_AUTOFOCUS_JS, null)
                 }
 
                 override fun onPageFinished(view: WebView, url: String) {
@@ -210,18 +208,17 @@ class MainActivity : ComponentActivity() {
                         view.evaluateJavascript(WebNotificationBridge.SHIM_JS, null)
                         view.evaluateJavascript(DownloadBridge.SHIM_JS, null)
                         view.evaluateJavascript(PageThemeBridge.WATCH_JS, null)
-                        view.evaluateJavascript(REFRESH_JS, null)
                         view.evaluateJavascript(SessionSync.SYNC_JS, null)
                         view.evaluateJavascript(appMenuScript(), null)
                         if (shareBridge.hasPending) view.evaluateJavascript(ShareBridge.ATTACH_JS, null)
                         // On every page: Open WebUI's "¿Iniciar una llamada de voz con tu micrófono?"
                         // is accepted as soon as it shows, however the page was opened.
                         view.evaluateJavascript(CONFIRM_VOICE_JS, null)
+                        if (keepKeyboardClosed(url)) view.evaluateJavascript(NO_AUTOFOCUS_JS, null)
                         if (Uri.parse(url).getQueryParameter("q") != null) {
                             view.evaluateJavascript(DROP_QUERY_JS, null)
                         }
                     }
-                    swipeLayout.isRefreshing = false
                     if (!mainFrameLoadFailed) revealLoadedPage(view)
                 }
 
@@ -393,12 +390,6 @@ class MainActivity : ComponentActivity() {
         webView.addJavascriptInterface(sessionSync, SessionSync.JS_NAME)
         webView.addJavascriptInterface(object {
             @JavascriptInterface
-            fun setCanScrollUp(value: Boolean) {
-                pageCanScrollUp = value
-            }
-        }, REFRESH_JS_NAME)
-        webView.addJavascriptInterface(object {
-            @JavascriptInterface
             fun openSettings() {
                 if (!trustedPageLoaded) return
                 runOnUiThread { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) }
@@ -416,13 +407,11 @@ class MainActivity : ComponentActivity() {
             },
             PageThemeBridge.JS_NAME
         )
-        swipeLayout = SwipeRefreshLayout(this).apply {
+        swipeLayout = FrameLayout(this).apply {
             addView(webView, ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             ))
-            setOnChildScrollUpCallback { _, _ -> pageCanScrollUp || webView.scrollY > 0 }
-            setOnRefreshListener { webView.reload() }
         }
         contentRoot.addView(swipeLayout, FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -486,6 +475,7 @@ class MainActivity : ComponentActivity() {
             }
         })
 
+        VoiceWidgetProvider.remember(this, intent)
         val request = IncomingIntents.parse(intent)
         val restored = request == null && savedInstanceState != null &&
             webView.restoreState(savedInstanceState) != null
@@ -515,6 +505,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        VoiceWidgetProvider.remember(this, intent)
         val request = IncomingIntents.parse(intent) ?: return
         // Still choosing the address for the first load: open this instead of the last page.
         if (!firstLoadStarted) requestBeforeFirstLoad = request else openRequest(request)
@@ -535,6 +526,13 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
+     * The keyboard stays closed when a page opens, except for a share or a text to send (?q=), where
+     * the user is about to write and the app itself puts the cursor in the box.
+     */
+    private fun keepKeyboardClosed(url: String): Boolean =
+        !shareBridge.hasPending && runCatching { Uri.parse(url).getQueryParameter("q") }.getOrNull() == null
+
+    /**
      * Voice mode, a new chat (with the widget's model) or the last chat, opened inside the Open WebUI
      * page that is already loaded instead of reloading it: SvelteKit's router takes the link, so voice
      * mode is up in about half a second instead of several. Shares, text and anything else still load
@@ -553,6 +551,7 @@ class MainActivity : ComponentActivity() {
                 "a.click();a.remove();})(" + JSONObject.quote(path) + ")",
             null
         )
+        webView.evaluateJavascript("window.__sakuraNoAutofocus && window.__sakuraNoAutofocus.arm();", null)
         return true
     }
 
@@ -791,7 +790,6 @@ class MainActivity : ComponentActivity() {
     /** Called only for real failures: no network, DNS or TLS errors, or the server answering 5xx. */
     private fun handleMainFrameFailure() {
         mainFrameLoadFailed = true
-        runOnUiThread { if (::swipeLayout.isInitialized) swipeLayout.isRefreshing = false }
         showConnectionError()
     }
 
@@ -1110,7 +1108,6 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val SESSION_PREFS = "sakura_session"
         private const val KEY_LAST_PAGE_URL = "last_open_webui_url"
-        private const val REFRESH_JS_NAME = "SakuraRefresh"
         private const val APP_MENU_JS_NAME = "SakuraApp"
 
         /**
@@ -1210,6 +1207,54 @@ class MainActivity : ComponentActivity() {
         """.trimIndent()
 
         /**
+         * Open WebUI puts the cursor in the message box whenever a chat opens (a page load, a chat chosen
+         * in the sidebar, a new chat), and Android then opens the keyboard over half the screen. For a
+         * few seconds after any of those, a focus on the box is undone unless the user's last touch (or
+         * key) was on the box or its own buttons, so tapping the box, typing and sending work as always.
+         */
+        private const val NO_AUTOFOCUS_JS = """
+            (function() {
+                if (window.__sakuraNoAutofocus) { window.__sakuraNoAutofocus.arm(); return; }
+                let until = 0, touchedAt = 0, touchedComposer = false;
+                const composer = function() {
+                    const box = document.getElementById('chat-input');
+                    return box ? (box.closest('form') || box) : null;
+                };
+                const typing = function(el) {
+                    return !!el && (el.id === 'chat-input' || el.tagName === 'TEXTAREA' || el.isContentEditable ||
+                        (el.closest && !!el.closest('#chat-input')));
+                };
+                const asked = function() { return touchedComposer && Date.now() - touchedAt < 1500; };
+                const guard = function(el) {
+                    if (Date.now() < until && !asked() && typing(el)) setTimeout(function() { el.blur(); }, 0);
+                };
+                document.addEventListener('pointerdown', function(e) {
+                    const area = composer();
+                    touchedAt = Date.now();
+                    touchedComposer = !!area && area.contains(e.target);
+                }, true);
+                document.addEventListener('keydown', function() { touchedAt = Date.now(); touchedComposer = true; }, true);
+                document.addEventListener('focusin', function(e) { guard(e.target); }, true);
+                const arm = function() {
+                    until = Date.now() + 4000;
+                    guard(document.activeElement);
+                };
+                // Chats change inside the page (sidebar, new chat, back) without a page load.
+                ['pushState', 'replaceState'].forEach(function(name) {
+                    const original = history[name];
+                    history[name] = function() {
+                        const result = original.apply(this, arguments);
+                        arm();
+                        return result;
+                    };
+                });
+                window.addEventListener('popstate', arm);
+                window.__sakuraNoAutofocus = { arm: arm };
+                arm();
+            })();
+        """
+
+        /**
          * Removes a one-off launch parameter from the address bar once Open WebUI has used it,
          * so reloading the page (pull to refresh) does not ask to start a voice call again or
          * refill the shared text. history.replaceState changes the URL without a reload.
@@ -1238,43 +1283,6 @@ class MainActivity : ComponentActivity() {
             })();
         """.trimIndent()
 
-        /**
-         * Open WebUI scrolls inside its own panels, so the WebView itself is always at the top.
-         * Android decides at the very start of a touch whether a pull may reload, so the page
-         * keeps the app told in advance: pulling down scrolls instead of reloading while the
-         * chat or the last panel used is scrolled down, or while a dialog is open.
-         */
-        private val REFRESH_JS = """
-            (function() {
-                if (window.__sakuraRefresh || !window.$REFRESH_JS_NAME) return;
-                window.__sakuraRefresh = true;
-                let lastScrolled = null;
-                let reported = null;
-                function visible(el) { return !!el && el.isConnected && el.getClientRects().length > 0; }
-                function blocked() {
-                    if (document.querySelector('[role="dialog"], [aria-modal="true"]')) return true;
-                    const chat = document.getElementById('messages-container');
-                    if (chat && chat.scrollTop > 0) return true;
-                    if (lastScrolled && visible(lastScrolled) && lastScrolled.scrollTop > 0) return true;
-                    return !!document.scrollingElement && document.scrollingElement.scrollTop > 0;
-                }
-                function report() {
-                    const value = blocked();
-                    if (value !== reported) {
-                        reported = value;
-                        window.$REFRESH_JS_NAME.setCanScrollUp(value);
-                    }
-                }
-                document.addEventListener('scroll', function(e) {
-                    if (e.target && e.target.nodeType === 1) lastScrolled = e.target;
-                    report();
-                }, { capture: true, passive: true });
-                document.addEventListener('touchend', report, { capture: true, passive: true });
-                new MutationObserver(report).observe(document.body, { childList: true, subtree: false });
-                setInterval(report, 1000);
-                report();
-            })();
-        """.trimIndent()
         private const val TAG = "SakuraWebApp"
         /** Schemes the WebView handles itself (downloads, inline content); everything else opens outside. */
         private val IN_APP_SCHEMES = setOf("blob", "data", "javascript", "about")

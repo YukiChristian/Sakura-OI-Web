@@ -33,16 +33,16 @@
         <item name="android:layout_width">0dp</item>
         <item name="android:layout_height">match_parent</item>
         <item name="android:layout_weight">1</item>
-        <item name="android:background">@drawable/widget_button_tint</item>
+        <item name="android:background">@drawable/widget_button_strong</item>
         <item name="android:gravity">center</item>
         <item name="android:orientation">horizontal</item>
     </style>
 
     <style name="WidgetButtonIcon">
-        <item name="android:layout_width">18dp</item>
-        <item name="android:layout_height">18dp</item>
+        <item name="android:layout_width">21dp</item>
+        <item name="android:layout_height">21dp</item>
         <item name="android:importantForAccessibility">no</item>
-        <item name="android:tint">@color/widget_ink</item>
+        <item name="android:tint">@color/widget_chip_selected_ink</item>
     </style>
 
     <style name="WidgetButtonLabel">
@@ -50,8 +50,8 @@
         <item name="android:layout_height">wrap_content</item>
         <item name="android:layout_marginStart">8dp</item>
         <item name="android:maxLines">1</item>
-        <item name="android:textColor">@color/widget_ink</item>
-        <item name="android:textSize">14.5sp</item>
+        <item name="android:textColor">@color/widget_chip_selected_ink</item>
+        <item name="android:textSize">16sp</item>
         <item name="android:textStyle">bold</item>
     </style>
 </resources>

@@ -1,4 +1,4 @@
-# 🌸 Sakura OI Web 📱 v0.8.0
+# 🌸 Sakura OI Web 📱 v0.8.6
 
 <div align="center">
   <img src="assets/sakura-oi-web-icon.png" alt="Logo de Sakura OI Web: flor con contorno arcoíris y las letras OI" width="160">
@@ -24,7 +24,7 @@ Compartir un ejemplo completo y una guía clara para que otras personas puedan c
 - Asistente de configuración inicial con prueba de conexión y paso de permisos; las direcciones se cambian después en **Ajustes del teléfono**.
 - Dirección de casa y dirección exterior: en tu Wi-Fi usa la local, fuera la exterior, y cambia sola manteniendo la sesión.
 - Compartir con Sakura desde cualquier app, “Preguntar a Sakura” al seleccionar texto, accesos directos del icono y Sakura como asistente del teléfono.
-- Aviso “Sin conexión” mientras no hay red y deslizar hacia abajo para recargar.
+- Aviso “Sin conexión” mientras no hay red, que se reintenta sola al volver la red.
 - “Oye, Sakura” opcional para abrir el modo de voz con la app en segundo plano.
 - Apertura directa de Open WebUI y pantalla de error de conexión, con opción para reintentar, solo cuando de verdad no hay conexión.
 - Los archivos de Open WebUI que no cambian se guardan en el teléfono para no descargarlos en cada arranque.
@@ -71,7 +71,7 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 
 ## 📦 Versiones documentadas
 
-- App: Sakura OI Web **0.8.0** (versionCode 50). Historial completo en [CHANGELOG.md](CHANGELOG.md).
+- App: Sakura OI Web **0.8.6** (versionCode 56). Historial completo en [CHANGELOG.md](CHANGELOG.md).
 - Notificaciones verificadas en el teléfono Android 16 de referencia con Open WebUI 0.12.3. Pantallas, icono y barras en tema claro y oscuro de 0.2.1 a 0.2.3 verificados en el emulador de Android Studio (API 37).
 - Open WebUI: **0.12.3**, versión verificada en la instalación local.
 - Nombre visible del modelo en Open WebUI: **Sakura**. Los registros identifican **llama.cpp 0.7.0-dev**, compilado para x64 con CUDA desde el commit `ea0c4c2c8`, que carga `SoAIHQ/Qwen3.5-9B-GGUF:Q4_K_M` (Qwen 3.5 de 9B, cuantización Q4_K_M). llama.cpp es el servidor de inferencia; el modelo no pertenece a la familia Llama. El alias Sakura se configura en Open WebUI.
@@ -80,9 +80,18 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 - Herramientas fijadas en el proyecto: Android Gradle Plugin 9.4.1, Gradle 9.6.0, Kotlin 2.2.10 y JDK 17 para ejecutar Gradle. El código Java usa compatibilidad de lenguaje 11.
 - Ideas en desarrollo y pendientes, incluida la activación por voz “Oye, Sakura”, en [docs/IDEAS.md](docs/IDEAS.md).
 
-## 🆕 Novedades de la versión 0.8.0
+## 🆕 Novedades de la versión 0.8.6
 
-**Descarga el APK firmado en [Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/latest).** Desde esta versión la app avisa sola cuando hay una nueva.
+**Descarga el APK firmado en [Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/latest).** Si tienes la 0.8.0, Sakura te avisa sola y se actualiza encima.
+
+- **Cinco veces más ligera:** el APK pasa de 35.4 MB a 6.6 MB con las mismas funciones, animaciones y «Oye, Sakura». Arranca igual de rápido.
+- **Sin teclado de golpe:** al abrir Sakura o un chat ya no aparece el teclado tapando media pantalla; sale cuando tocas el cuadro de mensaje.
+- **Deslizar hacia abajo ya no recarga** la página: solo desplaza el chat.
+- **Widget más claro:** **Chat nuevo** y **Último chat** son botones oscuros más grandes, el modo de voz se abre solo con el **micrófono azul**, y tocar a **Sakura, Lain o Yoko** abre un chat nuevo con ese modelo.
+
+### Versión 0.8.0
+
+Primer APK firmado. Desde esta versión la app avisa sola cuando hay una nueva.
 
 - **Bloqueo con huella:** en *Ajustes del teléfono*, pide tu huella, rostro o PIN al volver a Sakura (al instante, a 1 o a 5 minutos). Activarlo y desactivarlo también lo pide, y mientras está bloqueada no se ve ningún chat.
 - **Avisos con la app cerrada:** con la app gratuita [ntfy](https://ntfy.sh), Sakura avisa cuando termina una respuesta aunque Android haya cerrado la app. El texto de la respuesta pasa por el servidor de ntfy que elijas (ntfy.sh si no cambias nada) y hace falta ser administrador de Open WebUI.
@@ -273,7 +282,8 @@ Resumen de todos los cambios de la app. El detalle de cada versión está en [CH
 
 | Versión | versionCode | Cambios |
 |---|---:|---|
-| **0.8.0** | 50 | Primer APK firmado en Releases, bloqueo con huella, avisos con la app cerrada (ntfy), buscar actualizaciones con aviso diario y certificados instalados en Android. |
+| **0.8.6** | 56 | APK de 35.4 a 6.6 MB, sin teclado al abrir la app o un chat, sin recargar al deslizar, botones Chat nuevo y Último chat más visibles y chips del widget que abren el chat de cada modelo. |
+| 0.8.0 | 50 | Primer APK firmado en Releases, bloqueo con huella, avisos con la app cerrada (ntfy), buscar actualizaciones con aviso diario y certificados instalados en Android. |
 | 0.7.7 | 49 | El widget grande ya no muestra “«Oye, Sakura» activo”. |
 | 0.7.6 | 48 | Botones del widget sólidos y con borde, legibles sobre cualquier fondo; animación de activación más lenta y sin tono. |
 | 0.7.4 | 46 | Widget con Sakura, Lain y Yoko, ajuste rápido, botón Hablar, pantalla «Oye, Sakura» con frase, sensibilidad y entrenamiento de voz, animación de activación, voz sin recargar la página y sin el aviso “Abrir enlace”. |
@@ -328,7 +338,7 @@ Instala Android Studio compatible con Android Gradle Plugin 9.4.1, Android SDK P
 | Android mínimo | API 23 / Android 6.0 | Versión mínima para instalar la app |
 | Android objetivo | API 36 / Android 16 | Comportamientos de Android para los que está configurada |
 | SDK de compilación | API 37 / Android 17 | Plataforma necesaria para compilar; no es requisito para el teléfono |
-| Versión de Sakura OI Web | 0.8.0 (versionCode 50) | Versión del APK de este repositorio |
+| Versión de Sakura OI Web | 0.8.6 (versionCode 56) | Versión del APK de este repositorio |
 
 La versión de Android de tu teléfono es independiente del SDK de compilación. En el dispositivo Android 16 de referencia, la app funciona con target API 36.
 

@@ -247,4 +247,5 @@
     <string name="push_default_title">Sakura replied</string>
     <string name="push_default_text">Tap to see the reply.</string>
     <string name="push_failed_text">The reply could not finish.</string>
+    <string name="widget_open_chat">Chat with %1$s</string>
 </resources>

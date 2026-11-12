@@ -2,6 +2,16 @@
 
 Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 0.8.6 (versionCode 56) — 12 de noviembre de 2026
+
+Reúne las compilaciones locales 0.8.1 a 0.8.5. Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v0.8.6).
+
+### Cambiado
+- **APK más ligero: de 35.4 MB a 6.6 MB**, con las mismas funciones y animaciones. El build `release` usa R8 sobre toda la app (código y recursos sin uso); `app/proguard-rules.pro` conserva lo que se llama por nombre: los métodos `@JavascriptInterface` de los puentes con la página y Vosk/JNA de «Oye, Sakura». La librería de voz va comprimida en el APK (`packaging.jniLibs.useLegacyPackaging`, de unos 8.6 a 2.8 MB por copia) y Android descomprime solo la del teléfono al instalar. El APK publicado trae `arm64-v8a` y `armeabi-v7a`; la compilación de depuración agrega `x86_64` para el emulador. Se quitaron las dependencias de Jetpack Compose y SwipeRefreshLayout, la plantilla `ui/theme` que no se usaba, y las imágenes de `drawable-nodpi` pasaron de PNG a WebP sin pérdida. El arranque en frío queda igual.
+- **El teclado ya no se abre solo** al abrir Sakura, al volver a ella ni al abrir un chat (de la barra lateral, uno nuevo o con Atrás). `NO_AUTOFOCUS_JS` deshace durante 4 s el foco automático de Open WebUI en el cuadro de mensaje, salvo que lo toques o escribas; `MainActivity` usa `stateHidden`. Al compartir texto o abrir `?q=` el cuadro sí queda listo para escribir.
+- **Deslizar hacia abajo ya no recarga la página**; solo desplaza el chat.
+- Widget grande: **Chat nuevo** y **Último chat** tienen más peso (relleno oscuro, 54 dp de alto, icono de 21 dp y texto de 16 sp). El modo de voz se abre solo con el **micrófono azul**; “Habla con <modelo>” y los chips **Sakura, Lain y Yoko** abren un chat nuevo con ese modelo, que queda como modelo del widget.
+
 ## 0.8.0 (versionCode 50) — 12 de noviembre de 2026
 
 Primer APK firmado, publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v0.8.0).
