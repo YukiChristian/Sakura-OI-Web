@@ -26,7 +26,6 @@ import org.vosk.android.SpeechService
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
-import java.text.Normalizer
 import java.util.zip.ZipInputStream
 
 /**
@@ -49,8 +48,8 @@ object WakeWordModel {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_ENABLED, enabled).apply()
     }
 
-    /** Downloads and unpacks the model; blocking, reports progress from 0 to 100. */
-    fun download(context: Context, onProgress: (Int) -> Unit) {
+    /** Downloads and unpacks the model; blocking, reports progress (0 to 100) and the bytes read of the total. */
+    fun download(context: Context, onProgress: (percent: Int, read: Long, total: Long) -> Unit) {
         val target = dir(context)
         val temp = File(context.filesDir, "vosk-model-es.part").apply { deleteRecursively(); mkdirs() }
         val connection = URL(MODEL_URL).openConnection() as HttpURLConnection
@@ -65,7 +64,7 @@ object WakeWordModel {
                     super.read(b, off, len).also { n ->
                         if (n > 0 && total > 0) {
                             read += n
-                            onProgress((read * 100 / total).toInt())
+                            onProgress((read * 100 / total).toInt(), read, total)
                         }
                     }
             }
@@ -92,29 +91,6 @@ object WakeWordModel {
             temp.deleteRecursively()
         }
     }
-
-    /**
-     * The small Spanish model does not know the word "Sakura", so it hears something close
-     * ("sacura", "sa cura", "zakura", "sacra"). Accept those right after "oye".
-     */
-    fun matches(text: String): Boolean {
-        val words = Normalizer.normalize(text.lowercase(), Normalizer.Form.NFD)
-            .replace(Regex("\\p{M}"), "")
-            .replace(Regex("[^a-zñ ]"), " ")
-            .split(' ')
-            .filter { it.isNotEmpty() }
-        val sakura = Regex("^[sz]a[kc]+u?ra$")
-        for (i in words.indices) {
-            val hit = sakura.matches(words[i]) ||
-                (i + 1 < words.size && sakura.matches(words[i] + words[i + 1]))
-            if (!hit) continue
-            val before = words.subList(maxOf(0, i - 2), i)
-            if (before.any { it in CALL_WORDS }) return true
-        }
-        return false
-    }
-
-    private val CALL_WORDS = setOf("oye", "oyes", "oie", "olle", "hoy", "oy", "hola")
 }
 
 /**
@@ -163,6 +139,7 @@ class WakeWordService : Service(), RecognitionListener {
             startForeground(NOTIFICATION_ID, listeningNotification())
         }
         running = true
+        warmUpWebEngine()
         paused = intent?.getBooleanExtra(EXTRA_PAUSED, false) ?: false
         if (model == null) {
             Thread {
@@ -181,6 +158,16 @@ class WakeWordService : Service(), RecognitionListener {
             startListening()
         }
         return START_NOT_STICKY
+    }
+
+    /**
+     * Loads the web engine (Chromium) into this process once, while nothing is on screen, so the
+     * WebView starts faster when «Oye, Sakura» opens the app from scratch.
+     */
+    private fun warmUpWebEngine() {
+        if (webEngineWarm) return
+        webEngineWarm = true
+        main.post { runCatching { android.webkit.WebSettings.getDefaultUserAgent(this) } }
     }
 
     private fun startListening() {
@@ -221,7 +208,7 @@ class WakeWordService : Service(), RecognitionListener {
 
     private fun check(json: String?, key: String) {
         val text = runCatching { JSONObject(json ?: return).optString(key) }.getOrNull() ?: return
-        if (text.isBlank() || !WakeWordModel.matches(text)) return
+        if (text.isBlank() || !WakePhrase.matches(this, text)) return
         val now = System.currentTimeMillis()
         if (now - lastTrigger < 4_000) return
         lastTrigger = now
@@ -232,20 +219,31 @@ class WakeWordService : Service(), RecognitionListener {
 
     /**
      * Android blocks activity starts from the background unless the app may draw over other
-     * apps; without that permission a high-priority notification offers to open voice mode.
+     * apps; with that permission the activation animation plays and voice mode opens, without
+     * it a high-priority notification offers to open voice mode.
      */
     private fun openVoiceMode() {
         val intent = Intent(this, MainActivity::class.java)
             .setAction(IncomingIntents.ACTION_VOICE)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        if (Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this)) {
-            try {
-                startActivity(intent)
-                return
-            } catch (e: Exception) {
-                Log.w(TAG, "Could not open Sakura directly", e)
+        if (WakeActivation.canDraw(this)) {
+            // Tone, flower and the pink border; voice mode loads underneath from the first frame.
+            WakeActivation.run(this) {
+                try {
+                    val grow = android.app.ActivityOptions.makeCustomAnimation(this, R.anim.voice_grow, 0)
+                    startActivity(intent, grow.toBundle())
+                } catch (e: Exception) {
+                    Log.w(TAG, "Could not open Sakura directly", e)
+                    showHeardNotification(intent)
+                }
             }
+            return
         }
+        WakeActivation.playTone(this)
+        showHeardNotification(intent)
+    }
+
+    private fun showHeardNotification(intent: Intent) {
         val open = PendingIntent.getActivity(
             this, 1, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -270,16 +268,26 @@ class WakeWordService : Service(), RecognitionListener {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val settings = PendingIntent.getActivity(
-            this, 2, Intent(this, SettingsActivity::class.java),
+            this, 2, Intent(this, WakeWordSettingsActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        // One tap to talk without saying the phrase.
+        val talk = PendingIntent.getActivity(
+            this, 3,
+            Intent(this, MainActivity::class.java)
+                .setAction(IncomingIntents.ACTION_VOICE)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val phrase = WakePhrase.phrase(this)
         return NotificationCompat.Builder(this, CHANNEL_LISTENING)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(getString(R.string.wake_listening_title))
-            .setContentText(getString(R.string.wake_listening_text))
+            .setContentTitle(getString(R.string.wake_listening_title, phrase))
+            .setContentText(getString(R.string.wake_listening_text, phrase))
             .setOngoing(true)
             .setSilent(true)
             .setContentIntent(settings)
+            .addAction(0, getString(R.string.wake_talk), talk)
             .addAction(0, getString(R.string.wake_turn_off), stop)
             .build()
     }
@@ -306,6 +314,8 @@ class WakeWordService : Service(), RecognitionListener {
 
         @Volatile var running = false
             private set
+
+        private var webEngineWarm = false
 
         fun start(context: Context, paused: Boolean = false) {
             ContextCompat.startForegroundService(

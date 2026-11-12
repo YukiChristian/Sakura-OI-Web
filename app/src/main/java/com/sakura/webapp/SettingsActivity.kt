@@ -1,21 +1,21 @@
 package com.sakura.webapp
 
 import android.Manifest
+import android.app.Activity
 import android.app.role.RoleManager
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.content.res.ColorStateList
-import android.net.Uri
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
+import android.widget.LinearLayout
 import android.widget.ScrollView
-import android.widget.Switch
 import android.widget.TextView
 import androidx.activity.ComponentActivity
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -24,31 +24,24 @@ import androidx.core.view.WindowInsetsCompat
 /**
  * "Ajustes del teléfono": the app's own settings, in the same card style as the setup
  * assistant. Reached from Open WebUI's user menu, the launcher shortcut, Android's app info
- * ("Additional settings in the app") or the "Oye, Sakura" notification.
+ * ("Additional settings in the app") or the "Oye, Sakura" notification. «Oye, Sakura» and the
+ * one-tap shortcuts have their own screen (WakeWordSettingsActivity).
  */
 class SettingsActivity : ComponentActivity() {
     private lateinit var ui: SetupUi
-    private lateinit var wakeSwitch: Switch
-    private lateinit var wakeStatus: TextView
-    private lateinit var overlayButton: View
+    private lateinit var parts: SetupParts
     private lateinit var connectionText: TextView
     private lateinit var permissionsPill: SetupUi.StatusPill
     private lateinit var assistantPill: SetupUi.StatusPill
-    private var downloading = false
-
-    private val permissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { results ->
-        if (results[Manifest.permission.RECORD_AUDIO] == true) turnOnWakeWord() else {
-            wakeSwitch.isChecked = false
-            wakeStatus.text = getString(R.string.wake_status_no_mic)
-        }
-    }
+    private lateinit var wakeTitle: TextView
+    private lateinit var wakeDot: View
+    private lateinit var wakeStatus: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ServerAddress.load(this)
         ui = SetupUi(this)
+        parts = SetupParts(ui)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         ui.styleWindow()
 
@@ -103,39 +96,51 @@ class SettingsActivity : ComponentActivity() {
         ))
         assistantPill = ui.StatusPill()
         assistant.addView(assistantPill.view)
-        assistant.addView(ui.smallButton(getString(R.string.assistant_button)) { openAssistantSettings() })
+        assistant.addView(ui.smallButton(getString(R.string.assistant_button)) { openAssistantSettings(this) })
         column.addView(assistant)
 
-        // "Oye, Sakura"
-        val wake = ui.card()
-        wake.addView(ui.cardHeader(
-            R.drawable.ic_ui_mic, getString(R.string.wake_heading), getString(R.string.wake_description),
-            chip = getString(R.string.setup_optional)
-        ))
-        wakeSwitch = Switch(this).apply {
-            text = getString(R.string.wake_switch)
-            textSize = 16f
-            setTextColor(ui.ink)
-            thumbTintList = ColorStateList(
-                arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
-                intArrayOf(ui.ink, ui.fieldBorder)
-            )
-            isChecked = WakeWordModel.isEnabled(this@SettingsActivity)
-            setPadding(0, ui.dp(12), 0, ui.dp(4))
-            setOnCheckedChangeListener { _, checked -> if (checked) requestWakeWord() else turnOffWakeWord() }
-        }
-        wake.addView(wakeSwitch)
-        wakeStatus = ui.text("", 13.5f, ui.muted)
-        wake.addView(wakeStatus)
-        overlayButton = ui.smallButton(getString(R.string.wake_overlay_button)) {
-            startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
-        }
-        wake.addView(overlayButton)
-        column.addView(wake)
+        // «Oye, Sakura» and the one-tap shortcuts: a summary that opens their screen.
+        column.addView(wakeEntry())
 
         column.addView(ui.footer(getString(R.string.settings_version, BuildConfig.VERSION_NAME)).apply {
             gravity = Gravity.CENTER
             setPadding(0, ui.dp(12), 0, ui.dp(8))
+        })
+    }
+
+    private fun wakeEntry() = ui.card().apply {
+        isClickable = true
+        isFocusable = true
+        setOnClickListener { startActivity(Intent(this@SettingsActivity, WakeWordSettingsActivity::class.java)) }
+        wakeTitle = ui.text("", 16.5f, ui.ink, bold = true)
+        wakeDot = View(context)
+        wakeStatus = ui.text("", 13f, ui.muted, semibold = true)
+        addView(LinearLayout(context).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            addView(parts.tile(R.drawable.ic_ui_mic, parts.pink, parts.pinkTile))
+            addView(LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(LinearLayout(context).apply {
+                    gravity = Gravity.CENTER_VERTICAL
+                    addView(wakeTitle)
+                    addView(ui.text(getString(R.string.setup_optional), 12f, ui.muted, semibold = true).apply {
+                        setPadding(ui.dp(8), ui.dp(2), ui.dp(8), ui.dp(2))
+                        background = GradientDrawable().apply { cornerRadius = ui.dp(11).toFloat(); setColor(ui.tile) }
+                    }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                        .apply { marginStart = ui.dp(8) })
+                })
+                addView(ui.text(getString(R.string.wake_entry_description), 13.5f, ui.muted))
+                addView(LinearLayout(context).apply {
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(0, ui.dp(6), 0, 0)
+                    addView(wakeDot, LinearLayout.LayoutParams(ui.dp(7), ui.dp(7)).apply { marginEnd = ui.dp(6) })
+                    addView(wakeStatus)
+                })
+            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginStart = ui.dp(12)
+                marginEnd = ui.dp(8)
+            })
+            addView(parts.icon(R.drawable.ic_ui_chevron_right, ui.hintColor, 18))
         })
     }
 
@@ -144,7 +149,20 @@ class SettingsActivity : ComponentActivity() {
         ServerAddress.load(this)
         connectionText.text = connectionSummary()
         refreshPermissions()
-        refreshWakeStatus()
+        // After an update or a reboot the listener is not running yet; start it here too.
+        if (WakeWordModel.isEnabled(this) && WakeWordModel.isReady(this) && !WakeWordService.running &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        ) WakeWordService.start(this)
+        refreshWakeEntry()
+    }
+
+    private fun refreshWakeEntry() {
+        wakeTitle.text = getString(R.string.wake_quoted, WakePhrase.phrase(this))
+        val on = WakeWordModel.isEnabled(this) && WakeWordModel.isReady(this)
+        val color = if (on) parts.green else ui.faint
+        wakeStatus.text = getString(if (on) R.string.wake_state_on else R.string.wake_state_off)
+        wakeStatus.setTextColor(color)
+        wakeDot.background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(color) }
     }
 
     private fun refreshPermissions() {
@@ -159,89 +177,6 @@ class SettingsActivity : ComponentActivity() {
             getSystemService(RoleManager::class.java)?.isRoleHeld(RoleManager.ROLE_ASSISTANT) == true
         if (isAssistant) assistantPill.show(SetupUi.Pill.OK, getString(R.string.permission_granted))
         else assistantPill.hide()
-    }
-
-    private fun requestWakeWord() {
-        val needed = buildList {
-            if (ContextCompat.checkSelfPermission(this@SettingsActivity, Manifest.permission.RECORD_AUDIO) !=
-                PackageManager.PERMISSION_GRANTED
-            ) add(Manifest.permission.RECORD_AUDIO)
-            if (Build.VERSION.SDK_INT >= 33 &&
-                ContextCompat.checkSelfPermission(this@SettingsActivity, Manifest.permission.POST_NOTIFICATIONS) !=
-                PackageManager.PERMISSION_GRANTED
-            ) add(Manifest.permission.POST_NOTIFICATIONS)
-        }
-        if (needed.isEmpty()) turnOnWakeWord() else permissionLauncher.launch(needed.toTypedArray())
-    }
-
-    private fun turnOnWakeWord() {
-        WakeWordModel.setEnabled(this, true)
-        if (WakeWordModel.isReady(this)) {
-            WakeWordService.start(this)
-            refreshWakeStatus()
-            return
-        }
-        if (downloading) return
-        downloading = true
-        wakeStatus.text = getString(R.string.wake_status_downloading, 0)
-        Thread {
-            try {
-                var shown = -1
-                WakeWordModel.download(this) { percent ->
-                    if (percent != shown) {
-                        shown = percent
-                        runOnUiThread { wakeStatus.text = getString(R.string.wake_status_downloading, percent) }
-                    }
-                }
-                runOnUiThread {
-                    downloading = false
-                    if (WakeWordModel.isEnabled(this)) WakeWordService.start(this)
-                    refreshWakeStatus()
-                }
-            } catch (e: Exception) {
-                runOnUiThread {
-                    downloading = false
-                    WakeWordModel.setEnabled(this, false)
-                    wakeSwitch.isChecked = false
-                    wakeStatus.text = getString(R.string.wake_status_download_failed)
-                }
-            }
-        }.start()
-    }
-
-    private fun turnOffWakeWord() {
-        WakeWordModel.setEnabled(this, false)
-        stopService(Intent(this, WakeWordService::class.java))
-        refreshWakeStatus()
-    }
-
-    private fun refreshWakeStatus() {
-        if (downloading) return
-        val enabled = WakeWordModel.isEnabled(this)
-        wakeSwitch.isChecked = enabled
-        wakeStatus.text = getString(
-            when {
-                !enabled -> R.string.wake_status_off
-                !WakeWordModel.isReady(this) -> R.string.wake_status_no_model
-                else -> R.string.wake_status_on
-            }
-        )
-        val canOverlay = Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this)
-        overlayButton.visibility = if (enabled && !canOverlay) View.VISIBLE else View.GONE
-    }
-
-    private fun openAssistantSettings() {
-        for (intent in listOf(
-            Intent(Settings.ACTION_VOICE_INPUT_SETTINGS),
-            Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS),
-            Intent(Settings.ACTION_SETTINGS),
-        )) {
-            try {
-                startActivity(intent)
-                return
-            } catch (_: Exception) {
-            }
-        }
     }
 
     private fun connectionSummary(): String {
@@ -259,5 +194,22 @@ class SettingsActivity : ComponentActivity() {
             }
         )
         return "$addresses\n\n$mode"
+    }
+
+    companion object {
+        /** Android's digital assistant settings, where Sakura can be chosen (headset button, assist gesture). */
+        fun openAssistantSettings(activity: Activity) {
+            for (intent in listOf(
+                Intent(Settings.ACTION_VOICE_INPUT_SETTINGS),
+                Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS),
+                Intent(Settings.ACTION_SETTINGS),
+            )) {
+                try {
+                    activity.startActivity(intent)
+                    return
+                } catch (_: Exception) {
+                }
+            }
+        }
     }
 }

@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget grande ("Widgets · claro y oscuro", abajo): "Habla con <modelo>", el estado de «Oye, Sakura» y el micrófono
+     azul; los modelos fijados como chips para cambiar de un toque; Nuevo chat y Último chat. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg_card"
+    android:gravity="center_vertical"
+    android:orientation="vertical"
+    android:padding="14dp">
+
+    <LinearLayout
+        android:id="@+id/widget_voice"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/widget_avatar"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:importantForAccessibility="no"
+            android:src="@drawable/widget_preview_avatar_ring" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/widget_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/widget_preview_title"
+                android:textColor="@color/widget_ink"
+                android:textSize="19sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:id="@+id/widget_status_dot"
+                    android:layout_width="7dp"
+                    android:layout_height="7dp"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/widget_dot"
+                    android:tint="#FF40C057" />
+
+                <TextView
+                    android:id="@+id/widget_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="@string/widget_preview_status"
+                    android:textColor="@color/widget_muted"
+                    android:textSize="13sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/widget_mic"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="@drawable/widget_circle_blue"
+            android:importantForAccessibility="no"
+            android:padding="15.5dp"
+            android:src="@drawable/ic_ui_mic"
+            android:tint="#FFFFFFFF" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:id="@+id/widget_chip_0"
+            style="@style/WidgetChip"
+            android:background="@drawable/widget_chip_selected">
+
+            <ImageView
+                android:id="@+id/widget_chip_avatar_0"
+                style="@style/WidgetChipAvatar"
+                android:src="@drawable/widget_preview_chip_sakura" />
+
+            <TextView
+                android:id="@+id/widget_chip_name_0"
+                style="@style/WidgetChipName"
+                android:text="Sakura"
+                android:textColor="@color/widget_chip_selected_ink" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/widget_chip_1"
+            style="@style/WidgetChip"
+            android:layout_marginStart="6dp">
+
+            <ImageView
+                android:id="@+id/widget_chip_avatar_1"
+                style="@style/WidgetChipAvatar"
+                android:src="@drawable/widget_preview_chip_lain" />
+
+            <TextView
+                android:id="@+id/widget_chip_name_1"
+                style="@style/WidgetChipName"
+                android:text="Lain" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/widget_chip_2"
+            style="@style/WidgetChip"
+            android:layout_marginStart="6dp">
+
+            <ImageView
+                android:id="@+id/widget_chip_avatar_2"
+                style="@style/WidgetChipAvatar"
+                android:src="@drawable/widget_preview_chip_yoko" />
+
+            <TextView
+                android:id="@+id/widget_chip_name_2"
+                style="@style/WidgetChipName"
+                android:text="Yoko" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:id="@+id/widget_new_chat"
+            style="@style/WidgetButton"
+            android:contentDescription="@string/shortcut_new_chat">
+
+            <ImageView
+                style="@style/WidgetButtonIcon"
+                android:src="@drawable/ic_ui_chat_plus" />
+
+            <TextView
+                style="@style/WidgetButtonLabel"
+                android:text="@string/shortcut_new_chat" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/widget_last_chat"
+            style="@style/WidgetButton"
+            android:layout_marginStart="8dp"
+            android:contentDescription="@string/shortcut_last_chat">
+
+            <ImageView
+                style="@style/WidgetButtonIcon"
+                android:src="@drawable/ic_ui_history" />
+
+            <TextView
+                style="@style/WidgetButtonLabel"
+                android:text="@string/shortcut_last_chat" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

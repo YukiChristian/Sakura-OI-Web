@@ -26,6 +26,7 @@ import kotlin.math.roundToInt
  * status pills and full-width pill buttons. Colours switch to a dark set in dark mode.
  */
 class SetupUi(private val activity: Activity) {
+    val context: Activity get() = activity
     val night = (activity.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
         Configuration.UI_MODE_NIGHT_YES
 

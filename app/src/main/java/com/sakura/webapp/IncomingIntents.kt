@@ -15,6 +15,10 @@ object IncomingIntents {
     const val ACTION_NEW_CHAT = "com.sakura.webapp.action.NEW_CHAT"
     const val ACTION_VOICE = "com.sakura.webapp.action.VOICE"
     const val ACTION_LAST_CHAT = "com.sakura.webapp.action.LAST_CHAT"
+    /** Open WebUI model id to use for voice mode or a new chat (from the widgets). */
+    const val EXTRA_MODEL = "com.sakura.webapp.extra.MODEL"
+    /** Sent by headsets and Bluetooth earbuds (long press) to the voice command app. */
+    private const val VOICE_SEARCH_HANDS_FREE = "android.speech.action.VOICE_SEARCH_HANDS_FREE"
 
     class Request(
         /** Path on the server, or null for the last page the user had open. */
@@ -26,8 +30,9 @@ object IncomingIntents {
     fun parse(intent: Intent?): Request? {
         intent ?: return null
         return when (intent.action) {
-            ACTION_NEW_CHAT -> Request("/")
-            ACTION_VOICE, Intent.ACTION_ASSIST, Intent.ACTION_VOICE_COMMAND -> Request("/?call=true")
+            ACTION_NEW_CHAT -> Request(withModel("/", intent))
+            ACTION_VOICE, Intent.ACTION_ASSIST, Intent.ACTION_VOICE_COMMAND, VOICE_SEARCH_HANDS_FREE ->
+                Request(withModel("/?call=true", intent))
             ACTION_LAST_CHAT -> Request(null)
             Intent.ACTION_PROCESS_TEXT -> {
                 val text = intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()
@@ -50,6 +55,13 @@ object IncomingIntents {
             listOfNotNull(stream(intent))
         }
         return Request(if (message.isBlank()) "/" else newChatWith(message), streams)
+    }
+
+    /** Adds Open WebUI's ?models= for the model the widget chose; "/?models=lain&call=true". */
+    private fun withModel(path: String, intent: Intent): String {
+        val model = intent.getStringExtra(EXTRA_MODEL)?.takeIf { it.isNotBlank() } ?: return path
+        val param = "models=" + Uri.encode(model)
+        return if (path.contains('?')) path.replaceFirst("?", "?$param&") else "$path?$param"
     }
 
     private fun newChatWith(text: String): String = "/?q=" + Uri.encode(text.take(MAX_TEXT))

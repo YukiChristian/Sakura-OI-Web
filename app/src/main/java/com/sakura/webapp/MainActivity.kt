@@ -71,7 +71,6 @@ class MainActivity : ComponentActivity() {
     private lateinit var offlineBanner: TextView
     @Volatile private var pageCanScrollUp = true
     /** Voice mode was asked for (shortcut, assistant, "Oye, Sakura"): accept Open WebUI's prompt. */
-    private var confirmVoiceCall = false
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private var online = true
     /** Saved-address version this screen loaded; a change in settings triggers a reload. */
@@ -89,6 +88,8 @@ class MainActivity : ComponentActivity() {
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
     private var mainFrameLoadFailed = false
+    /** An Open WebUI page finished loading and is on screen, so requests can be opened inside it. */
+    private var pageReady = false
     private lateinit var notificationBridge: WebNotificationBridge
     private lateinit var downloadBridge: DownloadBridge
     @Volatile private var trustedPageLoaded = false
@@ -177,11 +178,19 @@ class MainActivity : ComponentActivity() {
                 override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
                     super.onPageStarted(view, url, favicon)
                     pageCanScrollUp = true
+                    pageReady = false
                     trustedPageLoaded = isOpenWebUiOrigin(Uri.parse(url))
                     if (trustedPageLoaded) {
                         view.evaluateJavascript(WebNotificationBridge.SHIM_JS, null)
                         view.evaluateJavascript(DownloadBridge.SHIM_JS, null)
                     }
+                }
+
+                // As soon as the new page is on screen (long before onPageFinished on a slow
+                // network), start watching for Open WebUI's voice call prompt.
+                override fun onPageCommitVisible(view: WebView, url: String) {
+                    super.onPageCommitVisible(view, url)
+                    if (isOpenWebUiOrigin(Uri.parse(url))) view.evaluateJavascript(CONFIRM_VOICE_JS, null)
                 }
 
                 override fun onPageFinished(view: WebView, url: String) {
@@ -196,11 +205,11 @@ class MainActivity : ComponentActivity() {
                         view.evaluateJavascript(SessionSync.SYNC_JS, null)
                         view.evaluateJavascript(appMenuScript(), null)
                         if (shareBridge.hasPending) view.evaluateJavascript(ShareBridge.ATTACH_JS, null)
-                        // Every load of a voice-mode page, not just the first: the page can be
-                        // reloaded on the home address or after the session is copied.
-                        if (confirmVoiceCall || Uri.parse(url).getQueryParameter("call") == "true") {
-                            confirmVoiceCall = false
-                            view.evaluateJavascript(CONFIRM_VOICE_JS, null)
+                        // On every page: Open WebUI's "¿Iniciar una llamada de voz con tu micrófono?"
+                        // is accepted as soon as it shows, however the page was opened.
+                        view.evaluateJavascript(CONFIRM_VOICE_JS, null)
+                        if (Uri.parse(url).getQueryParameter("q") != null) {
+                            view.evaluateJavascript(DROP_QUERY_JS, null)
                         }
                     }
                     swipeLayout.isRefreshing = false
@@ -252,6 +261,14 @@ class MainActivity : ComponentActivity() {
                 }
             }
             webChromeClient = object : WebChromeClient() {
+                override fun onProgressChanged(view: WebView, newProgress: Int) {
+                    super.onProgressChanged(view, newProgress)
+                    // Also while the page loads; the script installs itself only once per page.
+                    if (newProgress >= 30 && view.url?.let { isOpenWebUiOrigin(Uri.parse(it)) } == true) {
+                        view.evaluateJavascript(CONFIRM_VOICE_JS, null)
+                    }
+                }
+
                 override fun onShowFileChooser(
                     webView: WebView?,
                     filePathCallback: ValueCallback<Array<Uri>>?,
@@ -492,10 +509,32 @@ class MainActivity : ComponentActivity() {
 
     /** Opens what a share, selected text, shortcut or the assistant asked for. */
     private fun openRequest(request: IncomingIntents.Request?) {
+        if (request != null && openInPage(request)) return
         val url = request?.path?.let(ServerAddress::at) ?: lastKnownPageUrl()
-        confirmVoiceCall = request?.path?.contains("call=true") == true
         request?.streams?.let(shareBridge::prepare)
         beginHomeLoad(url)
+    }
+
+    /**
+     * Voice mode, a new chat (with the widget's model) or the last chat, opened inside the Open WebUI
+     * page that is already loaded instead of reloading it: SvelteKit's router takes the link, so voice
+     * mode is up in about half a second instead of several. Shares, text and anything else still load
+     * the page as before. Returns false when the page is not ready, so the caller loads it.
+     */
+    private fun openInPage(request: IncomingIntents.Request): Boolean {
+        if (!pageReady || mainFrameLoadFailed || !trustedPageLoaded || request.streams.isNotEmpty()) return false
+        val current = webView.url?.let { runCatching { Uri.parse(it) }.getOrNull() } ?: return false
+        if (!isOpenWebUiOrigin(current)) return false
+        // "Último chat": the page on screen already is the last one.
+        val path = request.path ?: return true
+        val uri = Uri.parse(path)
+        if (uri.queryParameterNames.any { it != "call" && it != "models" }) return false
+        webView.evaluateJavascript(
+            "(function(p){const a=document.createElement('a');a.href=p;document.body.appendChild(a);" +
+                "a.click();a.remove();})(" + JSONObject.quote(path) + ")",
+            null
+        )
+        return true
     }
 
     /**
@@ -564,6 +603,7 @@ class MainActivity : ComponentActivity() {
      */
     private fun revealLoadedPage(view: WebView) {
         if (isFinishing || mainFrameLoadFailed) return
+        pageReady = trustedPageLoaded
         installMediaDiagnostics(view)
         stopRetryAnimation()
         connectionView.visibility = View.GONE
@@ -844,8 +884,10 @@ class MainActivity : ComponentActivity() {
         val currentUrl = url ?: return
         val uri = runCatching { Uri.parse(currentUrl) }.getOrNull() ?: return
         if (!isOpenWebUiOrigin(uri)) return
-        // A shared text (?q=) or voice launch (?call=) should not come back next time.
-        val keep = if (uri.getQueryParameter("q") != null || uri.getQueryParameter("call") != null) {
+        // A shared text (?q=), voice launch (?call=) or widget model (?models=) should not come back next time.
+        val keep = if (uri.getQueryParameter("q") != null || uri.getQueryParameter("call") != null ||
+            uri.getQueryParameter("models") != null
+        ) {
             uri.buildUpon().clearQuery().build().toString()
         } else currentUrl
         getSharedPreferences(SESSION_PREFS, MODE_PRIVATE)
@@ -900,7 +942,9 @@ class MainActivity : ComponentActivity() {
         """.trimIndent()
         webView.evaluateJavascript(script) { handled ->
             if (handled != "true") {
-                if (webView.canGoBack()) webView.goBack() else finish()
+                // On the first page, go to the background instead of closing: the page stays
+                // loaded, so voice mode and shortcuts open instantly next time.
+                if (webView.canGoBack()) webView.goBack() else moveTaskToBack(true)
             }
         }
     }
@@ -1034,22 +1078,78 @@ class MainActivity : ComponentActivity() {
         """.trimIndent()
 
         /**
-         * Open WebUI asks "Start a voice call using your microphone?" when opened with
-         * ?call=true. The user already asked for voice mode, so press its confirm button
-         * (the second one) as soon as that dialog appears. Open WebUI can take several
-         * seconds to finish loading before it shows the dialog, so keep watching for 30 s.
+         * Open WebUI asks "¿Iniciar una llamada de voz con tu micrófono?" ("Start a voice call using
+         * your microphone?", titled "Abrir enlace") whenever a page has ?call=true. The user already
+         * chose voice mode in the app, so the prompt is never shown: a watcher on every page presses
+         * its Confirmar button as soon as it appears, with no time limit and whatever element holds
+         * it, then drops ?call (and the widget's ?models) from the address. Checks are debounced so
+         * a streaming answer does not keep the page busy.
          */
         private val CONFIRM_VOICE_JS = """
             (function() {
-                if (window.__sakuraVoiceConfirm) return;
+                if (window.__sakuraVoiceConfirm || !document.documentElement) return;
                 window.__sakuraVoiceConfirm = true;
+                $DROP_PARAM_JS
+                const PROMPT = /(micr[oó]fono|microphone)/i;
+                function isPrompt(text) { return PROMPT.test(text) && /(llamada|call)/i.test(text); }
+                function check() {
+                    const buttons = document.querySelectorAll('button');
+                    for (const b of buttons) {
+                        if (!/^\s*(confirmar|confirm)\s*$/i.test(b.textContent || '')) continue;
+                        let box = b.parentElement;
+                        for (let i = 0; i < 6 && box; i++, box = box.parentElement) {
+                            if (!isPrompt(box.textContent || '')) continue;
+                            // Hide the prompt's own layer (the nearest fixed one) so it does not even flash.
+                            let layer = box;
+                            for (let el = box; el && el !== document.body; el = el.parentElement) {
+                                if (getComputedStyle(el).position === 'fixed') { layer = el; break; }
+                            }
+                            layer.style.visibility = 'hidden';
+                            setTimeout(function() { layer.style.visibility = ''; }, 800);
+                            b.click();
+                            dropParam('call');
+                            dropParam('models');
+                            return;
+                        }
+                    }
+                }
+                // React in the same frame to anything added that mentions the microphone.
+                new MutationObserver(function(records) {
+                    for (const r of records) {
+                        for (const n of r.addedNodes) {
+                            if (n.nodeType === 1 && PROMPT.test(n.textContent || '')) { check(); return; }
+                        }
+                    }
+                }).observe(document.documentElement, { childList: true, subtree: true });
+                check();
+            })();
+        """.trimIndent()
+
+        /**
+         * Removes a one-off launch parameter from the address bar once Open WebUI has used it,
+         * so reloading the page (pull to refresh) does not ask to start a voice call again or
+         * refill the shared text. history.replaceState changes the URL without a reload.
+         */
+        private const val DROP_PARAM_JS = """
+            function dropParam(name) {
+                const u = new URL(location.href);
+                if (!u.searchParams.has(name)) return;
+                u.searchParams.delete(name);
+                history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+            }
+        """
+
+        /** After Open WebUI copies ?q= (shared or selected text) into the message box, drop it. */
+        private val DROP_QUERY_JS = """
+            (function() {
+                if (window.__sakuraDropQuery) return;
+                window.__sakuraDropQuery = true;
+                $DROP_PARAM_JS
                 let tries = 0;
                 (function attempt() {
-                    const dialog = Array.from(document.querySelectorAll('[role="dialog"]'))
-                        .find(function(d) { return /micr/i.test(d.innerText); });
-                    const buttons = dialog ? dialog.querySelectorAll('button') : [];
-                    if (buttons.length >= 2) { buttons[buttons.length - 1].click(); return; }
-                    if (++tries < 120) setTimeout(attempt, 250);
+                    const box = document.querySelector('#chat-input');
+                    if ((box && box.innerText.trim()) || ++tries >= 80) { dropParam('q'); return; }
+                    setTimeout(attempt, 250);
                 })();
             })();
         """.trimIndent()

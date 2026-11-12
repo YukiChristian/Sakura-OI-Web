@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget colours (light; values-night holds the dark set). -->
+<resources>
+    <color name="widget_glass">#CCFFFFFF</color>
+    <color name="widget_ink">#FF18181B</color>
+    <color name="widget_muted">#FF52525B</color>
+    <color name="widget_tint">#0F18181B</color>
+    <color name="widget_chip_selected">#FF18181B</color>
+    <color name="widget_chip_selected_ink">#FFFFFFFF</color>
+    <color name="widget_badge_ring">#FFFFFFFF</color>
+</resources>

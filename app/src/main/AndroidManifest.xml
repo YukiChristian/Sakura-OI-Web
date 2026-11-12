@@ -61,6 +61,12 @@
                 <action android:name="android.intent.action.ASSIST" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+            <!-- Long press on a headset or Bluetooth earbud button (voice command). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VOICE_COMMAND" />
+                <action android:name="android.speech.action.VOICE_SEARCH_HANDS_FREE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
             <meta-data
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
@@ -98,6 +104,48 @@
             android:exported="false"
             android:label="@string/permissions_title"
             android:theme="@style/Theme.SakuraWebApp" />
+        <activity
+            android:name=".VoiceTrainingActivity"
+            android:exported="false"
+            android:label="@string/training_card_title"
+            android:theme="@style/Theme.SakuraWebApp" />
+        <!-- «Oye, Sakura»: switch, phrase, sensitivity, voice training and shortcuts. -->
+        <activity
+            android:name=".WakeWordSettingsActivity"
+            android:exported="false"
+            android:label="@string/wake_screen_title"
+            android:theme="@style/Theme.SakuraWebApp" />
+        <!-- «¿Con quién quieres hablar?» over the home screen, from the widget's model capsule. -->
+        <activity
+            android:name=".WidgetModelPickerActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:label="@string/picker_title"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+        <!-- One-tap voice mode: quick settings tile and home screen widget. -->
+        <service
+            android:name=".VoiceTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_mic"
+            android:label="@string/tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+        <receiver
+            android:name=".VoiceWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_voice_info" />
+        </receiver>
         <service
             android:name=".WakeWordService"
             android:exported="false"

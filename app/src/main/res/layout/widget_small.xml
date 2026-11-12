@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget de una fila ("Widgets · claro y oscuro", arriba): avatar con insignia de micrófono, "Habla con" y la
+     cápsula del modelo (abre «¿Con quién quieres hablar?»), y los botones redondos Nuevo chat y Último chat. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg_pill"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="10dp"
+    android:paddingEnd="12dp">
+
+    <FrameLayout
+        android:id="@+id/widget_voice"
+        android:layout_width="61dp"
+        android:layout_height="61dp">
+
+        <ImageView
+            android:id="@+id/widget_avatar"
+            android:layout_width="58dp"
+            android:layout_height="58dp"
+            android:importantForAccessibility="no"
+            android:src="@drawable/widget_preview_avatar" />
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="bottom|end"
+            android:background="@drawable/widget_badge"
+            android:importantForAccessibility="no"
+            android:padding="5.5dp"
+            android:src="@drawable/ic_ui_mic"
+            android:tint="#FFFFFFFF" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:text="@string/widget_talk_with"
+            android:textColor="@color/widget_muted"
+            android:textSize="12.5sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/widget_model"
+            android:layout_width="wrap_content"
+            android:layout_height="26dp"
+            android:layout_marginStart="-6dp"
+            android:background="@drawable/widget_capsule_tint"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="6dp"
+            android:paddingEnd="8dp">
+
+            <ImageView
+                android:id="@+id/widget_model_dot"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:importantForAccessibility="no"
+                android:src="@drawable/widget_dot"
+                android:tint="#FFD6336C" />
+
+            <TextView
+                android:id="@+id/widget_model_name"
+                android:layout_width="wrap_content"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Sakura"
+                android:textColor="@color/widget_ink"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <ImageView
+                android:layout_width="13dp"
+                android:layout_height="13dp"
+                android:layout_marginStart="2dp"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_ui_chevron_down"
+                android:tint="@color/widget_muted" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/widget_new_chat"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="6dp"
+        android:background="@drawable/widget_circle_tint"
+        android:contentDescription="@string/shortcut_new_chat"
+        android:padding="10.5dp"
+        android:src="@drawable/ic_ui_chat_plus"
+        android:tint="@color/widget_ink" />
+
+    <ImageView
+        android:id="@+id/widget_last_chat"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="6dp"
+        android:background="@drawable/widget_circle_tint"
+        android:contentDescription="@string/shortcut_last_chat"
+        android:padding="10.5dp"
+        android:src="@drawable/ic_ui_history"
+        android:tint="@color/widget_ink" />
+</LinearLayout>
