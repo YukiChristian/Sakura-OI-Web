@@ -24,17 +24,25 @@ import android.view.animation.PathInterpolator
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * What happens when «Oye, Sakura» is heard, from "Oye, Sakura · proceso de activación": the activation
- * tone plays, the flower blooms at the top centre, a Sakura-pink line runs down both edges of the screen
- * dropping petals, the two strokes meet at the bottom (≈ 900 ms) and the line fades (900–1300 ms).
- * Voice mode starts loading at the first frame, under the animation, so the app is ready sooner.
- * Drawn over any app (and over Sakura itself) when Sakura may draw over other apps.
+ * What happens when «Oye, Sakura» is heard, from "Oye, Sakura · proceso de activación", slowed down
+ * by [WakeActivation.SLOWER] and, for now, without the activation tone: the flower blooms at the top
+ * centre, a Sakura-pink line runs down both edges of the screen dropping petals, the two strokes meet
+ * at the bottom (≈ 1.6 s) and the line fades (1.6–2.4 s). Voice mode starts loading at the first
+ * frame, under the animation, so the app is ready sooner. Drawn over any app (and over Sakura itself)
+ * when Sakura may draw over other apps.
  */
 object WakeActivation {
     private const val TAG = "SakuraWebApp"
-    private const val TOTAL = 1_350L
+    /** The design's timeline (1.35 s) runs this many times slower, to cover the app while it loads. */
+    const val SLOWER = 1.8f
+    /** How long the overlay stays: the slowed timeline plus a short margin. */
+    private val TOTAL = (1_350 * SLOWER).toLong() + 100
+
+    /** The activation tone is off for now; [playTone] is kept for a future sound. */
+    private const val TONE = false
 
     fun playTone(context: Context) {
+        if (!TONE) return
         try {
             val player = MediaPlayer()
             player.setAudioAttributes(
@@ -58,7 +66,7 @@ object WakeActivation {
     fun canDraw(context: Context) = Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(context)
 
     /**
-     * Shows the border animation and, on its first frame, plays the tone and calls [open], so Sakura
+     * Shows the border animation and, on its first frame, calls [open] (and would play the tone), so Sakura
      * loads beneath the animation from the moment it starts. The overlay lives on its own thread:
      * starting Sakura (the WebView) keeps the main thread busy, and the animation must not freeze.
      * If the overlay cannot draw within 700 ms, Sakura opens anyway.
@@ -159,8 +167,9 @@ private class BorderTraceView(context: Context, private val onFirstFrame: () -> 
     private fun start() {
         started = true
         onFirstFrame()
+        // The drawing below uses the design's milliseconds (0–1350); the clock runs SLOWER times slower.
         ValueAnimator.ofFloat(0f, 1350f).apply {
-            duration = 1350
+            duration = (1350 * WakeActivation.SLOWER).toLong()
             interpolator = LinearInterpolator()
             addUpdateListener { t = it.animatedValue as Float; invalidate() }
             start()
