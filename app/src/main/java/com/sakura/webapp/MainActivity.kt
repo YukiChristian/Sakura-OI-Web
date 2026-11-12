@@ -109,6 +109,14 @@ class MainActivity : ComponentActivity() {
         if (granted) showToast(getString(R.string.download_retry))
     }
 
+    /** Fingerprint, face or PIN prompt for the optional app lock (see AppLock). */
+    private val lockGate = AppLock.Gate(this)
+    private var lockCover: View? = null
+    /** Our own file picker is about to cover the app: coming back from it is not leaving the app. */
+    private var skipLockOnce = false
+    /** Voice mode asked for while locked; opened once the user unlocks. */
+    private var requestAfterUnlock: IncomingIntents.Request? = null
+
     private val fileChooserLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -141,6 +149,7 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppLock.install(this)
         ServerAddress.load(this)
         if (!ServerAddress.isConfigured) {
             // No server address yet: run the setup assistant first.
@@ -283,6 +292,7 @@ class MainActivity : ComponentActivity() {
                         putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
                     }
                     return try {
+                        skipLockOnce = true
                         fileChooserLauncher.launch(intent)
                         true
                     } catch (_: Exception) {
@@ -439,6 +449,9 @@ class MainActivity : ComponentActivity() {
             Gravity.TOP
         ))
         setContentView(contentRoot)
+        lockCover = buildLockCover().also {
+            contentRoot.addView(it, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        }
 
         ViewCompat.setOnApplyWindowInsetsListener(contentRoot) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -509,6 +522,12 @@ class MainActivity : ComponentActivity() {
 
     /** Opens what a share, selected text, shortcut or the assistant asked for. */
     private fun openRequest(request: IncomingIntents.Request?) {
+        // Locked: do not start voice mode (and the microphone) behind the lock screen.
+        if (lockCover?.visibility == View.VISIBLE && request?.path?.contains("call=true") == true) {
+            requestAfterUnlock = request
+            if (!pageReady) beginHomeLoad(lastKnownPageUrl())
+            return
+        }
         if (request != null && openInPage(request)) return
         val url = request?.path?.let(ServerAddress::at) ?: lastKnownPageUrl()
         request?.streams?.let(shareBridge::prepare)
@@ -965,6 +984,68 @@ class MainActivity : ComponentActivity() {
         super.onSaveInstanceState(outState)
     }
 
+    override fun onStart() {
+        super.onStart()
+        if (skipLockOnce) {
+            // Back from our own file picker: not leaving the app.
+            skipLockOnce = false
+            if (AppLock.unlocked) AppLock.markUnlocked()
+        } else if (!lockGate.asking && AppLock.needsUnlock(this)) {
+            showLock()
+        }
+    }
+
+    /** Full-screen cover with the logo and "Desbloquear"; asks for the fingerprint right away. */
+    private fun buildLockCover(): View {
+        val ui = SetupUi(this)
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(ui.dp(32), 0, ui.dp(32), 0)
+            setBackgroundColor(ui.ground)
+            isClickable = true
+            visibility = View.GONE
+            addView(ImageView(context).apply {
+                setImageResource(R.drawable.sakura_logo)
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            }, LinearLayout.LayoutParams(ui.dp(72), ui.dp(72)).apply { bottomMargin = ui.dp(16) })
+            addView(ui.text(getString(R.string.lock_title), 22f, ui.ink, bold = true).apply { gravity = Gravity.CENTER })
+            addView(ui.text(getString(R.string.lock_text), 15f, ui.muted).apply {
+                gravity = Gravity.CENTER
+                setPadding(0, ui.dp(6), 0, ui.dp(24))
+            })
+            addView(ui.primaryButton(getString(R.string.lock_unlock)) { askUnlock() }.apply {
+                layoutParams = LinearLayout.LayoutParams(ui.dp(220), ui.dp(52))
+            })
+        }
+    }
+
+    private fun showLock() {
+        val cover = lockCover ?: return
+        cover.visibility = View.VISIBLE
+        cover.bringToFront()
+        askUnlock()
+    }
+
+    private fun askUnlock() {
+        lockGate.ask(getString(R.string.lock_prompt_title), getString(R.string.lock_prompt_text)) { ok ->
+            if (!ok) return@ask
+            AppLock.markUnlocked()
+            lockCover?.visibility = View.GONE
+            requestAfterUnlock?.let { pending ->
+                requestAfterUnlock = null
+                openRequest(pending)
+            }
+            checkForUpdates()
+        }
+    }
+
+    /** Once a day: "Hay una actualización" when GitHub has a newer version. */
+    private fun checkForUpdates() {
+        if (lockCover?.visibility == View.VISIBLE) return
+        Updates.checkIfDue(this) { release -> if (!isFinishing) UpdatePrompt.show(this, release) }
+    }
+
     override fun onPause() {
         if (!::webView.isInitialized) return super.onPause()
         persistLastPageUrl()
@@ -987,6 +1068,9 @@ class MainActivity : ComponentActivity() {
         }
         // Free the microphone for Open WebUI's own voice mode while Sakura is on screen.
         WakeWordService.send(this, WakeWordService.ACTION_PAUSE)
+        // With the lock on, the recent apps screen shows no chat.
+        if (Build.VERSION.SDK_INT >= 33) setRecentsScreenshotEnabled(!AppLock.isEnabled(this))
+        checkForUpdates()
         // Keep the service only while Open WebUI is outside the foreground.
         stopService(Intent(this, SakuraKeepAliveService::class.java))
     }

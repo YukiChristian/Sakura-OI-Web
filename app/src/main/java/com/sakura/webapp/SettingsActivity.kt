@@ -36,9 +36,27 @@ class SettingsActivity : ComponentActivity() {
     private lateinit var wakeTitle: TextView
     private lateinit var wakeDot: View
     private lateinit var wakeStatus: TextView
+    private val lockGate = AppLock.Gate(this)
+    private lateinit var lockSwitch: PillSwitch
+    private lateinit var lockDot: View
+    private lateinit var lockStatus: TextView
+    private lateinit var lockDelayBox: View
+    private lateinit var lockDelay: SetupParts.Segmented
+    private lateinit var lockMissing: View
+    private lateinit var updateStatus: TextView
+    private lateinit var updateButton: TextView
+    private lateinit var updateNowButton: TextView
+    private lateinit var updateAuto: PillSwitch
+    private var checking = false
+    private lateinit var pushSwitch: PillSwitch
+    private lateinit var pushDot: View
+    private lateinit var pushStatus: TextView
+    private lateinit var pushInstall: View
+    private val pushPoll = android.os.Handler(android.os.Looper.getMainLooper())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppLock.install(this)
         ServerAddress.load(this)
         ui = SetupUi(this)
         parts = SetupParts(ui)
@@ -101,6 +119,9 @@ class SettingsActivity : ComponentActivity() {
 
         // «Oye, Sakura» and the one-tap shortcuts: a summary that opens their screen.
         column.addView(wakeEntry())
+        column.addView(lockCard())
+        column.addView(pushCard())
+        column.addView(updatesCard())
 
         column.addView(ui.footer(getString(R.string.settings_version, BuildConfig.VERSION_NAME)).apply {
             gravity = Gravity.CENTER
@@ -144,9 +165,232 @@ class SettingsActivity : ComponentActivity() {
         })
     }
 
+    override fun onStart() {
+        super.onStart()
+        // Locked app: the settings (addresses, the lock itself) need the fingerprint too.
+        if (!lockGate.asking && AppLock.needsUnlock(this)) {
+            lockGate.ask(getString(R.string.lock_prompt_title), getString(R.string.lock_prompt_text)) { ok ->
+                if (ok) AppLock.markUnlocked() else finish()
+            }
+        }
+    }
+
+
+    // ── Bloqueo con huella ───────────────────────────────────────────────────────────────────────
+
+    private fun panel(title: String, dot: View, status: TextView, switch: View) = LinearLayout(this).apply {
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(ui.dp(14), ui.dp(12), ui.dp(14), ui.dp(12))
+        background = GradientDrawable().apply {
+            cornerRadius = ui.dp(16).toFloat()
+            setColor(parts.panel)
+            setStroke(ui.dp(1), parts.panelRing)
+        }
+        addView(LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(ui.text(title, 15.5f, ui.ink, semibold = true))
+            addView(LinearLayout(context).apply {
+                gravity = Gravity.CENTER_VERTICAL
+                addView(dot, LinearLayout.LayoutParams(ui.dp(7), ui.dp(7)).apply { marginEnd = ui.dp(6) })
+                addView(status)
+            })
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        addView(switch, LinearLayout.LayoutParams(ui.dp(52), ui.dp(30)).apply { marginStart = ui.dp(12) })
+        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            .apply { topMargin = ui.dp(14) }
+    }
+
+    private fun pillSwitch() = PillSwitch(this, ui.ink, if (ui.night) 0xFF3F3F46.toInt() else 0xFFD4D4D8.toInt(),
+        if (ui.night) 0xFF18181B.toInt() else android.graphics.Color.WHITE)
+
+    private fun dotColor(view: View, color: Int) {
+        view.background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(color) }
+    }
+
+    private fun lockCard() = ui.card().apply {
+        addView(ui.cardHeader(R.drawable.ic_ui_fingerprint, getString(R.string.lock_heading), getString(R.string.lock_description),
+            chip = getString(R.string.setup_optional)))
+        lockDot = View(context)
+        lockStatus = ui.text("", 13f, ui.muted, semibold = true)
+        lockSwitch = pillSwitch().apply {
+            contentDescription = getString(R.string.lock_switch)
+            onToggle = { on -> toggleLock(on) }
+        }
+        addView(panel(getString(R.string.lock_switch), lockDot, lockStatus, lockSwitch))
+        lockDelay = parts.Segmented(listOf(getString(R.string.lock_delay_now), getString(R.string.lock_delay_1), getString(R.string.lock_delay_5))) { i ->
+            AppLock.setDelayMs(this@SettingsActivity, AppLock.DELAYS[i])
+        }
+        lockDelayBox = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(ui.text(getString(R.string.lock_delay_title), 15.5f, ui.ink, semibold = true).apply {
+                setPadding(0, ui.dp(14), 0, ui.dp(8))
+            })
+            addView(lockDelay.view)
+        }
+        addView(lockDelayBox)
+        lockMissing = parts.banner(getString(R.string.lock_no_screen_lock), getString(R.string.lock_open_security)) {
+            runCatching { startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS)) }
+        }
+        addView(lockMissing, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            .apply { topMargin = ui.dp(12) })
+    }
+
+    /** Turning the lock on or off asks for the fingerprint, face or PIN first. */
+    private fun toggleLock(on: Boolean) {
+        lockGate.ask(
+            getString(if (on) R.string.lock_turn_on_title else R.string.lock_turn_off_title),
+            getString(R.string.lock_prompt_text)
+        ) { ok ->
+            if (ok) {
+                AppLock.setEnabled(this, on)
+                AppLock.markUnlocked()
+            }
+            refreshLock()
+        }
+    }
+
+    private fun refreshLock() {
+        val secure = AppLock.deviceSecure(this)
+        val on = AppLock.isEnabled(this) && secure
+        lockSwitch.set(on)
+        lockSwitch.isEnabled = secure
+        lockSwitch.alpha = if (secure) 1f else 0.4f
+        lockStatus.text = getString(if (on) R.string.lock_state_on else R.string.lock_state_off)
+        val color = if (on) parts.green else ui.faint
+        lockStatus.setTextColor(color)
+        dotColor(lockDot, color)
+        lockDelayBox.visibility = if (on) View.VISIBLE else View.GONE
+        lockDelay.select(AppLock.DELAYS.indexOf(AppLock.delayMs(this)).coerceAtLeast(0))
+        lockMissing.visibility = if (secure) View.GONE else View.VISIBLE
+    }
+
+    // ── Avisos con la app cerrada ────────────────────────────────────────────────────────────────
+
+    private fun pushCard() = ui.card().apply {
+        addView(ui.cardHeader(R.drawable.ic_ui_bell, getString(R.string.push_heading), getString(R.string.push_description),
+            chip = getString(R.string.setup_optional)))
+        pushDot = View(context)
+        pushStatus = ui.text("", 13f, ui.muted, semibold = true)
+        pushSwitch = pillSwitch().apply {
+            contentDescription = getString(R.string.push_switch)
+            onToggle = { on ->
+                if (on) PushNotices.enable(this@SettingsActivity) else PushNotices.disable(this@SettingsActivity)
+                refreshPush()
+            }
+        }
+        addView(panel(getString(R.string.push_switch), pushDot, pushStatus, pushSwitch))
+        pushInstall = parts.darkButton(getString(R.string.push_install)) { installNtfy() }.apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ui.dp(34)).apply { topMargin = ui.dp(12) }
+        }
+        addView(pushInstall)
+        addView(ui.text(getString(R.string.push_privacy), 12.5f, ui.faint).apply { setPadding(0, ui.dp(12), 0, 0) })
+    }
+
+    private fun installNtfy() {
+        for (uri in listOf("market://details?id=${PushNotices.NTFY_PACKAGE}", "https://ntfy.sh/docs/subscribe/phone/")) {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(uri)))
+                return
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    private fun refreshPush() {
+        // ntfy was installed meanwhile: register now.
+        if (PushNotices.isEnabled(this) && PushNotices.state(this) == PushNotices.State.NO_DISTRIBUTOR &&
+            PushNotices.distributors(this).isNotEmpty()
+        ) PushNotices.enable(this)
+        val state = PushNotices.state(this)
+        pushSwitch.set(PushNotices.isEnabled(this))
+        val (text, color) = when (state) {
+            PushNotices.State.OFF -> getString(R.string.push_state_off) to ui.faint
+            PushNotices.State.CONNECTING -> getString(R.string.push_state_connecting) to parts.blue
+            PushNotices.State.ON -> getString(R.string.push_state_on, PushNotices.pushHost(this) ?: "ntfy") to parts.green
+            PushNotices.State.NO_DISTRIBUTOR -> getString(R.string.push_state_no_app) to ui.error
+            PushNotices.State.NOT_ADMIN -> getString(R.string.push_state_not_admin) to ui.error
+            PushNotices.State.FAILED -> getString(R.string.push_state_failed) to ui.error
+        }
+        pushStatus.text = text
+        pushStatus.setTextColor(color)
+        dotColor(pushDot, color)
+        pushInstall.visibility = if (state == PushNotices.State.NO_DISTRIBUTOR) View.VISIBLE else View.GONE
+        pushPoll.removeCallbacksAndMessages(null)
+        if (state == PushNotices.State.CONNECTING) pushPoll.postDelayed({ refreshPush() }, 1_000)
+    }
+
+    // ── Actualizaciones ──────────────────────────────────────────────────────────────────────────
+
+    private fun updatesCard() = ui.card().apply {
+        addView(ui.cardHeader(R.drawable.ic_ui_refresh, getString(R.string.updates_heading), getString(R.string.updates_description)))
+        updateStatus = ui.text("", 13.5f, ui.muted).apply { setPadding(0, ui.dp(12), 0, 0) }
+        addView(updateStatus)
+        updateButton = parts.ghostButton(getString(R.string.updates_check)) { checkNow() }
+        updateNowButton = parts.darkButton("") {
+            Updates.available(this@SettingsActivity)?.let { UpdatePrompt.show(this@SettingsActivity, it) }
+        }
+        addView(LinearLayout(context).apply {
+            setPadding(0, ui.dp(12), 0, 0)
+            addView(updateButton)
+            addView(updateNowButton, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ui.dp(34)).apply { marginStart = ui.dp(8) })
+        })
+        updateAuto = pillSwitch().apply {
+            contentDescription = getString(R.string.updates_auto)
+            onToggle = { on -> Updates.setAutomatic(this@SettingsActivity, on); refreshUpdates() }
+        }
+        val autoDot = View(context)
+        val autoText = ui.text(getString(R.string.updates_auto_text), 13f, ui.faint, semibold = true)
+        dotColor(autoDot, ui.faint)
+        addView(panel(getString(R.string.updates_auto), autoDot, autoText, updateAuto))
+    }
+
+    private fun checkNow() {
+        if (checking) return
+        checking = true
+        updateStatus.text = getString(R.string.updates_checking)
+        updateStatus.setTextColor(parts.blue)
+        Thread {
+            val result = runCatching { Updates.fetch(this) }
+            runOnUiThread {
+                checking = false
+                if (result.isFailure) {
+                    updateStatus.text = getString(R.string.updates_failed)
+                    updateStatus.setTextColor(ui.error)
+                    return@runOnUiThread
+                }
+                refreshUpdates()
+                Updates.available(this)?.let { UpdatePrompt.show(this, it) }
+            }
+        }.start()
+    }
+
+    private fun refreshUpdates() {
+        if (checking) return
+        val available = Updates.available(this)
+        val last = Updates.lastCheck(this)
+        val checked = if (last == 0L) getString(R.string.updates_never)
+        else android.text.format.DateUtils.getRelativeTimeSpanString(
+            last, System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS
+        ).toString()
+        if (available != null) {
+            updateStatus.text = getString(R.string.updates_available, available.version, Updates.current)
+            updateStatus.setTextColor(parts.blue)
+            updateNowButton.text = getString(R.string.updates_install, available.version)
+            updateNowButton.visibility = View.VISIBLE
+        } else {
+            updateStatus.text = getString(R.string.updates_current, BuildConfig.VERSION_NAME, checked)
+            updateStatus.setTextColor(ui.muted)
+            updateNowButton.visibility = View.GONE
+        }
+        updateAuto.set(Updates.isAutomatic(this))
+    }
+
     override fun onResume() {
         super.onResume()
         ServerAddress.load(this)
+        refreshLock()
+        refreshPush()
+        refreshUpdates()
         connectionText.text = connectionSummary()
         refreshPermissions()
         // After an update or a reboot the listener is not running yet; start it here too.

@@ -16,6 +16,17 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!-- Installs the update downloaded from GitHub Releases (Android asks the user first). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Optional app lock with the fingerprint or face (AppLock). -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <!-- Finds UnifiedPush distributors (ntfy) for notices while the app is closed. -->
+    <queries>
+        <intent>
+            <action android:name="org.unifiedpush.android.distributor.REGISTER" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -109,6 +120,17 @@
             android:exported="false"
             android:label="@string/training_card_title"
             android:theme="@style/Theme.SakuraWebApp" />
+        <!-- Push address and messages from the UnifiedPush distributor (ntfy); checked by token. -->
+        <receiver
+            android:name=".PushReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="org.unifiedpush.android.connector.MESSAGE" />
+                <action android:name="org.unifiedpush.android.connector.NEW_ENDPOINT" />
+                <action android:name="org.unifiedpush.android.connector.UNREGISTERED" />
+                <action android:name="org.unifiedpush.android.connector.REGISTRATION_FAILED" />
+            </intent-filter>
+        </receiver>
         <!-- «Oye, Sakura»: switch, phrase, sensitivity, voice training and shortcuts. -->
         <activity
             android:name=".WakeWordSettingsActivity"
