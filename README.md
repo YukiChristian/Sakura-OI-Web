@@ -73,7 +73,7 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 - Voz de ejemplo (opcional): Qwen3-TTS Fast compatible con API de OpenAI, modelo **qwen3-tts-clone-0.6b**, puerto local **5052**. Puedes usar otro TTS compatible o no configurar voz.
 - Android de referencia: Android 16 (API 36). La app declara minSdk 23 (Android 6.0), targetSdk 36 (Android 16) y compileSdk 37 (Android 17/API 37). compileSdk es la plataforma usada al compilar; no significa que el teléfono necesite Android 17.
 - Herramientas fijadas en el proyecto: Android Gradle Plugin 9.4.1, Gradle 9.6.0, Kotlin 2.2.10 y JDK 17 para ejecutar Gradle. El código Java usa compatibilidad de lenguaje 11.
-- La activación por palabra “Oye, Sakura” queda como idea futura; no está implementada.
+- Ideas en desarrollo y pendientes, incluida la activación por voz “Oye, Sakura”, en [docs/IDEAS.md](docs/IDEAS.md).
 
 ## 🆕 Novedades de la versión 0.3.2
 
@@ -138,6 +138,10 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 - **Tema oscuro corregido:** la barra de arriba (hora y notificaciones) y la de abajo (la línea de gestos de Android) se quedaban blancas al cambiar Open WebUI al tema oscuro. Ahora toman el color de fondo de la página y cambian al momento cuando cambias de tema. Las pantallas de carga y de error, y la ventana de inicio, siguen el modo oscuro del teléfono.
 - **Direcciones sin puerto:** la app reconoce como propia una URL como `https://<tu-pc>.<tu-tailnet>.ts.net/` (puerto 443 implícito), necesaria para el micrófono, las notificaciones y el color de las barras al usar Tailscale.
 - **Documentación:** nombre e identidad actualizados, capturas nuevas de carga, error, tema oscuro e icono, y sección "Barras del sistema y tema oscuro" en [docs/ANDROID.md](docs/ANDROID.md#barras-del-sistema-y-tema-oscuro).
+
+## 🗺️ Ideas y hoja de ruta
+
+Las próximas funciones están en [docs/IDEAS.md](docs/IDEAS.md): compartir con Sakura desde cualquier app, "Preguntar a Sakura" al seleccionar texto, accesos directos del icono, Sakura como asistente del teléfono, cambio automático entre la red de casa y la exterior, aviso de conexión perdida, deslizar para recargar, avisos aunque Android cierre la app, bloqueo con huella, APK firmado con aviso de actualización y la activación por voz "Oye, Sakura".
 
 ## 💡 Guías del servidor
 
