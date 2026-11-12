@@ -5,8 +5,5 @@
     <color name="widget_ink">#FF18181B</color>
     <color name="widget_muted">#FF52525B</color>
     <color name="widget_tint">#FFF1F1F3</color>
-    <color name="widget_chip_selected">#FF18181B</color>
-    <color name="widget_chip_selected_ink">#FFFFFFFF</color>
-    <color name="widget_badge_ring">#FFFFFFFF</color>
     <color name="widget_tint_ring">#FFDCDCE0</color>
 </resources>

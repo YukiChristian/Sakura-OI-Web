@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- "App Android · widgets y «Oye, Sakura»": nace en 4 × 2 (grande, con los chips de modelos) y se puede achicar a una
-     fila (cápsula del modelo y botones redondos). -->
+<!-- "Widgets · 1, 3 y 8 modelos, con Notas y Calendario": nace en 4 × 2 (grande, con la fila de modelos y la barra
+     Nuevo · Calendario · Notas · Último); de una fila es el mediano y de 2 × 2 el chico. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/widget_description"
     android:initialLayout="@layout/widget_large"
     android:minWidth="250dp"
     android:minHeight="180dp"
-    android:minResizeWidth="250dp"
+    android:minResizeWidth="140dp"
     android:minResizeHeight="50dp"
     android:previewLayout="@layout/widget_large"
     android:resizeMode="horizontal|vertical"

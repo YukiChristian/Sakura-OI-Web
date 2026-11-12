@@ -12,7 +12,7 @@ import android.webkit.JavascriptInterface
  * A sign-out on the address where the token was saved is respected: the copy is dropped.
  */
 class SessionSync(
-    context: Context,
+    private val context: Context,
     private val isTrustedPage: () -> Boolean,
     /** The first sign-in was seen: the home address can be used from now on. */
     private val onFirstToken: () -> Unit,
@@ -33,6 +33,8 @@ class SessionSync(
                 prefs.edit().putString(KEY_TOKEN, token).putString(KEY_ORIGIN, origin).remove(KEY_COPIED_TO).apply()
                 if (savedToken == null) onFirstToken()
             }
+            // Signed in: keep the widgets' list of models current.
+            ChatModels.refresh(context)
             return ""
         }
         if (savedToken == null) return ""

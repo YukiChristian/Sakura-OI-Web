@@ -2,6 +2,20 @@
 
 Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 0.8.7 (versionCode 57) — 12 de noviembre de 2026
+
+Sigue el diseño "Widgets · 1, 3 y 8 modelos, con Notas y Calendario". Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v0.8.7).
+
+### Cambiado
+- **Widget rediseñado en tres tamaños**, que se eligen solos según cómo lo dejes en la pantalla de inicio (`VoiceWidgetProvider.update`):
+  - **Grande 4 × 2** (`widget_large.xml`): avatar, nombre del modelo con ▾ y el micrófono azul; una fila con los avatares de los modelos (no aparece si hay uno solo; caben hasta 7 y, si hay más, el último lugar es «+N»; el elegido lleva un aro de su color); y la barra **Nuevo · Calendario · Notas · Último**. Si el launcher le da menos de 200 dp de alto, la fila de avatares se oculta para que no se corte.
+  - **Mediano de una fila** (`widget_medium.xml`): micrófono, modelo y los botones redondos Nuevo chat, Calendario y Notas (los que quepan, en ese orden).
+  - **Chico 2 × 2** (`widget_small.xml`): avatar y micrófono, modelo, Nuevo chat y Calendario.
+- Los modelos del widget son los visibles en tu Open WebUI (Sakura, Lain y Yoko primero). `ChatModels` guarda la lista y la vuelve a leer cuando la app ve tu sesión (cada 30 min como máximo) o al abrir el selector; los widgets se redibujan si cambió. Los modelos sin imagen muestran su inicial en un color propio, sin el prefijo de la conexión (“laín.qwen-27b” → “qwen-27b”).
+- Tocar el nombre (▾) o «+N» abre **«¿Con quién quieres hablar?»**, ahora una cuadrícula de cinco columnas con todos los modelos y “N modelos · el widget recordará tu elección”. Tocar un avatar de la fila abre un chat nuevo con ese modelo y lo deja como modelo del widget; el micrófono sigue siendo el único acceso al modo de voz.
+- **Calendario** y **Notas** abren `/calendar` y `/notes` de Open WebUI (`IncomingIntents.ACTION_CALENDAR` y `ACTION_NOTES`), dentro de la página si ya está cargada.
+- Se quitaron los chips, la cápsula, la insignia y los botones oscuros del widget anterior y sus imágenes de vista previa.
+
 ## 0.8.6 (versionCode 56) — 12 de noviembre de 2026
 
 Reúne las compilaciones locales 0.8.1 a 0.8.5. Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v0.8.6).

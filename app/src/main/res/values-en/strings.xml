@@ -132,7 +132,7 @@
     <string name="quick_more">Also: the “Talk” button in the “Oye, Sakura” notification and, with Sakura as your assistant, a long press on your headset button.</string>
     <string name="tile_label">Talk to Sakura</string>
     <string name="widget_label">Talk to Sakura</string>
-    <string name="widget_description">Talk to Sakura, Lain or Yoko in voice mode, or open a new chat or your last one.</string>
+    <string name="widget_description">Talk to your models in voice mode, or open a new chat, the calendar, your notes or your last chat.</string>
     <string name="settings_title_short">Settings</string>
     <string name="wake_screen_title">Oye, Sakura</string>
     <string name="wake_entry_description">Open voice mode by saying the phrase, plus one-tap shortcuts.</string>
@@ -189,14 +189,9 @@
     <string name="training_would_not">No match</string>
     <string name="training_footer_short">Everything runs on the phone; no audio is sent.</string>
     <string name="picker_title">Who do you want to talk to?</string>
-    <string name="picker_subtitle">The widget will remember your choice.</string>
-    <string name="picker_all">See all models</string>
-    <string name="picker_loading">Loading models…</string>
     <string name="picker_failed">Could not load the list. Open Sakura and sign in.</string>
     <string name="picker_cancel">Cancel</string>
-    <string name="widget_talk_with">Talk to</string>
     <string name="widget_talk_to">Talk to %1$s</string>
-    <string name="widget_preview_title">Talk to Sakura</string>
     <string name="lock_heading">Fingerprint lock</string>
     <string name="lock_description">Asks for your fingerprint, face or PIN when opening Sakura, since it opens all your chats.</string>
     <string name="lock_switch">Lock Sakura</string>
@@ -248,4 +243,14 @@
     <string name="push_default_text">Tap to see the reply.</string>
     <string name="push_failed_text">The reply could not finish.</string>
     <string name="widget_open_chat">Chat with %1$s</string>
+    <string name="widget_action_new">New</string>
+    <string name="widget_action_calendar">Calendar</string>
+    <string name="widget_action_notes">Notes</string>
+    <string name="widget_action_last">Last</string>
+    <string name="widget_change_model">%1$s, change model</string>
+    <string name="widget_more_models">%1$d more models</string>
+    <plurals name="picker_count">
+        <item quantity="one">%1$d model · the widget will remember your choice</item>
+        <item quantity="other">%1$d models · the widget will remember your choice</item>
+    </plurals>
 </resources>

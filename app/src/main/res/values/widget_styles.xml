@@ -1,57 +1,81 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Shared pieces of the large widget: model chips and the Nuevo chat / Último chat buttons. -->
+<!-- Shared pieces of the widgets ("Widgets · 1, 3 y 8 modelos, con Notas y Calendario"). -->
 <resources>
-    <style name="WidgetChip">
-        <item name="android:layout_width">0dp</item>
-        <item name="android:layout_height">match_parent</item>
-        <item name="android:layout_weight">1</item>
-        <item name="android:background">@drawable/widget_chip</item>
-        <item name="android:gravity">center_vertical</item>
-        <item name="android:orientation">horizontal</item>
-        <item name="android:paddingStart">5dp</item>
-        <item name="android:paddingEnd">8dp</item>
+    <style name="WidgetMic">
+        <item name="android:background">@drawable/widget_circle_blue</item>
+        <item name="android:src">@drawable/ic_ui_mic</item>
+        <item name="android:tint">#FFFFFFFF</item>
     </style>
 
-    <style name="WidgetChipAvatar">
-        <item name="android:layout_width">34dp</item>
-        <item name="android:layout_height">34dp</item>
-        <item name="android:importantForAccessibility">no</item>
-    </style>
-
-    <style name="WidgetChipName">
+    <!-- The ▾ is part of the name (drawableEnd), so it stays right after it; a long name is cut with "…". -->
+    <style name="WidgetModelName">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_marginStart">7dp</item>
+        <item name="android:drawablePadding">2dp</item>
+        <item name="android:drawableTint">@color/widget_muted</item>
         <item name="android:ellipsize">end</item>
         <item name="android:maxLines">1</item>
         <item name="android:textColor">@color/widget_ink</item>
-        <item name="android:textSize">14sp</item>
         <item name="android:textStyle">bold</item>
     </style>
 
-    <style name="WidgetButton">
+    <!-- A 34 dp avatar in a 42 dp slot: the selected one adds its ring in the 4 dp around it. -->
+    <style name="WidgetSlot">
+        <item name="android:layout_width">42dp</item>
+        <item name="android:layout_height">42dp</item>
+    </style>
+
+    <style name="WidgetBarCell">
         <item name="android:layout_width">0dp</item>
         <item name="android:layout_height">match_parent</item>
         <item name="android:layout_weight">1</item>
-        <item name="android:background">@drawable/widget_button_strong</item>
         <item name="android:gravity">center</item>
-        <item name="android:orientation">horizontal</item>
+        <item name="android:orientation">vertical</item>
     </style>
 
-    <style name="WidgetButtonIcon">
-        <item name="android:layout_width">21dp</item>
-        <item name="android:layout_height">21dp</item>
+    <style name="WidgetBarIcon">
+        <item name="android:layout_width">20dp</item>
+        <item name="android:layout_height">20dp</item>
         <item name="android:importantForAccessibility">no</item>
-        <item name="android:tint">@color/widget_chip_selected_ink</item>
+        <item name="android:tint">@color/widget_ink</item>
     </style>
 
-    <style name="WidgetButtonLabel">
+    <style name="WidgetBarLabel">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_marginStart">8dp</item>
+        <item name="android:layout_marginTop">5dp</item>
         <item name="android:maxLines">1</item>
-        <item name="android:textColor">@color/widget_chip_selected_ink</item>
-        <item name="android:textSize">16sp</item>
-        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/widget_ink</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:importantForAccessibility">no</item>
+    </style>
+
+    <style name="WidgetBarDivider">
+        <item name="android:layout_width">1dp</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:layout_marginTop">12dp</item>
+        <item name="android:layout_marginBottom">12dp</item>
+        <item name="android:background">@color/widget_tint_ring</item>
+        <item name="android:importantForAccessibility">no</item>
+    </style>
+
+    <style name="WidgetRound">
+        <item name="android:layout_width">42dp</item>
+        <item name="android:layout_height">42dp</item>
+        <item name="android:layout_marginStart">8dp</item>
+        <item name="android:background">@drawable/widget_circle_tint</item>
+        <item name="android:padding">11.5dp</item>
+        <item name="android:tint">@color/widget_ink</item>
+    </style>
+
+    <style name="WidgetSquare">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:background">@drawable/widget_button_tint</item>
+        <item name="android:padding">12.5dp</item>
+        <item name="android:scaleType">fitCenter</item>
+        <item name="android:tint">@color/widget_ink</item>
     </style>
 </resources>

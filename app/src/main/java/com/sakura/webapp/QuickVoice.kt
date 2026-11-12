@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.Bundle
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
+import android.view.View
 import android.widget.RemoteViews
 
 /** Ways to open voice mode with one tap: the quick settings tile and the home screen widgets. */
@@ -57,16 +58,18 @@ class VoiceTileService : TileService() {
 }
 
 /**
- * Home screen widget, from "App Android · widgets y «Oye, Sakura»". One row: avatar with a mic badge
- * (voice mode), "Habla con" and the model capsule (opens «¿Con quién quieres hablar?»), and round
- * Nuevo chat / Último chat buttons. Two rows or more: "Habla con <modelo>" (opens a chat with it) and
- * the blue mic (the only way to voice mode there), Sakura / Lain / Yoko as chips that open a chat with
- * each and make it the widget's model, and the two chat buttons.
- * Each widget remembers its model; voice mode and new chats open with it.
+ * Home screen widget, from "Widgets · 1, 3 y 8 modelos, con Notas y Calendario". Its size picks the layout:
+ * large (4 × 2): avatar, model name and the blue mic, a row with the avatars of the models (not shown with
+ * a single model; when they do not fit, the last place becomes «+N»), and the bar Nuevo · Calendario ·
+ * Notas · Último. Medium (one row): the mic, the model and round Nuevo chat, Calendario and Notas buttons.
+ * Small (2 × 2): avatar and mic, the model, Nuevo chat and Calendario.
+ * The model name (▾) opens «¿Con quién quieres hablar?»; the mic is the only way to voice mode; an avatar
+ * of the row opens a new chat with that model, which also becomes the widget's model.
  */
 class VoiceWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         ids.forEach { update(context, manager, it) }
+        ChatModels.refresh(context)
     }
 
     override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, options: Bundle) {
@@ -77,30 +80,16 @@ class VoiceWidgetProvider : AppWidgetProvider() {
         ids.forEach { ChatModels.forget(context, it) }
     }
 
-    override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == ACTION_SELECT) {
-            val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
-            val model = intent.getStringExtra(EXTRA_MODEL_ID)
-            if (id != AppWidgetManager.INVALID_APPWIDGET_ID && model != null) {
-                ChatModels.setForWidget(context, id, ChatModels.find(model, intent.getStringExtra(EXTRA_MODEL_NAME) ?: model))
-                update(context, AppWidgetManager.getInstance(context), id)
-            }
-            return
-        }
-        super.onReceive(context, intent)
-    }
-
     companion object {
-        private const val ACTION_SELECT = "com.sakura.webapp.widget.SELECT_MODEL"
-        private const val EXTRA_MODEL_ID = "model_id"
         const val EXTRA_MODEL_NAME = "model_name"
-        private val CHIPS = listOf(
-            Triple(R.id.widget_chip_0, R.id.widget_chip_avatar_0, R.id.widget_chip_name_0),
-            Triple(R.id.widget_chip_1, R.id.widget_chip_avatar_1, R.id.widget_chip_name_1),
-            Triple(R.id.widget_chip_2, R.id.widget_chip_avatar_2, R.id.widget_chip_name_2),
+        private val SLOTS = intArrayOf(
+            R.id.widget_slot_0, R.id.widget_slot_1, R.id.widget_slot_2, R.id.widget_slot_3,
+            R.id.widget_slot_4, R.id.widget_slot_5, R.id.widget_slot_6,
         )
+        /** Below this height (dp) the large widget leaves out the row of avatars so the rest fits. */
+        private const val ROW_MIN_HEIGHT = 200
 
-        /** Redraws every widget, e.g. after «Oye, Sakura» is turned on or off. */
+        /** Redraws every widget, e.g. after the list of models changed. */
         fun refreshAll(context: Context) {
             val manager = AppWidgetManager.getInstance(context) ?: return
             manager.getAppWidgetIds(ComponentName(context, VoiceWidgetProvider::class.java))
@@ -108,62 +97,104 @@ class VoiceWidgetProvider : AppWidgetProvider() {
         }
 
         fun update(context: Context, manager: AppWidgetManager, id: Int) {
+            // Portrait size in dp (0 before the launcher reports it: the large layout, as placed).
             val options = manager.getAppWidgetOptions(id)
+            val width = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH) ?: 0
             val height = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT) ?: 0
-            val large = height >= 180
+            val layout = when {
+                height in 1 until 120 -> R.layout.widget_medium
+                width in 1 until 250 -> R.layout.widget_small
+                else -> R.layout.widget_large
+            }
+            if (BuildConfig.DEBUG) android.util.Log.d("SakuraWidget", "widget $id: $width x $height dp")
             val model = ChatModels.forWidget(context, id)
+            val models = ChatModels.available(context).let { list -> if (list.any { it.id == model.id }) list else list + model }
+            val several = models.size > 1
             val density = context.resources.displayMetrics.density
-            val views = RemoteViews(context.packageName, if (large) R.layout.widget_large else R.layout.widget_small)
+            fun px(dp: Int) = (dp * density).toInt()
+            val views = RemoteViews(context.packageName, layout)
             // Request codes are unique per widget and button, so each keeps its own PendingIntent.
-            val code = id * 16
-            val voice = QuickVoice.pendingIntent(context, code, model.id)
-            views.setOnClickPendingIntent(R.id.widget_voice, voice)
-            views.setContentDescription(R.id.widget_voice, context.getString(R.string.widget_talk_to, model.name))
+            val code = id * 32
+            val picker = QuickVoice.activity(context, code + 11, WidgetModelPickerActivity.intent(context, id))
+            val chat = chatIntent(context, id, model, code + 10)
+
+            views.setOnClickPendingIntent(R.id.widget_mic, QuickVoice.pendingIntent(context, code, model.id))
+            views.setContentDescription(R.id.widget_mic, context.getString(R.string.widget_talk_to, model.name))
+            val avatarDp = when (layout) { R.layout.widget_large -> 48; R.layout.widget_small -> 46; else -> 30 }
+            views.setImageViewBitmap(R.id.widget_avatar, ChatModels.avatar(context, model, px(avatarDp)))
+            views.setTextViewText(R.id.widget_model_name, ChatModels.shortName(model))
+            val arrow = if (layout == R.layout.widget_large) R.drawable.widget_arrow_17 else R.drawable.widget_arrow_15
+            views.setTextViewCompoundDrawablesRelative(R.id.widget_model_name, 0, 0, if (several) arrow else 0, 0)
+            views.setOnClickPendingIntent(R.id.widget_model, if (several) picker else chat)
+            views.setContentDescription(
+                R.id.widget_model,
+                context.getString(if (several) R.string.widget_change_model else R.string.widget_open_chat, model.name)
+            )
             views.setOnClickPendingIntent(
                 R.id.widget_new_chat,
                 QuickVoice.activity(context, code + 1, QuickVoice.appIntent(context, IncomingIntents.ACTION_NEW_CHAT, model.id))
             )
-            views.setOnClickPendingIntent(
-                R.id.widget_last_chat,
-                QuickVoice.activity(context, code + 2, QuickVoice.appIntent(context, IncomingIntents.ACTION_LAST_CHAT))
-            )
-            if (large) {
-                views.setImageViewBitmap(R.id.widget_avatar, ChatModels.avatar(context, model, (60 * density).toInt(), ring = true))
-                views.setTextViewText(R.id.widget_title, context.getString(R.string.widget_talk_to, model.name))
-                // Voice mode only from the blue mic; the avatar and the name open a chat with the model.
-                views.setOnClickPendingIntent(R.id.widget_mic, voice)
-                views.setContentDescription(R.id.widget_mic, context.getString(R.string.widget_talk_to, model.name))
-                views.setOnClickPendingIntent(R.id.widget_voice, chatIntent(context, id, model, code + 7))
-                views.setContentDescription(R.id.widget_voice, context.getString(R.string.widget_open_chat, model.name))
-                ChatModels.PERSONAS.forEachIndexed { i, persona ->
-                    val (chip, avatar, name) = CHIPS[i]
-                    val selected = persona.id == model.id
-                    views.setImageViewBitmap(avatar, ChatModels.avatar(context, persona, (34 * density).toInt()))
-                    views.setTextViewText(name, persona.name)
-                    views.setInt(chip, "setBackgroundResource", if (selected) R.drawable.widget_chip_selected else R.drawable.widget_chip)
-                    if (Build.VERSION.SDK_INT >= 31) {
-                        views.setColorStateList(
-                            name, "setTextColor", if (selected) R.color.widget_chip_selected_ink else R.color.widget_ink
-                        )
-                    } else {
-                        views.setTextColor(
-                            name, context.getColor(if (selected) R.color.widget_chip_selected_ink else R.color.widget_ink)
-                        )
-                    }
-                    views.setOnClickPendingIntent(chip, chatIntent(context, id, persona, code + 3 + i))
-                    views.setContentDescription(chip, context.getString(R.string.widget_open_chat, persona.name))
+            views.setOnClickPendingIntent(R.id.widget_calendar, page(context, IncomingIntents.ACTION_CALENDAR, code + 12))
+
+            when (layout) {
+                R.layout.widget_large -> {
+                    views.setOnClickPendingIntent(R.id.widget_avatar, chat)
+                    views.setOnClickPendingIntent(R.id.widget_notes, page(context, IncomingIntents.ACTION_NOTES, code + 13))
+                    views.setOnClickPendingIntent(R.id.widget_last_chat, page(context, IncomingIntents.ACTION_LAST_CHAT, code + 2))
+                    val showRow = several && (height == 0 || height >= ROW_MIN_HEIGHT)
+                    views.setViewVisibility(R.id.widget_slots, if (showRow) View.VISIBLE else View.GONE)
+                    if (showRow) fillSlots(context, views, id, code, model, models, width, picker)
                 }
-            } else {
-                views.setImageViewBitmap(R.id.widget_avatar, ChatModels.avatar(context, model, (58 * density).toInt()))
-                views.setTextViewText(R.id.widget_model_name, model.name)
-                views.setInt(R.id.widget_model_dot, "setColorFilter", model.color)
-                views.setOnClickPendingIntent(
-                    R.id.widget_model,
-                    QuickVoice.activity(context, code + 6, WidgetModelPickerActivity.intent(context, id))
-                )
+                R.layout.widget_medium -> {
+                    views.setOnClickPendingIntent(R.id.widget_notes, page(context, IncomingIntents.ACTION_NOTES, code + 13))
+                    // Round buttons by importance, as many as fit next to the mic and the model's name.
+                    val room = if (width == 0) 3 else ((width - 186) / 50).coerceIn(0, 3)
+                    intArrayOf(R.id.widget_new_chat, R.id.widget_calendar, R.id.widget_notes).forEachIndexed { i, button ->
+                        views.setViewVisibility(button, if (i < room) View.VISIBLE else View.GONE)
+                    }
+                }
+                else -> views.setOnClickPendingIntent(R.id.widget_avatar, chat)
             }
             manager.updateAppWidget(id, views)
         }
+
+        /**
+         * The row of avatars: 42 dp places (a 34 dp avatar and room for the ring) 2 dp apart, as many as
+         * fit the width, up to 7. If there are more models, the last place is «+N» and opens the picker;
+         * the widget's model is always among those shown, with its ring.
+         */
+        private fun fillSlots(
+            context: Context, views: RemoteViews, id: Int, code: Int, model: ChatModel, models: List<ChatModel>,
+            width: Int, picker: PendingIntent,
+        ) {
+            val size = (42 * context.resources.displayMetrics.density).toInt()
+            val places = if (width == 0) SLOTS.size else ((width - 28 + 2) / 44).coerceIn(2, SLOTS.size)
+            var shown = if (models.size <= places) models else models.take(places - 1)
+            if (shown.none { it.id == model.id }) shown = shown.dropLast(1) + model
+            val hidden = models.size - shown.size
+            SLOTS.forEachIndexed { i, slot ->
+                when {
+                    i < shown.size -> {
+                        val m = shown[i]
+                        views.setViewVisibility(slot, View.VISIBLE)
+                        views.setImageViewBitmap(slot, ChatModels.avatar(context, m, size, ring = m.id == model.id, padded = true))
+                        views.setOnClickPendingIntent(slot, chatIntent(context, id, m, code + 3 + i))
+                        views.setContentDescription(slot, context.getString(R.string.widget_open_chat, m.name))
+                    }
+                    i == shown.size && hidden > 0 -> {
+                        views.setViewVisibility(slot, View.VISIBLE)
+                        views.setImageViewBitmap(slot, ChatModels.more(context, hidden, size))
+                        views.setOnClickPendingIntent(slot, picker)
+                        views.setContentDescription(slot, context.getString(R.string.widget_more_models, hidden))
+                    }
+                    else -> views.setViewVisibility(slot, View.GONE)
+                }
+            }
+        }
+
+        /** Calendario, Notas or Último chat: a page of Open WebUI. */
+        private fun page(context: Context, action: String, requestCode: Int): PendingIntent =
+            QuickVoice.activity(context, requestCode, QuickVoice.appIntent(context, action))
 
         /**
          * A new chat with [model], which also becomes the widget's model (MainActivity saves it), so the
@@ -186,17 +217,5 @@ class VoiceWidgetProvider : AppWidgetProvider() {
             ChatModels.setForWidget(context, id, ChatModels.find(model, intent.getStringExtra(EXTRA_MODEL_NAME) ?: model))
             update(context, AppWidgetManager.getInstance(context), id)
         }
-
-        private fun selectIntent(context: Context, widgetId: Int, model: ChatModel, requestCode: Int): PendingIntent =
-            PendingIntent.getBroadcast(
-                context, requestCode,
-                Intent(context, VoiceWidgetProvider::class.java)
-                    .setAction(ACTION_SELECT)
-                    .setData(Uri.parse("sakura-widget://$widgetId/${model.id}"))
-                    .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
-                    .putExtra(EXTRA_MODEL_ID, model.id)
-                    .putExtra(EXTRA_MODEL_NAME, model.name),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
     }
 }

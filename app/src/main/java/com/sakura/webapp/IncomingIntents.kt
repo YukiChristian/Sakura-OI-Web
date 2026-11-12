@@ -15,6 +15,9 @@ object IncomingIntents {
     const val ACTION_NEW_CHAT = "com.sakura.webapp.action.NEW_CHAT"
     const val ACTION_VOICE = "com.sakura.webapp.action.VOICE"
     const val ACTION_LAST_CHAT = "com.sakura.webapp.action.LAST_CHAT"
+    /** Open WebUI's calendar and notes, from the widgets. */
+    const val ACTION_CALENDAR = "com.sakura.webapp.action.CALENDAR"
+    const val ACTION_NOTES = "com.sakura.webapp.action.NOTES"
     /** Opens a page of Open WebUI (a chat from a push notice): EXTRA_PATH = "/c/<id>". */
     const val ACTION_OPEN_PATH = "com.sakura.webapp.action.OPEN_PATH"
     const val EXTRA_PATH = "com.sakura.webapp.extra.PATH"
@@ -37,6 +40,8 @@ object IncomingIntents {
             ACTION_VOICE, Intent.ACTION_ASSIST, Intent.ACTION_VOICE_COMMAND, VOICE_SEARCH_HANDS_FREE ->
                 Request(withModel("/?call=true", intent))
             ACTION_LAST_CHAT -> Request(null)
+            ACTION_CALENDAR -> Request("/calendar")
+            ACTION_NOTES -> Request("/notes")
             ACTION_OPEN_PATH -> Request(intent.getStringExtra(EXTRA_PATH)?.takeIf { it.startsWith("/c/") })
             Intent.ACTION_PROCESS_TEXT -> {
                 val text = intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget mediano 4 × 1: micrófono azul, avatar y nombre del modelo (▾ abre «¿Con quién quieres hablar?») y los
+     botones redondos Nuevo chat, Calendario y Notas (los que quepan, en ese orden). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg_pill"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="9dp"
+    android:paddingEnd="10dp">
+
+    <ImageView
+        android:id="@+id/widget_mic"
+        style="@style/WidgetMic"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:padding="16dp" />
+
+    <LinearLayout
+        android:id="@+id/widget_model"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingEnd="4dp">
+
+        <ImageView
+            android:id="@+id/widget_avatar"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:importantForAccessibility="no"
+            android:src="@drawable/widget_preview_avatar" />
+
+        <TextView
+            android:id="@+id/widget_model_name"
+            style="@style/WidgetModelName"
+            android:layout_marginStart="8dp"
+            android:drawableEnd="@drawable/widget_arrow_15"
+            android:text="Sakura"
+            android:textSize="16sp" />
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/widget_new_chat"
+        style="@style/WidgetRound"
+        android:contentDescription="@string/shortcut_new_chat"
+        android:src="@drawable/ic_ui_chat_plus" />
+
+    <ImageView
+        android:id="@+id/widget_calendar"
+        style="@style/WidgetRound"
+        android:contentDescription="@string/widget_action_calendar"
+        android:src="@drawable/ic_ui_calendar" />
+
+    <ImageView
+        android:id="@+id/widget_notes"
+        style="@style/WidgetRound"
+        android:contentDescription="@string/widget_action_notes"
+        android:src="@drawable/ic_ui_notes" />
+</LinearLayout>

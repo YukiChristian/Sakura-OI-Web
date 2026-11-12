@@ -1,4 +1,4 @@
-# 🌸 Sakura OI Web 📱 v0.8.6
+# 🌸 Sakura OI Web 📱 v0.8.7
 
 <div align="center">
   <img src="assets/sakura-oi-web-icon.png" alt="Logo de Sakura OI Web: flor con contorno arcoíris y las letras OI" width="160">
@@ -71,7 +71,7 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 
 ## 📦 Versiones documentadas
 
-- App: Sakura OI Web **0.8.6** (versionCode 56). Historial completo en [CHANGELOG.md](CHANGELOG.md).
+- App: Sakura OI Web **0.8.7** (versionCode 57). Historial completo en [CHANGELOG.md](CHANGELOG.md).
 - Notificaciones verificadas en el teléfono Android 16 de referencia con Open WebUI 0.12.3. Pantallas, icono y barras en tema claro y oscuro de 0.2.1 a 0.2.3 verificados en el emulador de Android Studio (API 37).
 - Open WebUI: **0.12.3**, versión verificada en la instalación local.
 - Nombre visible del modelo en Open WebUI: **Sakura**. Los registros identifican **llama.cpp 0.7.0-dev**, compilado para x64 con CUDA desde el commit `ea0c4c2c8`, que carga `SoAIHQ/Qwen3.5-9B-GGUF:Q4_K_M` (Qwen 3.5 de 9B, cuantización Q4_K_M). llama.cpp es el servidor de inferencia; el modelo no pertenece a la familia Llama. El alias Sakura se configura en Open WebUI.
@@ -80,9 +80,22 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 - Herramientas fijadas en el proyecto: Android Gradle Plugin 9.4.1, Gradle 9.6.0, Kotlin 2.2.10 y JDK 17 para ejecutar Gradle. El código Java usa compatibilidad de lenguaje 11.
 - Ideas en desarrollo y pendientes, incluida la activación por voz “Oye, Sakura”, en [docs/IDEAS.md](docs/IDEAS.md).
 
-## 🆕 Novedades de la versión 0.8.6
+## 🆕 Novedades de la versión 0.8.7
 
-**Descarga el APK firmado en [Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/latest).** Si tienes la 0.8.0, Sakura te avisa sola y se actualiza encima.
+**Descarga el APK firmado en [Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/latest).** Si ya tienes la app, Sakura te avisa sola y se actualiza encima.
+
+**Widget nuevo, en tres tamaños.** Se acomoda solo según cómo lo dejes en la pantalla de inicio:
+
+- **Grande (4 × 2):** el modelo con el micrófono azul, una fila con los avatares de tus modelos de Open WebUI (con uno solo no aparece; si no caben, el último lugar es «+N») y la barra **Nuevo · Calendario · Notas · Último**.
+- **Mediano (una fila):** micrófono, modelo y los botones Nuevo chat, Calendario y Notas.
+- **Chico (2 × 2):** micrófono, modelo, Nuevo chat y Calendario.
+- Toca el **nombre** del modelo (▾) o «+N» para elegir con quién hablar; toca un **avatar** para abrir un chat nuevo con él. **Calendario** y **Notas** abren los de Open WebUI.
+
+<img src="docs/images/widgets-sizes.png" alt="Widget grande con nueve modelos y «+3» en tema claro, el mismo con tres modelos y Lain elegida en tema oscuro, el mediano de una fila y el chico de 2 × 2" width="720">
+
+<img src="docs/images/widget-picker-grid.png" alt="«¿Con quién quieres hablar?» con nueve modelos en cuadrícula y Sakura marcada (modelos de prueba)" width="360">
+
+### Versión 0.8.6
 
 - **Cinco veces más ligera:** el APK pasa de 35.4 MB a 6.6 MB con las mismas funciones, animaciones y «Oye, Sakura». Arranca igual de rápido.
 - **Sin teclado de golpe:** al abrir Sakura o un chat ya no aparece el teclado tapando media pantalla; sale cuando tocas el cuadro de mensaje.
@@ -282,7 +295,8 @@ Resumen de todos los cambios de la app. El detalle de cada versión está en [CH
 
 | Versión | versionCode | Cambios |
 |---|---:|---|
-| **0.8.6** | 56 | APK de 35.4 a 6.6 MB, sin teclado al abrir la app o un chat, sin recargar al deslizar, botones Chat nuevo y Último chat más visibles y chips del widget que abren el chat de cada modelo. |
+| **0.8.7** | 57 | Widget rediseñado en tres tamaños con tus modelos de Open WebUI, «+N», selector en cuadrícula y accesos a Calendario y Notas. |
+| 0.8.6 | 56 | APK de 35.4 a 6.6 MB, sin teclado al abrir la app o un chat, sin recargar al deslizar, botones Chat nuevo y Último chat más visibles y chips del widget que abren el chat de cada modelo. |
 | 0.8.0 | 50 | Primer APK firmado en Releases, bloqueo con huella, avisos con la app cerrada (ntfy), buscar actualizaciones con aviso diario y certificados instalados en Android. |
 | 0.7.7 | 49 | El widget grande ya no muestra “«Oye, Sakura» activo”. |
 | 0.7.6 | 48 | Botones del widget sólidos y con borde, legibles sobre cualquier fondo; animación de activación más lenta y sin tono. |
@@ -338,7 +352,7 @@ Instala Android Studio compatible con Android Gradle Plugin 9.4.1, Android SDK P
 | Android mínimo | API 23 / Android 6.0 | Versión mínima para instalar la app |
 | Android objetivo | API 36 / Android 16 | Comportamientos de Android para los que está configurada |
 | SDK de compilación | API 37 / Android 17 | Plataforma necesaria para compilar; no es requisito para el teléfono |
-| Versión de Sakura OI Web | 0.8.6 (versionCode 56) | Versión del APK de este repositorio |
+| Versión de Sakura OI Web | 0.8.7 (versionCode 57) | Versión del APK de este repositorio |
 
 La versión de Android de tu teléfono es independiente del SDK de compilación. En el dispositivo Android 16 de referencia, la app funciona con target API 36.
 

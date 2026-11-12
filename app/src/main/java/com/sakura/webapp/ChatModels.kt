@@ -9,6 +9,7 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Shader
 import android.graphics.Typeface
+import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -17,8 +18,8 @@ import java.net.URL
 data class ChatModel(val id: String, val name: String, val color: Int, val avatar: Int?)
 
 /**
- * Sakura, Lain and Yoko (the pinned models of the widgets), the choice each widget remembers,
- * and the full model list from Open WebUI for «Ver todos los modelos».
+ * The models of the widgets: the server's visible models (saved, with Sakura, Lain and Yoko first), the
+ * one each widget remembers, and their round avatars.
  */
 object ChatModels {
     val PERSONAS = listOf(
@@ -26,11 +27,83 @@ object ChatModels {
         ChatModel("lain", "Lain", 0xFF3D5A9E.toInt(), R.drawable.avatar_lain),
         ChatModel("yoko", "Yoko", 0xFFE8452C.toInt(), R.drawable.avatar_yoko),
     )
-    private const val OTHER_COLOR = 0xFF71717A.toInt()
+    /** Initials of the other models, in the design's colours (picked by name, so each keeps its own). */
+    private val OTHER_COLORS = intArrayOf(
+        0xFF6D5BD0.toInt(), 0xFF1A8A7A.toInt(), 0xFFC27A00.toInt(), 0xFF2F6FD6.toInt(), 0xFF7A4A2A.toInt(), 0xFF5A6B7A.toInt(),
+    )
     private const val PREFS = "widget_models"
+    private const val KEY_LIST = "server_list"
+    private const val KEY_LIST_AT = "server_list_at"
+    private const val REFRESH_MS = 30 * 60 * 1000L
+    @Volatile private var refreshing = false
+
+    /**
+     * The name to show: without the prefix Open WebUI puts before the models of a connection
+     * ("laín.qwen-27b" → "qwen-27b"), so they do not all start with the same letter. "GPT-4.1" stays.
+     */
+    fun shortName(model: ChatModel): String {
+        val rest = model.name.substringAfter('.', "")
+        return if (rest.firstOrNull()?.isLetter() == true) rest else model.name
+    }
 
     fun find(id: String, name: String = id): ChatModel =
-        PERSONAS.firstOrNull { it.id == id } ?: ChatModel(id, name, OTHER_COLOR, null)
+        PERSONAS.firstOrNull { it.id == id }
+            ?: ChatModel(id, name, OTHER_COLORS[Math.floorMod(name.lowercase().hashCode(), OTHER_COLORS.size)], null)
+
+    /**
+     * The models the widgets offer: the server's list as last seen (Sakura, Lain and Yoko first), or the
+     * three characters until the app has read it once.
+     */
+    fun available(context: Context): List<ChatModel> {
+        val saved = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_LIST, null)
+            ?: return PERSONAS
+        val list = runCatching {
+            val array = JSONArray(saved)
+            (0 until array.length()).map { i ->
+                val m = array.getJSONObject(i)
+                find(m.getString("id"), m.optString("name").ifEmpty { m.getString("id") })
+            }
+        }.getOrNull()
+        return if (list.isNullOrEmpty()) PERSONAS else ordered(list)
+    }
+
+    fun hasServerList(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).contains(KEY_LIST)
+
+    private fun ordered(models: List<ChatModel>): List<ChatModel> {
+        val unique = models.distinctBy { it.id }
+        return PERSONAS.filter { p -> unique.any { it.id == p.id } } + unique.filter { m -> PERSONAS.none { it.id == m.id } }
+    }
+
+    /** Saves the server's list; true when it changed (the widgets then redraw). */
+    fun saveList(context: Context, models: List<ChatModel>): Boolean {
+        val json = JSONArray().apply {
+            ordered(models).forEach { put(JSONObject().put("id", it.id).put("name", it.name)) }
+        }.toString()
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val changed = prefs.getString(KEY_LIST, null) != json
+        prefs.edit().putString(KEY_LIST, json).putLong(KEY_LIST_AT, System.currentTimeMillis()).apply()
+        return changed
+    }
+
+    /**
+     * Reads the server's models in the background (at most every 30 minutes unless [force]) and redraws
+     * the widgets when the list changed. Quietly does nothing without a session or a connection.
+     */
+    fun refresh(context: Context, force: Boolean = false) {
+        val app = context.applicationContext
+        val at = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getLong(KEY_LIST_AT, 0)
+        if (refreshing || (!force && System.currentTimeMillis() - at < REFRESH_MS)) return
+        refreshing = true
+        Thread {
+            try {
+                val models = runCatching { fetchAll(app) }.getOrNull()
+                if (!models.isNullOrEmpty() && saveList(app, models)) VoiceWidgetProvider.refreshAll(app)
+            } finally {
+                refreshing = false
+            }
+        }.start()
+    }
 
     /** The model a widget talks to; new widgets start with the last one chosen anywhere. */
     fun forWidget(context: Context, widgetId: Int): ChatModel {
@@ -84,12 +157,13 @@ object ChatModels {
     }
 
     /**
-     * Round avatar of [sizePx], with a 2 dp transparent gap and a 2 dp ring in the model's colour when
-     * [ring] is set (as in the design's selected avatars). Models without art get their initial.
+     * Round avatar of [sizePx]. With [padded] the picture leaves 4 dp around it, and [ring] draws a 2 dp
+     * ring in the model's colour at the edge (2 dp away from the picture), as in the design's selected
+     * avatars. Models without art get their initial.
      */
-    fun avatar(context: Context, model: ChatModel, sizePx: Int, ring: Boolean = false): Bitmap {
+    fun avatar(context: Context, model: ChatModel, sizePx: Int, ring: Boolean = false, padded: Boolean = ring): Bitmap {
         val density = context.resources.displayMetrics.density
-        val inset = if (ring) 4 * density else 0f
+        val inset = if (padded) 4 * density else 0f
         val out = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(out)
         val c = sizePx / 2f
@@ -108,12 +182,7 @@ object ChatModels {
         } else {
             paint.color = model.color
             canvas.drawCircle(c, c, r, paint)
-            paint.color = 0xFFFFFFFF.toInt()
-            paint.textAlign = Paint.Align.CENTER
-            paint.typeface = Typeface.create("sans-serif", Typeface.BOLD)
-            paint.textSize = r * 0.95f
-            val initial = model.name.trim().take(1).uppercase()
-            canvas.drawText(initial, c, c - (paint.descent() + paint.ascent()) / 2, paint)
+            drawCentered(canvas, shortName(model).trim().take(1).uppercase(), c, r * 0.95f, 0xFFFFFFFF.toInt())
         }
         if (ring) {
             canvas.drawCircle(c, c, c - density, Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -123,5 +192,32 @@ object ChatModels {
             })
         }
         return out
+    }
+
+    /** «+N» in the place of an avatar: the models that did not fit, same 4 dp margin as the avatars. */
+    fun more(context: Context, count: Int, sizePx: Int): Bitmap {
+        val density = context.resources.displayMetrics.density
+        val out = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(out)
+        val c = sizePx / 2f
+        val r = c - 4 * density
+        canvas.drawCircle(c, c, r, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.widget_tint) })
+        canvas.drawCircle(c, c, r - density / 2, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = density
+            color = context.getColor(R.color.widget_tint_ring)
+        })
+        drawCentered(canvas, "+$count", c, 13 * density, context.getColor(R.color.widget_ink))
+        return out
+    }
+
+    private fun drawCentered(canvas: Canvas, text: String, c: Float, size: Float, color: Int) {
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            this.color = color
+            textAlign = Paint.Align.CENTER
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            textSize = size
+        }
+        canvas.drawText(text, c, c - (paint.descent() + paint.ascent()) / 2, paint)
     }
 }

@@ -133,7 +133,7 @@
     <string name="quick_more">También: el botón “Hablar” de la notificación de “Oye, Sakura” y, con Sakura como asistente, mantener pulsado el botón de tus audífonos.</string>
     <string name="tile_label">Hablar con Sakura</string>
     <string name="widget_label">Hablar con Sakura</string>
-    <string name="widget_description">Habla con Sakura, Lain o Yoko en modo voz, o abre un chat nuevo o el último.</string>
+    <string name="widget_description">Habla con tus modelos en modo voz, o abre un chat nuevo, el calendario, las notas o el último chat.</string>
     <string name="settings_title_short">Ajustes</string>
     <string name="wake_screen_title">Oye, Sakura</string>
     <string name="wake_entry_description">Abre el modo voz diciendo la frase, y accesos de un toque.</string>
@@ -190,14 +190,9 @@
     <string name="training_would_not">No se activa</string>
     <string name="training_footer_short">Todo se procesa en el teléfono; no se envía audio.</string>
     <string name="picker_title">¿Con quién quieres hablar?</string>
-    <string name="picker_subtitle">El widget recordará tu elección.</string>
-    <string name="picker_all">Ver todos los modelos</string>
-    <string name="picker_loading">Cargando modelos…</string>
     <string name="picker_failed">No se pudo cargar la lista. Abre Sakura e inicia sesión.</string>
     <string name="picker_cancel">Cancelar</string>
-    <string name="widget_talk_with">Habla con</string>
     <string name="widget_talk_to">Habla con %1$s</string>
-    <string name="widget_preview_title">Habla con Sakura</string>
     <string name="lock_heading">Bloqueo con huella</string>
     <string name="lock_description">Pide tu huella, rostro o PIN al abrir Sakura, porque da acceso a todos tus chats.</string>
     <string name="lock_switch">Bloquear Sakura</string>
@@ -249,4 +244,15 @@
     <string name="push_default_text">Toca para ver la respuesta.</string>
     <string name="push_failed_text">No se pudo terminar la respuesta.</string>
     <string name="widget_open_chat">Chat con %1$s</string>
+    <string name="widget_action_new">Nuevo</string>
+    <string name="widget_action_calendar">Calendario</string>
+    <string name="widget_action_notes">Notas</string>
+    <string name="widget_action_last">Último</string>
+    <string name="widget_change_model">%1$s, cambiar de modelo</string>
+    <string name="widget_more_models">%1$d modelos más</string>
+    <plurals name="picker_count">
+        <item quantity="one">%1$d modelo · el widget recordará tu elección</item>
+        <item quantity="many">%1$d modelos · el widget recordará tu elección</item>
+        <item quantity="other">%1$d modelos · el widget recordará tu elección</item>
+    </plurals>
 </resources>
