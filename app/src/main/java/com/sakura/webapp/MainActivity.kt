@@ -76,6 +76,9 @@ class MainActivity : ComponentActivity() {
     private var online = true
     /** Saved-address version this screen loaded; a change in settings triggers a reload. */
     private var addressVersion = 0
+    /** False until the first page is opened; a share or shortcut arriving earlier waits here. */
+    private var firstLoadStarted = true
+    private var requestBeforeFirstLoad: IncomingIntents.Request? = null
     /** "wifi" or "other"; address checks only run when this changes, not on every signal update. */
     private var lastTransport: String? = null
     private val reconcileAddressTask = Runnable { reconcileAddress() }
@@ -193,7 +196,9 @@ class MainActivity : ComponentActivity() {
                         view.evaluateJavascript(SessionSync.SYNC_JS, null)
                         view.evaluateJavascript(appMenuScript(), null)
                         if (shareBridge.hasPending) view.evaluateJavascript(ShareBridge.ATTACH_JS, null)
-                        if (confirmVoiceCall) {
+                        // Every load of a voice-mode page, not just the first: the page can be
+                        // reloaded on the home address or after the session is copied.
+                        if (confirmVoiceCall || Uri.parse(url).getQueryParameter("call") == "true") {
                             confirmVoiceCall = false
                             view.evaluateJavascript(CONFIRM_VOICE_JS, null)
                         }
@@ -458,11 +463,17 @@ class MainActivity : ComponentActivity() {
             beginHomeLoad(loadPage = false)
             scheduleAddressCheck(0)
         } else {
+            firstLoadStarted = false
             // Pick the home or exterior address first (a quick probe on Wi-Fi), then open the
             // requested page, or the last Open WebUI route if Android killed the process.
             Thread {
                 ServerAddress.choose(applicationContext, allowLan = sessionSync.hasToken)
-                runOnUiThread { if (!isFinishing) openRequest(request) }
+                runOnUiThread {
+                    if (isFinishing) return@runOnUiThread
+                    firstLoadStarted = true
+                    openRequest(requestBeforeFirstLoad ?: request)
+                    requestBeforeFirstLoad = null
+                }
             }.start()
         }
         watchNetwork()
@@ -474,7 +485,9 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        IncomingIntents.parse(intent)?.let(::openRequest)
+        val request = IncomingIntents.parse(intent) ?: return
+        // Still choosing the address for the first load: open this instead of the last page.
+        if (!firstLoadStarted) requestBeforeFirstLoad = request else openRequest(request)
     }
 
     /** Opens what a share, selected text, shortcut or the assistant asked for. */
@@ -1023,17 +1036,20 @@ class MainActivity : ComponentActivity() {
         /**
          * Open WebUI asks "Start a voice call using your microphone?" when opened with
          * ?call=true. The user already asked for voice mode, so press its confirm button
-         * (the second one) as soon as that dialog appears, for up to 10 s.
+         * (the second one) as soon as that dialog appears. Open WebUI can take several
+         * seconds to finish loading before it shows the dialog, so keep watching for 30 s.
          */
         private val CONFIRM_VOICE_JS = """
             (function() {
+                if (window.__sakuraVoiceConfirm) return;
+                window.__sakuraVoiceConfirm = true;
                 let tries = 0;
                 (function attempt() {
                     const dialog = Array.from(document.querySelectorAll('[role="dialog"]'))
                         .find(function(d) { return /micr/i.test(d.innerText); });
                     const buttons = dialog ? dialog.querySelectorAll('button') : [];
                     if (buttons.length >= 2) { buttons[buttons.length - 1].click(); return; }
-                    if (++tries < 40) setTimeout(attempt, 250);
+                    if (++tries < 120) setTimeout(attempt, 250);
                 })();
             })();
         """.trimIndent()
