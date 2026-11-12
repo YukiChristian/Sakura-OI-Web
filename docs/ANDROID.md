@@ -17,7 +17,7 @@ Esta tabla distingue la versión de Android que puede instalar la app del SDK us
 | Android mínimo (minSdk) | API 23 / Android 6.0 | Versión mínima admitida por el APK |
 | Android objetivo (targetSdk) | API 36 / Android 16 | Comportamientos del sistema para los que se configura |
 | SDK de compilación (compileSdk) | API 37 / Android 17 | SDK que debe instalarse para compilar; el teléfono no requiere Android 17 |
-| Sakura OI Web | 0.6.1 (versionCode 40) | Versión actual del proyecto |
+| Sakura OI Web | 0.7.4 (versionCode 46) | Versión actual del proyecto |
 | Android Gradle Plugin | 9.4.1 | Plugin de compilación Android |
 | Gradle Wrapper | 9.6.0 | Versión incluida y usada por el proyecto |
 | Kotlin | 2.2.10 | Versión configurada del plugin de Kotlin |
@@ -225,7 +225,20 @@ La dirección de casa necesita HTTPS con un certificado en el que confíe el tel
 
 ## “Oye, Sakura”
 
-Opcional y desactivado por defecto, en **Ajustes del teléfono**. Al activarlo descarga el modelo español pequeño de Vosk (unos 39 MB) y arranca `WakeWordService`, un servicio en primer plano de micrófono con una notificación permanente. Escucha solo con la app en segundo plano y se pausa al abrirla, para que el modo de voz de Open WebUI pueda usar el micrófono. El modelo no conoce la palabra “Sakura”, así que acepta variantes parecidas (“sacura”, “zakura”) después de “oye”. Para abrir el modo de voz al instante desde otra app conviene conceder **Mostrar sobre otras apps**; sin ese permiso, aparece una notificación que hay que tocar. El reconocimiento funciona en el teléfono y no envía audio a internet, pero mantiene el micrófono escuchando y consume batería.
+Opcional y desactivado por defecto. Tiene pantalla propia (`WakeWordSettingsActivity`), que se abre desde la tarjeta «Oye, Sakura» de **Ajustes del teléfono** o tocando su notificación. Al activarlo descarga el modelo español pequeño de Vosk (unos 39 MB, con el avance en MB) y arranca `WakeWordService`, un servicio en primer plano de micrófono con una notificación permanente que incluye el botón **Hablar**. Escucha solo con la app en segundo plano y se pausa al abrirla, para que el modo de voz de Open WebUI pueda usar el micrófono. El reconocimiento funciona en el teléfono y no envía audio a internet, pero mantiene el micrófono escuchando y consume batería.
+
+- **Frase y sensibilidad** (`WakePhrase.kt`): “Oye, Sakura”, “Hola, Sakura”, “Sakura, escucha” o una propia. El modelo no conoce la palabra “Sakura”, así que la frase se compara por cómo suena (“sacura”, “sa cura”, “zakura”…). La sensibilidad Estricta, Normal o Relajada fija cuánto tiene que parecerse.
+- **Entrenar tu voz** (`VoiceTrainingActivity.kt`): dices la frase 5 veces y las transcripciones se guardan como variantes aceptadas; **Prueba en vivo** muestra lo que escucha y si se activaría, sin abrir nada.
+- **Activación** (`WakeActivation.kt`): con **Mostrar sobre otras apps** concedido, suena un tono, brota la flor arriba y una línea rosa recorre los bordes de la pantalla. La app arranca desde el primer cuadro, debajo de la animación; la animación va en un hilo propio para no congelarse mientras arranca el WebView. Sin ese permiso aparece una notificación que hay que tocar.
+- **Rapidez:** si Open WebUI ya está cargado, el modo de voz se abre dentro de la página (el enrutador de SvelteKit toma el enlace `/?call=true`), sin recargar. Atrás en la primera pantalla manda la app al fondo para conservar la página, y el servicio carga el motor web al arrancar.
+- La app acepta sola el aviso de Open WebUI “¿Iniciar una llamada de voz con tu micrófono?” en cualquier página en cuanto aparece, y quita `?call` y `?models` de la dirección.
+
+## Widget, ajuste rápido y audífonos
+
+- **Widget** (`VoiceWidgetProvider` en `QuickVoice.kt`, `res/layout/widget_small.xml` y `widget_large.xml`): nace en 4 × 2 y se puede achicar a una fila. Los colores siguen el tema del teléfono (`values-night/widget_colors.xml`). Cada widget guarda su modelo (`ChatModels.kt`); los chips de Sakura, Lain y Yoko lo cambian de un toque y la cápsula del widget de una fila abre `WidgetModelPickerActivity`, que puede pedir al servidor la lista completa de modelos visibles con la sesión guardada. El modo de voz y los chats nuevos se abren con `?models=<id>`.
+- **Ajuste rápido** (`VoiceTileService`): “Hablar con Sakura” en el panel de notificaciones; en Android 13 o superior la pantalla «Oye, Sakura» lo agrega con un toque.
+- **Audífonos:** con Sakura como asistente digital, `VOICE_COMMAND` y `VOICE_SEARCH_HANDS_FREE` abren el modo de voz.
+- **Prueba sin voz:** la compilación de depuración trae `WakeActivationTestReceiver`, que reproduce la activación con `adb shell am broadcast -a com.sakura.webapp.debug.WAKE -n com.sakura.webapp/.WakeActivationTestReceiver`. Solo responde a quien tiene el permiso `DUMP` (adb).
 
 ## Recursos importantes del código
 
@@ -239,7 +252,9 @@ Opcional y desactivado por defecto, en **Ajustes del teléfono**. Al activarlo d
 - `app/src/main/java/com/sakura/webapp/ConnectionActivity.kt`, `PermissionsActivity.kt`, `SettingsActivity.kt` y `SetupUi.kt`: asistente inicial y Ajustes del teléfono.
 - `app/src/main/java/com/sakura/webapp/IncomingIntents.kt` y `ShareBridge.kt`: compartir, seleccionar texto y accesos directos.
 - `app/src/main/java/com/sakura/webapp/VoiceAssistant.kt`: Sakura como asistente digital.
-- `app/src/main/java/com/sakura/webapp/WakeWord.kt`: “Oye, Sakura”.
+- `app/src/main/java/com/sakura/webapp/WakeWord.kt`, `WakePhrase.kt`, `WakeWordSettingsActivity.kt`, `VoiceTrainingActivity.kt` y `WakeActivation.kt`: “Oye, Sakura”.
+- `app/src/main/java/com/sakura/webapp/QuickVoice.kt`, `ChatModels.kt` y `WidgetModelPickerActivity.kt`: widget, ajuste rápido y modelos.
+- `app/src/main/java/com/sakura/webapp/SetupParts.kt`: piezas de diseño de las pantallas de «Oye, Sakura».
 - `app/src/main/AndroidManifest.xml`: permisos y Activity.
 - `app/src/main/res/xml/network_security_config.xml`: CA aceptadas.
 - `app/build.gradle.kts`: versiones Android y URL de build.

@@ -2,6 +2,30 @@
 
 Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 0.7.4 (versionCode 46) — 12 de noviembre de 2026
+
+Reúne las compilaciones locales 0.6.2 y 0.7.0 a 0.7.3. Sigue el diseño "App Android · widgets y «Oye, Sakura»".
+
+### Añadido
+- `QuickVoice.kt` y `ChatModels.kt`: widget de pantalla de inicio en tema claro y oscuro. En una fila muestra el avatar con insignia de micrófono, “Habla con” y la cápsula del modelo, y los botones redondos Nuevo chat y Último chat. En dos filas o más muestra “Habla con <modelo>”, el estado de «Oye, Sakura», el micrófono azul, los chips Sakura, Lain y Yoko para cambiar de un toque y los botones Nuevo chat y Último chat. Cada widget recuerda su modelo; el modo de voz y los chats nuevos se abren con él (`?models=`).
+- `WidgetModelPickerActivity.kt`: «¿Con quién quieres hablar?», que se abre desde la cápsula del widget. «Ver todos los modelos» trae los modelos visibles del servidor con la sesión que la app ya guarda.
+- `VoiceTileService` (en `QuickVoice.kt`): ajuste rápido “Hablar con Sakura” en el panel de notificaciones.
+- Botón **Hablar** en la notificación de «Oye, Sakura» y apertura del modo de voz con el botón de los audífonos (`VOICE_COMMAND`, `VOICE_SEARCH_HANDS_FREE`).
+- `WakeWordSettingsActivity.kt` y `SetupParts.kt`: pantalla propia de «Oye, Sakura» con el interruptor y su estado, la descarga del modelo en MB con barra, los avisos “Sin internet · Usa algo de batería · Se pausa al usar la app”, el permiso para abrir al instante, la frase de activación (hoja con frases sugeridas o propia), la sensibilidad (Estricta, Normal, Relajada), “Tu voz” y los accesos rápidos. En **Ajustes del teléfono** queda una tarjeta que la abre.
+- `WakePhrase.kt`: frase configurable, sensibilidad y comparación fonética que tolera las transcripciones del modelo (“sacura”, “sa cura”, “zakura”…). Pruebas en `WakePhraseTest.kt`.
+- `VoiceTrainingActivity.kt`: **Entrenar tu voz** (5 grabaciones con barra de progreso, micrófono y barras de nivel) y **Prueba en vivo**, que muestra lo que escucha y si Sakura se activaría, sin abrir nada.
+- `WakeActivation.kt`: al oír la frase suena el tono de activación, brota la flor arriba al centro y una línea rosa recorre los bordes de la pantalla soltando pétalos hasta cerrar el aro. Se dibuja sobre cualquier app, en un hilo propio, y deja pasar los toques.
+- Compilación de depuración: `WakeActivationTestReceiver` reproduce la activación desde adb (`am broadcast -a com.sakura.webapp.debug.WAKE`); solo responde a quien tiene el permiso `DUMP`.
+
+### Cambiado
+- La voz se abre más rápido: si Open WebUI ya está cargado, el modo de voz, Nuevo chat y Último chat se abren dentro de esa página, sin recargarla. Sakura arranca en cuanto empieza la animación de activación, debajo de ella.
+- Atrás en la primera pantalla manda la app al fondo en lugar de cerrarla, para que la página siga cargada.
+- El servicio de «Oye, Sakura» carga el motor web al arrancar, para que la app abra antes desde cero.
+
+### Corregido
+- El aviso de Open WebUI “Abrir enlace · ¿Iniciar una llamada de voz con tu micrófono?” se acepta solo en cualquier página y en cuanto aparece, sin límite de tiempo, y se oculta para que no llegue a verse. Antes solo se esperaba 30 s y en páginas abiertas con `?call=true`.
+- Los parámetros `?call` y `?models` se quitan de la dirección al usarse, para que recargar no vuelva a pedir la llamada.
+
 ## 0.6.1 (versionCode 40) — 12 de noviembre de 2026
 
 ### Corregido

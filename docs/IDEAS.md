@@ -14,7 +14,7 @@ Ideas para que Sakura OI Web se sienta como una app nativa de Android. El estado
 | 8 | Avisos aunque Android cierre la app | Pendiente |
 | 9 | Bloqueo con huella o rostro | Pendiente |
 | 10 | APK firmado en GitHub Releases y aviso de actualización | Pendiente |
-| 11 | Activación por voz "Oye, Sakura" | Hecho en 0.6.0 |
+| 11 | Activación por voz "Oye, Sakura" | Hecho en 0.6.0; frase, sensibilidad, entrenamiento, widget y ajuste rápido en 0.7.4 |
 
 ## Integración con Android
 
