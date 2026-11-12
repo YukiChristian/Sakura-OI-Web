@@ -2,6 +2,11 @@
 
 Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 0.7.7 (versionCode 49) — 12 de noviembre de 2026
+
+### Cambiado
+- El widget grande ya no muestra “«Oye, Sakura» activo” debajo de “Habla con …”: distraía y no aportaba. Se quitaron los textos que ya no se usan.
+
 ## 0.7.6 (versionCode 48) — 12 de noviembre de 2026
 
 Incluye la compilación local 0.7.5.

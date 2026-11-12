@@ -1,4 +1,4 @@
-# 🌸 Sakura OI Web 📱 v0.7.6
+# 🌸 Sakura OI Web 📱 v0.7.7
 
 <div align="center">
   <img src="assets/sakura-oi-web-icon.png" alt="Logo de Sakura OI Web: flor con contorno arcoíris y las letras OI" width="160">
@@ -71,7 +71,7 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 
 ## 📦 Versiones documentadas
 
-- App: Sakura OI Web **0.7.6** (versionCode 48). Historial completo en [CHANGELOG.md](CHANGELOG.md).
+- App: Sakura OI Web **0.7.7** (versionCode 49). Historial completo en [CHANGELOG.md](CHANGELOG.md).
 - Notificaciones verificadas en el teléfono Android 16 de referencia con Open WebUI 0.12.3. Pantallas, icono y barras en tema claro y oscuro de 0.2.1 a 0.2.3 verificados en el emulador de Android Studio (API 37).
 - Open WebUI: **0.12.3**, versión verificada en la instalación local.
 - Nombre visible del modelo en Open WebUI: **Sakura**. Los registros identifican **llama.cpp 0.7.0-dev**, compilado para x64 con CUDA desde el commit `ea0c4c2c8`, que carga `SoAIHQ/Qwen3.5-9B-GGUF:Q4_K_M` (Qwen 3.5 de 9B, cuantización Q4_K_M). llama.cpp es el servidor de inferencia; el modelo no pertenece a la familia Llama. El alias Sakura se configura en Open WebUI.
@@ -80,7 +80,11 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 - Herramientas fijadas en el proyecto: Android Gradle Plugin 9.4.1, Gradle 9.6.0, Kotlin 2.2.10 y JDK 17 para ejecutar Gradle. El código Java usa compatibilidad de lenguaje 11.
 - Ideas en desarrollo y pendientes, incluida la activación por voz “Oye, Sakura”, en [docs/IDEAS.md](docs/IDEAS.md).
 
-## 🆕 Novedades de la versión 0.7.6
+## 🆕 Novedades de la versión 0.7.7
+
+- El widget grande queda más limpio: solo “Habla con …” y el micrófono, sin la línea “«Oye, Sakura» activo”.
+
+### Versión 0.7.6
 
 - **Widget más legible:** los botones **Chat nuevo** y **Último chat**, los chips de Sakura, Lain y Yoko y los botones redondos tienen relleno sólido y borde, y el fondo es más opaco. Se distinguen aunque el fondo de pantalla tenga mucho dibujo.
 - **Activación más lenta y sin tono:** la línea rosa recorre los bordes más despacio (unos 2.4 s) mientras Sakura carga debajo; en el emulador el modo de voz ya escucha antes de que termine. El tono de activación se quitó por ahora.
@@ -254,7 +258,8 @@ Resumen de todos los cambios de la app. El detalle de cada versión está en [CH
 
 | Versión | versionCode | Cambios |
 |---|---:|---|
-| **0.7.6** | 48 | Botones del widget sólidos y con borde, legibles sobre cualquier fondo; animación de activación más lenta y sin tono. |
+| **0.7.7** | 49 | El widget grande ya no muestra “«Oye, Sakura» activo”. |
+| 0.7.6 | 48 | Botones del widget sólidos y con borde, legibles sobre cualquier fondo; animación de activación más lenta y sin tono. |
 | 0.7.4 | 46 | Widget con Sakura, Lain y Yoko, ajuste rápido, botón Hablar, pantalla «Oye, Sakura» con frase, sensibilidad y entrenamiento de voz, animación de activación, voz sin recargar la página y sin el aviso “Abrir enlace”. |
 | 0.6.1 | 40 | El modo de voz se abre sin el aviso “Open link” de Open WebUI, también tras cambiar a la dirección de casa. |
 | 0.6.0 | 39 | Asistente de configuración y de permisos, Ajustes del teléfono, compartir con Sakura, “Preguntar a Sakura”, accesos directos, asistente del teléfono, red de casa y exterior, aviso sin conexión, deslizar para recargar, “Oye, Sakura” e idioma inglés. |
@@ -307,7 +312,7 @@ Instala Android Studio compatible con Android Gradle Plugin 9.4.1, Android SDK P
 | Android mínimo | API 23 / Android 6.0 | Versión mínima para instalar la app |
 | Android objetivo | API 36 / Android 16 | Comportamientos de Android para los que está configurada |
 | SDK de compilación | API 37 / Android 17 | Plataforma necesaria para compilar; no es requisito para el teléfono |
-| Versión de Sakura OI Web | 0.7.6 (versionCode 48) | Versión del APK de este repositorio |
+| Versión de Sakura OI Web | 0.7.7 (versionCode 49) | Versión del APK de este repositorio |
 
 La versión de Android de tu teléfono es independiente del SDK de compilación. En el dispositivo Android 16 de referencia, la app funciona con target API 36.
 
