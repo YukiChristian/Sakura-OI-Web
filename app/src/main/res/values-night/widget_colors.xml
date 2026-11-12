@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Widget colours (light; values-night holds the dark set). -->
 <resources>
-    <color name="widget_glass">#EB18181B</color>
+    <color name="widget_glass">#CC18181B</color>
     <color name="widget_ink">#FFFFFFFF</color>
     <color name="widget_muted">#A6FFFFFF</color>
-    <color name="widget_tint">#FF2C2C31</color>
+    <color name="widget_tint">#D92C2C31</color>
     <color name="widget_tint_ring">#FF414147</color>
 </resources>

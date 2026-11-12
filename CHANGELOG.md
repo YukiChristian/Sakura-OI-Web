@@ -2,6 +2,13 @@
 
 Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 0.9.1 (versionCode 61) — 12 de noviembre de 2026
+
+Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v0.9.1).
+
+### Cambiado
+- **Widget más transparente**, igual que los widgets del sistema de un teléfono de referencia: el fondo pasa de 92 % a 80 % de opacidad (`widget_glass` `#CCFFFFFF` y `#CC18181B` en tema oscuro) y la barra de accesos, los botones redondos y el «+N» de 100 % a 85 % (`widget_tint`). Android no permite a las apps desenfocar el fondo de sus widgets, así que detrás se ve nítido.
+
 ## 0.9.0 (versionCode 60) — 12 de noviembre de 2026
 
 Reúne las compilaciones locales 0.8.8 y 0.8.9. Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v0.9.0).
