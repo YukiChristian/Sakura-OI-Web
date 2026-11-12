@@ -17,7 +17,7 @@ Esta tabla distingue la versión de Android que puede instalar la app del SDK us
 | Android mínimo (minSdk) | API 23 / Android 6.0 | Versión mínima admitida por el APK |
 | Android objetivo (targetSdk) | API 36 / Android 16 | Comportamientos del sistema para los que se configura |
 | SDK de compilación (compileSdk) | API 37 / Android 17 | SDK que debe instalarse para compilar; el teléfono no requiere Android 17 |
-| Sakura OI Web | 0.7.7 (versionCode 49) | Versión actual del proyecto |
+| Sakura OI Web | 0.8.0 (versionCode 50) | Versión actual del proyecto |
 | Android Gradle Plugin | 9.4.1 | Plugin de compilación Android |
 | Gradle Wrapper | 9.6.0 | Versión incluida y usada por el proyecto |
 | Kotlin | 2.2.10 | Versión configurada del plugin de Kotlin |
@@ -240,6 +240,26 @@ Opcional y desactivado por defecto. Tiene pantalla propia (`WakeWordSettingsActi
 - **Audífonos:** con Sakura como asistente digital, `VOICE_COMMAND` y `VOICE_SEARCH_HANDS_FREE` abren el modo de voz.
 - **Prueba sin voz:** la compilación de depuración trae `WakeActivationTestReceiver`, que reproduce la activación con `adb shell am broadcast -a com.sakura.webapp.debug.WAKE -n com.sakura.webapp/.WakeActivationTestReceiver`. Solo responde a quien tiene el permiso `DUMP` (adb).
 
+## Bloqueo con huella
+
+`AppLock.kt`, desactivado por defecto, en la tarjeta **Bloqueo con huella** de *Ajustes del teléfono*. Usa `BiometricPrompt` con huella, rostro o el bloqueo de pantalla (Android 10+) y la pantalla de PIN del sistema en Android 6 a 9; necesita un bloqueo de pantalla configurado. Cuenta las pantallas visibles de la app (`ActivityLifecycleCallbacks`): al cerrarse la última empieza el tiempo, y al volver después del retraso elegido (al instante, 1 o 5 minutos) `MainActivity` muestra “Sakura está bloqueada” y pide desbloquear. Activarlo o desactivarlo pide autenticarse. Mientras está bloqueada, un modo de voz pedido espera al desbloqueo, Ajustes también lo pide y la vista de recientes no muestra el chat (`setRecentsScreenshotEnabled`, Android 13+). Volver del selector de archivos propio no cuenta como salir.
+
+## Avisos con la app cerrada
+
+`PushNotices.kt` usa el protocolo de UnifiedPush por difusiones (`org.unifiedpush.android.distributor.REGISTER` y `org.unifiedpush.android.connector.*`), sin librerías. Una app distribuidora como **ntfy** mantiene una sola conexión para todas las apps y despierta a Sakura cuando llega un mensaje. Al activar **Avisar con la app cerrada**:
+
+1. Sakura se registra con un token aleatorio y ntfy devuelve una dirección pública (por ejemplo, `https://ntfy.sh/up…`).
+2. Con la sesión guardada, activa `ENABLE_USER_WEBHOOKS` en la configuración de administrador de Open WebUI (hace falta ser administrador).
+3. Crea o actualiza el destino de notificación `sakura-oi-web` (`/api/v1/notifications/targets`) para `chat.finished` y `chat.failed` con entrega `away`, es decir, solo cuando no estás conectado.
+
+`PushReceiver` descarta los mensajes cuyo token no coincide, muestra el título del chat y el inicio de la respuesta en el canal silencioso de la app y abre `/c/<id>` al tocarlo. Open WebUI no acepta direcciones privadas para los webhooks, por eso el distribuidor debe ser público; el texto de la respuesta pasa por ese servidor (ntfy.sh si no se cambia en ntfy). Al desactivarlo se borra el destino y se cancela el registro.
+
+## Actualizaciones y firma
+
+- `Updates.kt` consulta `releases/latest` de este repositorio una vez al día (si **Revisar cada día** está activo) y con **Buscar actualizaciones**. Compara el número de versión sin sufijo, así una compilación personal “0.8.0c” también recibe el aviso de 0.8.1. `UpdatePrompt.kt` muestra “Hay una actualización”; **Actualizar** descarga el APK del Release con `DownloadManager` y abre el instalador (permiso `REQUEST_INSTALL_PACKAGES`; Android pide permitir instalar desde Sakura la primera vez).
+- El APK publicado se compila con `assembleRelease` y se firma con la llave indicada en `~/.gradle/gradle.properties` (`SAKURA_KEYSTORE_FILE`, `SAKURA_KEYSTORE_PASSWORD`, `SAKURA_KEY_ALIAS`, `SAKURA_KEY_PASSWORD`). Con esas propiedades, `assembleDebug` firma con la misma llave, así la versión personal y la publicada se instalan una sobre otra. Sin ellas, la depuración usa la llave de depuración de Android Studio y el release queda sin firmar. Guarda una copia de la llave: sin ella no se pueden publicar actualizaciones que se instalen encima.
+- `network_security_config.xml` confía en los certificados del sistema y en los que el usuario instala en Android, así un servidor de casa con certificado propio funciona con el APK publicado.
+
 ## Recursos importantes del código
 
 - `app/src/main/java/com/sakura/webapp/MainActivity.kt`: WebView, carga, archivos, micrófono y navegación.
@@ -255,6 +275,9 @@ Opcional y desactivado por defecto. Tiene pantalla propia (`WakeWordSettingsActi
 - `app/src/main/java/com/sakura/webapp/WakeWord.kt`, `WakePhrase.kt`, `WakeWordSettingsActivity.kt`, `VoiceTrainingActivity.kt` y `WakeActivation.kt`: “Oye, Sakura”.
 - `app/src/main/java/com/sakura/webapp/QuickVoice.kt`, `ChatModels.kt` y `WidgetModelPickerActivity.kt`: widget, ajuste rápido y modelos.
 - `app/src/main/java/com/sakura/webapp/SetupParts.kt`: piezas de diseño de las pantallas de «Oye, Sakura».
+- `app/src/main/java/com/sakura/webapp/AppLock.kt`: bloqueo con huella.
+- `app/src/main/java/com/sakura/webapp/PushNotices.kt`: avisos con la app cerrada (UnifiedPush).
+- `app/src/main/java/com/sakura/webapp/Updates.kt` y `UpdatePrompt.kt`: actualizaciones desde GitHub Releases.
 - `app/src/main/AndroidManifest.xml`: permisos y Activity.
-- `app/src/main/res/xml/network_security_config.xml`: CA aceptadas.
+- `app/src/main/res/xml/network_security_config.xml`: CA aceptadas (sistema y las instaladas por el usuario).
 - `app/build.gradle.kts`: versiones Android y URL de build.

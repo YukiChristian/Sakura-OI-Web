@@ -1,4 +1,4 @@
-# 🌸 Sakura OI Web 📱 v0.7.7
+# 🌸 Sakura OI Web 📱 v0.8.0
 
 <div align="center">
   <img src="assets/sakura-oi-web-icon.png" alt="Logo de Sakura OI Web: flor con contorno arcoíris y las letras OI" width="160">
@@ -71,7 +71,7 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 
 ## 📦 Versiones documentadas
 
-- App: Sakura OI Web **0.7.7** (versionCode 49). Historial completo en [CHANGELOG.md](CHANGELOG.md).
+- App: Sakura OI Web **0.8.0** (versionCode 50). Historial completo en [CHANGELOG.md](CHANGELOG.md).
 - Notificaciones verificadas en el teléfono Android 16 de referencia con Open WebUI 0.12.3. Pantallas, icono y barras en tema claro y oscuro de 0.2.1 a 0.2.3 verificados en el emulador de Android Studio (API 37).
 - Open WebUI: **0.12.3**, versión verificada en la instalación local.
 - Nombre visible del modelo en Open WebUI: **Sakura**. Los registros identifican **llama.cpp 0.7.0-dev**, compilado para x64 con CUDA desde el commit `ea0c4c2c8`, que carga `SoAIHQ/Qwen3.5-9B-GGUF:Q4_K_M` (Qwen 3.5 de 9B, cuantización Q4_K_M). llama.cpp es el servidor de inferencia; el modelo no pertenece a la familia Llama. El alias Sakura se configura en Open WebUI.
@@ -80,7 +80,22 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 - Herramientas fijadas en el proyecto: Android Gradle Plugin 9.4.1, Gradle 9.6.0, Kotlin 2.2.10 y JDK 17 para ejecutar Gradle. El código Java usa compatibilidad de lenguaje 11.
 - Ideas en desarrollo y pendientes, incluida la activación por voz “Oye, Sakura”, en [docs/IDEAS.md](docs/IDEAS.md).
 
-## 🆕 Novedades de la versión 0.7.7
+## 🆕 Novedades de la versión 0.8.0
+
+**Descarga el APK firmado en [Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/latest).** Desde esta versión la app avisa sola cuando hay una nueva.
+
+- **Bloqueo con huella:** en *Ajustes del teléfono*, pide tu huella, rostro o PIN al volver a Sakura (al instante, a 1 o a 5 minutos). Activarlo y desactivarlo también lo pide, y mientras está bloqueada no se ve ningún chat.
+- **Avisos con la app cerrada:** con la app gratuita [ntfy](https://ntfy.sh), Sakura avisa cuando termina una respuesta aunque Android haya cerrado la app. El texto de la respuesta pasa por el servidor de ntfy que elijas (ntfy.sh si no cambias nada) y hace falta ser administrador de Open WebUI.
+- **Actualizaciones:** revisa una vez al día y con **Buscar actualizaciones**; si hay versión nueva aparece “Hay una actualización” y con **Actualizar** se descarga y Android pide confirmar.
+- **Certificado propio sin compilar:** si tu servidor de casa usa un certificado propio, instálalo en Android (*Ajustes → Seguridad → Instalar un certificado*) y el APK publicado lo acepta.
+
+| Ajustes nuevos | Sakura bloqueada | Hay una actualización |
+|:--:|:--:|:--:|
+| <img src="docs/images/security-settings.png" alt="Tarjetas Bloqueo con huella, Avisos con la app cerrada y Actualizaciones" width="220"> | <img src="docs/images/lock-screen.png" alt="Pantalla Sakura está bloqueada con el botón Desbloquear" width="220"> | <img src="docs/images/update-prompt.png" alt="Mensaje Hay una actualización con Más tarde y Actualizar (prueba con una versión 0.7.99)" width="220"> |
+
+<img src="docs/images/push-notice.png" alt="Aviso de Sakura con el título del chat y el inicio de la respuesta" width="480">
+
+### Versión 0.7.7
 
 - El widget grande queda más limpio: solo “Habla con …” y el micrófono, sin la línea “«Oye, Sakura» activo”.
 
@@ -258,7 +273,8 @@ Resumen de todos los cambios de la app. El detalle de cada versión está en [CH
 
 | Versión | versionCode | Cambios |
 |---|---:|---|
-| **0.7.7** | 49 | El widget grande ya no muestra “«Oye, Sakura» activo”. |
+| **0.8.0** | 50 | Primer APK firmado en Releases, bloqueo con huella, avisos con la app cerrada (ntfy), buscar actualizaciones con aviso diario y certificados instalados en Android. |
+| 0.7.7 | 49 | El widget grande ya no muestra “«Oye, Sakura» activo”. |
 | 0.7.6 | 48 | Botones del widget sólidos y con borde, legibles sobre cualquier fondo; animación de activación más lenta y sin tono. |
 | 0.7.4 | 46 | Widget con Sakura, Lain y Yoko, ajuste rápido, botón Hablar, pantalla «Oye, Sakura» con frase, sensibilidad y entrenamiento de voz, animación de activación, voz sin recargar la página y sin el aviso “Abrir enlace”. |
 | 0.6.1 | 40 | El modo de voz se abre sin el aviso “Open link” de Open WebUI, también tras cambiar a la dirección de casa. |
@@ -312,7 +328,7 @@ Instala Android Studio compatible con Android Gradle Plugin 9.4.1, Android SDK P
 | Android mínimo | API 23 / Android 6.0 | Versión mínima para instalar la app |
 | Android objetivo | API 36 / Android 16 | Comportamientos de Android para los que está configurada |
 | SDK de compilación | API 37 / Android 17 | Plataforma necesaria para compilar; no es requisito para el teléfono |
-| Versión de Sakura OI Web | 0.7.7 (versionCode 49) | Versión del APK de este repositorio |
+| Versión de Sakura OI Web | 0.8.0 (versionCode 50) | Versión del APK de este repositorio |
 
 La versión de Android de tu teléfono es independiente del SDK de compilación. En el dispositivo Android 16 de referencia, la app funciona con target API 36.
 

@@ -2,6 +2,20 @@
 
 Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 0.8.0 (versionCode 50) — 12 de noviembre de 2026
+
+Primer APK firmado, publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v0.8.0).
+
+### Añadido
+- `AppLock.kt`: **bloqueo con huella** opcional en *Ajustes del teléfono*. Pide la huella, el rostro o el PIN del teléfono al volver a Sakura (al instante, a 1 o a 5 minutos); activarlo o desactivarlo también lo pide. Una pantalla “Sakura está bloqueada” tapa los chats, el modo de voz pedido mientras está bloqueada espera al desbloqueo, Ajustes también lo pide y la vista de apps recientes no muestra el contenido. Cambiar entre pantallas de la propia app no bloquea.
+- `PushNotices.kt`: **avisos con la app cerrada** con UnifiedPush y una app distribuidora como ntfy. Al activarlo, Sakura se registra en ntfy, activa en Open WebUI los webhooks de usuario y agrega un destino de notificación para “chat terminado” y “chat fallido” cuando no estás conectado. Los mensajes se comprueban con un token; al tocarlos se abre el chat.
+- `Updates.kt` y `UpdatePrompt.kt`: **actualizaciones** desde GitHub Releases. Revisa una vez al día y con *Buscar actualizaciones*; si hay versión nueva muestra “Hay una actualización” y descarga el APK para que Android lo instale. Las compilaciones personales (“0.8.0c”) comparan su número y también reciben el aviso.
+- Firma con las propiedades `SAKURA_KEYSTORE_FILE`, `SAKURA_KEYSTORE_PASSWORD`, `SAKURA_KEY_ALIAS` y `SAKURA_KEY_PASSWORD` en `~/.gradle/gradle.properties`, fuera del repositorio. Si están, la compilación de depuración usa la misma llave, así una versión personal y la publicada se instalan una sobre otra.
+
+### Cambiado
+- La app acepta certificados instalados en Android (`<certificates src="user" />`), así un servidor de casa con certificado propio funciona con el APK publicado sin compilar uno propio.
+- El build `release` no usa R8: optimizar solo `androidx` y `kotlin` rompía el arranque.
+
 ## 0.7.7 (versionCode 49) — 12 de noviembre de 2026
 
 ### Cambiado
