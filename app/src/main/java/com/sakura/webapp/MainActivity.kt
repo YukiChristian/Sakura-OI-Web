@@ -200,6 +200,7 @@ class MainActivity : ComponentActivity() {
                 override fun onPageCommitVisible(view: WebView, url: String) {
                     super.onPageCommitVisible(view, url)
                     if (isOpenWebUiOrigin(Uri.parse(url))) view.evaluateJavascript(CONFIRM_VOICE_JS, null)
+                    if (isOpenWebUiOrigin(Uri.parse(url))) view.evaluateJavascript(MIC_WATCH_JS, null)
                     if (isOpenWebUiOrigin(Uri.parse(url)) && keepKeyboardClosed(url)) view.evaluateJavascript(NO_AUTOFOCUS_JS, null)
                 }
 
@@ -217,6 +218,7 @@ class MainActivity : ComponentActivity() {
                         // On every page: Open WebUI's "¿Iniciar una llamada de voz con tu micrófono?"
                         // is accepted as soon as it shows, however the page was opened.
                         view.evaluateJavascript(CONFIRM_VOICE_JS, null)
+                        view.evaluateJavascript(MIC_WATCH_JS, null)
                         if (keepKeyboardClosed(url)) view.evaluateJavascript(NO_AUTOFOCUS_JS, null)
                         if (focusComposerPending) {
                             focusComposerPending = false
@@ -396,6 +398,14 @@ class MainActivity : ComponentActivity() {
         }
         webView.addJavascriptInterface(sessionSync, SessionSync.JS_NAME)
         webView.addJavascriptInterface(object {
+            @JavascriptInterface
+            fun hideKeyboard() {
+                if (!trustedPageLoaded) return
+                runOnUiThread {
+                    getSystemService(InputMethodManager::class.java)?.hideSoftInputFromWindow(webView.windowToken, 0)
+                }
+            }
+
             @JavascriptInterface
             fun showKeyboard() {
                 if (!trustedPageLoaded) return
@@ -1016,6 +1026,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStop() {
+        // Off screen (not just our own file picker): a voice call left open lets go of the microphone,
+        // so «Oye, Sakura» can hear the phrase again right away.
+        if (::webView.isInitialized && !skipLockOnce) {
+            webView.evaluateJavascript("window.__sakuraMic && window.__sakuraMic.release();", null)
+        }
+        super.onStop()
+    }
+
     /** Full-screen cover with the logo and "Desbloquear"; asks for the fingerprint right away. */
     private fun buildLockCover(): View {
         val ui = SetupUi(this)
@@ -1230,6 +1249,56 @@ class MainActivity : ComponentActivity() {
         """.trimIndent()
 
         /**
+         * Keeps the microphone streams the page opens (Open WebUI's voice mode), so the app can stop them
+         * when it leaves the screen. A call left open in the background kept the microphone busy for a
+         * few seconds, and «Oye, Sakura» could not hear the phrase meanwhile.
+         */
+        private const val MIC_WATCH_JS = """
+            (function() {
+                if (window.__sakuraMic) return;
+                const md = navigator.mediaDevices;
+                if (!md || !md.getUserMedia) return;
+                const live = [];
+                const original = md.getUserMedia.bind(md);
+                md.getUserMedia = function(constraints) {
+                    return original(constraints).then(function(stream) { live.push(stream); return stream; });
+                };
+                window.__sakuraMic = {
+                    live: function() {
+                        return live.reduce(function(n, s) {
+                            return n + s.getAudioTracks().filter(function(t) { return t.readyState === 'live'; }).length;
+                        }, 0);
+                    },
+                    release: function() {
+                        // In a call: end it with Open WebUI's own button, so the screen does not stay on
+                        // "Escuchando" with the microphone off when the user comes back.
+                        if (this.live() > 0) {
+                            // Visible buttons only; the label first (Spanish or English), the icon as a fallback.
+                            const shown = Array.prototype.filter.call(document.querySelectorAll('button'), function(b) {
+                                return b.getClientRects().length > 0;
+                            });
+                            const end = shown.find(function(b) {
+                                return /finalizar llamada|end call|hang up|colgar/i.test(b.getAttribute('aria-label') || '');
+                            }) || shown.find(function(b) {
+                                const icon = b.querySelector('path');
+                                return !!icon && (icon.getAttribute('d') || '').indexOf('M6.28 5.22') === 0 &&
+                                    b.getBoundingClientRect().top > window.innerHeight * 0.6;
+                            });
+                            if (end) end.click();
+                        }
+                        let stopped = 0;
+                        live.splice(0).forEach(function(stream) {
+                            stream.getAudioTracks().forEach(function(track) {
+                                if (track.readyState === 'live') { track.stop(); stopped++; }
+                            });
+                        });
+                        return stopped;
+                    }
+                };
+            })();
+        """
+
+        /**
          * Nuevo chat from the widget or the launcher shortcut: once the new chat's message box is on screen,
          * put the cursor in it and ask the app to open the keyboard (a focus from a script alone does not).
          */
@@ -1245,16 +1314,26 @@ class MainActivity : ComponentActivity() {
                     if (window.SakuraApp && window.SakuraApp.showKeyboard) window.SakuraApp.showKeyboard();
                     return true;
                 };
-                let tries = 0, done = false;
+                // Open WebUI may draw the box again right after the chat opens (and the cursor goes with
+                // the old one): for 3 seconds after the first focus, put it back whenever it is lost,
+                // unless the user touches something else.
+                let stop = false, tries = 0, focusedAt = 0;
+                const cancel = function(e) {
+                    const box = document.getElementById('chat-input');
+                    const area = box ? (box.closest('form') || box) : null;
+                    if (!area || !area.contains(e.target)) stop = true;
+                };
+                document.addEventListener('pointerdown', cancel, true);
+                const finish = function() { document.removeEventListener('pointerdown', cancel, true); };
                 // A moment first: a new chat opened inside the page replaces the box that is on screen.
                 setTimeout(function tick() {
-                    if (!done) done = focus();
-                    else {
-                        const box = document.getElementById('chat-input');
-                        if (box && !box.contains(document.activeElement)) focus();
-                        return;
-                    }
-                    if (++tries < 60) setTimeout(tick, done ? 700 : 100);
+                    if (stop) return finish();
+                    const box = document.getElementById('chat-input');
+                    const inside = !!box && box.contains(document.activeElement);
+                    if (!inside && focus() && !focusedAt) focusedAt = Date.now();
+                    if (inside && !focusedAt) focusedAt = Date.now();
+                    if ((focusedAt && Date.now() - focusedAt > 3000) || ++tries > 80) return finish();
+                    setTimeout(tick, 200);
                 }, 400);
             })();
         """
@@ -1281,12 +1360,22 @@ class MainActivity : ComponentActivity() {
                 const asked = function() {
                     return Date.now() < allowUntil || (touchedComposer && Date.now() - touchedAt < 1500);
                 };
+                const hideKeyboard = function() {
+                    if (window.SakuraApp && window.SakuraApp.hideKeyboard) window.SakuraApp.hideKeyboard();
+                };
                 const release = function() {
                     const el = document.activeElement;
-                    if (inBox(el)) el.blur();
+                    if (inBox(el)) { el.blur(); hideKeyboard(); }
                 };
                 const guard = function(el) {
-                    if (inBox(el) && !asked()) setTimeout(function() { if (!asked()) el.blur(); }, 0);
+                    if (inBox(el) && !asked()) setTimeout(function() { if (!asked()) { el.blur(); hideKeyboard(); } }, 0);
+                };
+                // Open WebUI (and its editor) put the cursor there with focus(): those calls are ignored
+                // unless the user asked, so the keyboard does not even start to open.
+                const nativeFocus = HTMLElement.prototype.focus;
+                HTMLElement.prototype.focus = function() {
+                    if (inBox(this) && !asked()) return;
+                    return nativeFocus.apply(this, arguments);
                 };
                 document.addEventListener('pointerdown', function(e) {
                     const area = composer();

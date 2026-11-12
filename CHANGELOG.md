@@ -2,6 +2,16 @@
 
 Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 0.9.1.1 (versionCode 63) — 12 de noviembre de 2026
+
+Desde esta versión la numeración tiene cuatro partes (0.9.1.1, 0.9.1.2…), para avanzar más despacio hacia la 1.0. Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v0.9.1.1).
+
+### Cambiado
+- **El teclado ya no se asoma al cambiar de chat.** Open WebUI ponía el cursor en el cuadro de mensaje y el teclado alcanzaba a abrirse antes de que la app lo quitara. Ahora `NO_AUTOFOCUS_JS` ignora las llamadas a `focus()` sobre el cuadro que el usuario no pidió, así el teclado no llega a abrirse, y si algo lo abre de todos modos la app lo cierra (`SakuraApp.hideKeyboard`). Probado en el emulador en tres vueltas: abrir en frío, volver a la app, cambiar de chat (enlaces, barra lateral, varios seguidos, con el teclado abierto), Nuevo Chat, modelos fijados, Notas, Agenda, Atrás, modo voz, widget, pantalla apagada y encendida, notificaciones, apps recientes, cambio de tema y el final de una respuesta.
+- **Nuevo** del widget y el acceso directo **Chat nuevo** vigilan 3 segundos que el cursor siga en el cuadro y lo devuelven si Open WebUI lo vuelve a dibujar (antes el teclado podía cerrarse solo medio segundo después).
+- **El modo voz se cuelga al salir de la app.** Una llamada abierta en segundo plano ocupaba el micrófono unos segundos y «Oye, Sakura» no oía la frase mientras tanto. `MIC_WATCH_JS` guarda los flujos de micrófono de la página; al dejar la pantalla, la app pulsa «Finalizar llamada» y detiene el micrófono.
+- **El widget y «¿Con quién quieres hablar?» solo muestran los modelos fijados** en Open WebUI (`ui.pinnedModels` en los ajustes del usuario), en ese orden y entre los disponibles. Los demás modelos del servidor ya no aparecen.
+
 ## 0.9.1 (versionCode 61) — 12 de noviembre de 2026
 
 Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v0.9.1).

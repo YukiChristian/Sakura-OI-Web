@@ -18,8 +18,8 @@ import java.net.URL
 data class ChatModel(val id: String, val name: String, val color: Int, val avatar: Int?)
 
 /**
- * The models of the widgets: the server's visible models (saved, with Sakura, Lain and Yoko first), the
- * one each widget remembers, and their round avatars.
+ * The models of the widgets: the ones pinned in Open WebUI (saved, in the order they are pinned), the one
+ * each widget remembers, and their round avatars.
  */
 object ChatModels {
     val PERSONAS = listOf(
@@ -32,8 +32,8 @@ object ChatModels {
         0xFF6D5BD0.toInt(), 0xFF1A8A7A.toInt(), 0xFFC27A00.toInt(), 0xFF2F6FD6.toInt(), 0xFF7A4A2A.toInt(), 0xFF5A6B7A.toInt(),
     )
     private const val PREFS = "widget_models"
-    private const val KEY_LIST = "server_list"
-    private const val KEY_LIST_AT = "server_list_at"
+    private const val KEY_LIST = "pinned_list"
+    private const val KEY_LIST_AT = "pinned_list_at"
     private const val REFRESH_MS = 30 * 60 * 1000L
     @Volatile private var refreshing = false
 
@@ -51,34 +51,28 @@ object ChatModels {
             ?: ChatModel(id, name, OTHER_COLORS[Math.floorMod(name.lowercase().hashCode(), OTHER_COLORS.size)], null)
 
     /**
-     * The models the widgets offer: the server's list as last seen (Sakura, Lain and Yoko first), or the
-     * three characters until the app has read it once.
+     * The models the widgets offer: the ones pinned in Open WebUI as last seen (none pinned: an empty list,
+     * so the widget shows only its own model), or the three characters until the app has read them once.
      */
     fun available(context: Context): List<ChatModel> {
         val saved = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_LIST, null)
             ?: return PERSONAS
-        val list = runCatching {
+        return runCatching {
             val array = JSONArray(saved)
             (0 until array.length()).map { i ->
                 val m = array.getJSONObject(i)
                 find(m.getString("id"), m.optString("name").ifEmpty { m.getString("id") })
-            }
-        }.getOrNull()
-        return if (list.isNullOrEmpty()) PERSONAS else ordered(list)
+            }.distinctBy { it.id }
+        }.getOrNull() ?: PERSONAS
     }
 
     fun hasServerList(context: Context): Boolean =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).contains(KEY_LIST)
 
-    private fun ordered(models: List<ChatModel>): List<ChatModel> {
-        val unique = models.distinctBy { it.id }
-        return PERSONAS.filter { p -> unique.any { it.id == p.id } } + unique.filter { m -> PERSONAS.none { it.id == m.id } }
-    }
-
     /** Saves the server's list; true when it changed (the widgets then redraw). */
     fun saveList(context: Context, models: List<ChatModel>): Boolean {
         val json = JSONArray().apply {
-            ordered(models).forEach { put(JSONObject().put("id", it.id).put("name", it.name)) }
+            models.distinctBy { it.id }.forEach { put(JSONObject().put("id", it.id).put("name", it.name)) }
         }.toString()
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val changed = prefs.getString(KEY_LIST, null) != json
@@ -98,7 +92,7 @@ object ChatModels {
         Thread {
             try {
                 val models = runCatching { fetchAll(app) }.getOrNull()
-                if (!models.isNullOrEmpty() && saveList(app, models)) VoiceWidgetProvider.refreshAll(app)
+                if (models != null && saveList(app, models)) VoiceWidgetProvider.refreshAll(app)
             } finally {
                 refreshing = false
             }
@@ -129,28 +123,36 @@ object ChatModels {
     }
 
     /**
-     * Visible models from Open WebUI, using the session the app already keeps (see SessionSync).
-     * Blocking; throws when there is no session or the server does not answer.
+     * The models pinned in Open WebUI (its sidebar's pinned models, `ui.pinnedModels` in the user's
+     * settings), in that order, among the visible ones; uses the session the app already keeps (see
+     * SessionSync). Blocking; throws when there is no session or the server does not answer.
      */
     fun fetchAll(context: Context): List<ChatModel> {
         ServerAddress.load(context)
         val base = ServerAddress.current.ifEmpty { ServerAddress.exterior ?: ServerAddress.local ?: "" }.trimEnd('/')
         val token = context.getSharedPreferences("session_sync", Context.MODE_PRIVATE).getString("token", null)
         check(base.isNotEmpty() && !token.isNullOrEmpty()) { "No session" }
-        val connection = URL("$base/api/models").openConnection() as HttpURLConnection
+        val data = get("$base/api/models", token).optJSONArray("data") ?: return emptyList()
+        val visible = (0 until data.length()).mapNotNull { i ->
+            val m = data.optJSONObject(i) ?: return@mapNotNull null
+            val hidden = m.optJSONObject("info")?.optJSONObject("meta")?.optBoolean("hidden") == true
+            val id = m.optString("id")
+            if (hidden || id.isEmpty()) null else find(id, m.optString("name").ifEmpty { id })
+        }
+        val pinned = get("$base/api/v1/users/user/settings", token).optJSONObject("ui")?.optJSONArray("pinnedModels")
+        val ids = pinned?.let { array -> (0 until array.length()).map { array.optString(it) } }.orEmpty()
+        return ids.mapNotNull { id -> visible.firstOrNull { it.id == id } }
+    }
+
+    private fun get(url: String, token: String): JSONObject {
+        val connection = URL(url).openConnection() as HttpURLConnection
         try {
             connection.connectTimeout = 8_000
             connection.readTimeout = 12_000
             connection.setRequestProperty("Authorization", "Bearer $token")
             check(connection.responseCode == HttpURLConnection.HTTP_OK) { "HTTP ${connection.responseCode}" }
-            val data = JSONObject(connection.inputStream.bufferedReader().readText()).optJSONArray("data")
-                ?: return emptyList()
-            return (0 until data.length()).mapNotNull { i ->
-                val m = data.optJSONObject(i) ?: return@mapNotNull null
-                val hidden = m.optJSONObject("info")?.optJSONObject("meta")?.optBoolean("hidden") == true
-                val id = m.optString("id")
-                if (hidden || id.isEmpty()) null else find(id, m.optString("name").ifEmpty { id })
-            }
+            val text = connection.inputStream.bufferedReader().readText()
+            return if (text.isBlank() || text.trim() == "null") JSONObject() else JSONObject(text)
         } finally {
             connection.disconnect()
         }

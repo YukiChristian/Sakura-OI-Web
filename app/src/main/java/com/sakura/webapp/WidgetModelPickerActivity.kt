@@ -19,8 +19,8 @@ import android.widget.TextView
 import androidx.activity.ComponentActivity
 
 /**
- * «¿Con quién quieres hablar?», opened from a widget's model name (▾) or its «+N»: every model the
- * server offers, five per row, with the widget's model marked. The list shows at once (as last seen)
+ * «¿Con quién quieres hablar?», opened from a widget's model name (▾) or its «+N»: the models pinned in
+ * Open WebUI, five per row, with the widget's model marked. The list shows at once (as last seen)
  * and is read again from the server; the widget remembers the choice.
  */
 class WidgetModelPickerActivity : ComponentActivity() {
@@ -124,13 +124,13 @@ class WidgetModelPickerActivity : ComponentActivity() {
     private fun loadFromServer() {
         Thread {
             val models = runCatching { ChatModels.fetchAll(this) }.getOrNull()
-            val changed = !models.isNullOrEmpty() && ChatModels.saveList(this, models)
+            val changed = models != null && ChatModels.saveList(this, models)
             if (changed) VoiceWidgetProvider.refreshAll(this)
             runOnUiThread {
                 if (isFinishing) return@runOnUiThread
                 when {
                     changed -> show(ChatModels.available(this))
-                    models.isNullOrEmpty() && !ChatModels.hasServerList(this) -> grid.addView(
+                    models == null && !ChatModels.hasServerList(this) -> grid.addView(
                         ui.text(getString(R.string.picker_failed), 13.5f, ui.error).apply {
                             setPadding(ui.dp(6), ui.dp(10), ui.dp(6), 0)
                         }
