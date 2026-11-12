@@ -4,17 +4,17 @@ Ideas para que Sakura OI Web se sienta como una app nativa de Android. El estado
 
 | # | Idea | Estado |
 |---:|---|---|
-| 1 | Compartir con Sakura | En desarrollo |
-| 2 | "Preguntar a Sakura" al seleccionar texto | En desarrollo |
-| 3 | Accesos directos del icono | En desarrollo |
-| 4 | Sakura como asistente del teléfono | En desarrollo |
-| 5 | Cambio automático entre la red de casa y la exterior | En desarrollo |
-| 6 | Aviso de conexión perdida durante el uso | En desarrollo |
-| 7 | Deslizar hacia abajo para recargar | En desarrollo |
+| 1 | Compartir con Sakura | Hecho en 0.6.0 |
+| 2 | "Preguntar a Sakura" al seleccionar texto | Hecho en 0.6.0 |
+| 3 | Accesos directos del icono | Hecho en 0.6.0 |
+| 4 | Sakura como asistente del teléfono | Hecho en 0.6.0 |
+| 5 | Cambio automático entre la red de casa y la exterior | Hecho en 0.6.0 |
+| 6 | Aviso de conexión perdida durante el uso | Hecho en 0.6.0 |
+| 7 | Deslizar hacia abajo para recargar | Hecho en 0.6.0 |
 | 8 | Avisos aunque Android cierre la app | Pendiente |
 | 9 | Bloqueo con huella o rostro | Pendiente |
 | 10 | APK firmado en GitHub Releases y aviso de actualización | Pendiente |
-| 11 | Activación por voz "Oye, Sakura" | En desarrollo |
+| 11 | Activación por voz "Oye, Sakura" | Hecho en 0.6.0 |
 
 ## Integración con Android
 

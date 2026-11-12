@@ -2,6 +2,25 @@
 
 Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 0.6.0 (versionCode 39) — 12 de noviembre de 2026
+
+### Añadido
+- `ConnectionActivity.kt` y `SetupUi.kt`: asistente de configuración inicial con el diseño "Conexión inicial" (tarjetas En casa / Fuera de casa, campos monoespaciados, prueba contra `/health` con estados Probando, Conectado o el motivo del fallo). Se abre si la app no tiene dirección; las direcciones se guardan en el teléfono (`ServerAddress.kt`) y las de compilación pasan a ser opcionales.
+- `PermissionsActivity.kt`: paso de permisos (notificaciones, micrófono y asistente del teléfono opcional) con estado Concedido.
+- `SettingsActivity.kt` (**Ajustes del teléfono**): conexión, permisos, asistente y “Oye, Sakura”. Se abre desde una opción añadida al menú de usuario de Open WebUI, desde el acceso directo, desde la información de la app y desde la pantalla de error.
+- `IncomingIntents.kt` y `ShareBridge.kt`: compartir texto y archivos con Sakura (se pegan en el cuadro de mensaje de un chat nuevo), “Preguntar a Sakura” (`PROCESS_TEXT`) y accesos directos (Chat nuevo, Modo de voz, Último chat, Ajustes). Al abrir el modo de voz, la app acepta sola la confirmación de Open WebUI.
+- `VoiceAssistant.kt`: Sakura como asistente digital de Android; el gesto de asistente abre el modo de voz.
+- `ServerAddress.kt` y `SessionSync.kt`: dirección de casa y exterior; en Wi-Fi se usa la local si responde y se cambia sola entre redes, copiando la sesión para no volver a iniciar sesión.
+- Barra “Sin conexión. Reconectando…” y reintento automático al volver la red.
+- Deslizar hacia abajo para recargar (`SwipeRefreshLayout`), que solo actúa con el chat arriba del todo.
+- `WakeWord.kt`: “Oye, Sakura” opcional con reconocimiento local Vosk y un modelo en español que se descarga al activarlo.
+- Textos en inglés (`values-en`); la app sigue el idioma del teléfono.
+- Propiedades de compilación opcionales `SAKURA_WEBUI_LAN_URL`, `SAKURA_VERSION_SUFFIX` y `SAKURA_APPLICATION_ID_SUFFIX`.
+
+### Cambiado
+- `SAKURA_WEBUI_URL` ya no es obligatoria.
+- El APK incluye la librería de reconocimiento de voz para ARM de 64 y 32 bits y x86_64, y pasa a unos 38 MB.
+
 ## 0.3.2 (versionCode 38) — 10 de noviembre de 2026
 
 ### Cambiado

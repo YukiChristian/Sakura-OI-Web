@@ -1,4 +1,4 @@
-# 🌸 Sakura OI Web 📱 v0.3.2
+# 🌸 Sakura OI Web 📱 v0.6.0
 
 <div align="center">
   <img src="assets/sakura-oi-web-icon.png" alt="Logo de Sakura OI Web: flor con contorno arcoíris y las letras OI" width="160">
@@ -6,7 +6,7 @@
 
 ## ¿Qué es Sakura OI Web?
 
-Sakura OI Web (antes SakuraWebApp) es una app para Android que mejora la experiencia de Open WebUI en el teléfono y lo abre dentro de la propia app. Open WebUI sigue funcionando en tu computadora o servidor; Sakura OI Web es la forma de usarlo desde el teléfono. Al pasar a otra app, la versión 0.2.7 mantiene el WebView activo con un servicio de Android y un aviso silencioso mientras Sakura queda en segundo plano. Esto ayuda a conservar la sesión, el lugar donde estabas y la conexión para recibir notificaciones. Si Android cierra la app para liberar memoria, Sakura vuelve a cargar la última dirección guardada al abrirla. Si no puede conectarse al servidor, muestra un aviso de que no hay conexión y ofrece volver a intentar.
+Sakura OI Web (antes SakuraWebApp) es una app para Android que mejora la experiencia de Open WebUI en el teléfono y lo abre dentro de la propia app. Open WebUI sigue funcionando en tu computadora o servidor; Sakura OI Web es la forma de usarlo desde el teléfono. Al pasar a otra app, la versión 0.2.7 mantiene el WebView activo con un servicio de Android y un aviso silencioso mientras Sakura queda en segundo plano. Esto ayuda a conservar la sesión, el lugar donde estabas y la conexión para recibir notificaciones. Si Android cierra la app para liberar memoria, Sakura vuelve a cargar la última dirección guardada al abrirla. Si no puede conectarse al servidor, muestra un aviso de que no hay conexión y ofrece volver a intentar. La primera vez, un asistente pide la dirección del servidor (en casa y, si quieres, fuera de casa), prueba la conexión y solicita los permisos.
 
 ## ¿Qué problema resuelve?
 
@@ -21,6 +21,11 @@ Compartir un ejemplo completo y una guía clara para que otras personas puedan c
 ## ✨ Qué incluye
 
 - Open WebUI se abre dentro de la app Android, que permite volver atrás y conserva la sesión mientras Android la mantenga activa.
+- Asistente de configuración inicial con prueba de conexión y paso de permisos; las direcciones se cambian después en **Ajustes del teléfono**.
+- Dirección de casa y dirección exterior: en tu Wi-Fi usa la local, fuera la exterior, y cambia sola manteniendo la sesión.
+- Compartir con Sakura desde cualquier app, “Preguntar a Sakura” al seleccionar texto, accesos directos del icono y Sakura como asistente del teléfono.
+- Aviso “Sin conexión” mientras no hay red y deslizar hacia abajo para recargar.
+- “Oye, Sakura” opcional para abrir el modo de voz con la app en segundo plano.
 - Apertura directa de Open WebUI y pantalla de error de conexión, con opción para reintentar, solo cuando de verdad no hay conexión.
 - Los archivos de Open WebUI que no cambian se guardan en el teléfono para no descargarlos en cada arranque.
 - Los enlaces a otros sitios se abren en el navegador predeterminado del teléfono (por ejemplo, Chrome); las páginas de tu Open WebUI siguen dentro de la app.
@@ -66,7 +71,7 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 
 ## 📦 Versiones documentadas
 
-- App: Sakura OI Web **0.3.2** (versionCode 38). Historial completo en [CHANGELOG.md](CHANGELOG.md).
+- App: Sakura OI Web **0.6.0** (versionCode 39). Historial completo en [CHANGELOG.md](CHANGELOG.md).
 - Notificaciones verificadas en el teléfono Android 16 de referencia con Open WebUI 0.12.3. Pantallas, icono y barras en tema claro y oscuro de 0.2.1 a 0.2.3 verificados en el emulador de Android Studio (API 37).
 - Open WebUI: **0.12.3**, versión verificada en la instalación local.
 - Nombre visible del modelo en Open WebUI: **Sakura**. Los registros identifican **llama.cpp 0.7.0-dev**, compilado para x64 con CUDA desde el commit `ea0c4c2c8`, que carga `SoAIHQ/Qwen3.5-9B-GGUF:Q4_K_M` (Qwen 3.5 de 9B, cuantización Q4_K_M). llama.cpp es el servidor de inferencia; el modelo no pertenece a la familia Llama. El alias Sakura se configura en Open WebUI.
@@ -75,7 +80,44 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 - Herramientas fijadas en el proyecto: Android Gradle Plugin 9.4.1, Gradle 9.6.0, Kotlin 2.2.10 y JDK 17 para ejecutar Gradle. El código Java usa compatibilidad de lenguaje 11.
 - Ideas en desarrollo y pendientes, incluida la activación por voz “Oye, Sakura”, en [docs/IDEAS.md](docs/IDEAS.md).
 
-## 🆕 Novedades de la versión 0.3.2
+## 🆕 Novedades de la versión 0.6.0
+
+La versión más grande hasta ahora: la app se configura sola desde el teléfono y se integra con Android.
+
+**Configuración desde la app**
+- **Asistente de configuración inicial:** si la app no tiene dirección, al abrirla aparece una bienvenida para escribir la dirección **En casa** (IP local y puerto) y la de **Fuera de casa** (opcional), probar la conexión y empezar. Cada dirección muestra *Probando…*, *Conectado* o el motivo del fallo (*No responde*, *Certificado no válido*, …), y **Guardar e iniciar** se activa cuando al menos una responde. Ya no hace falta compilar con la URL.
+- **Paso de permisos:** después de la conexión, una pantalla con Notificaciones, Micrófono y Asistente del teléfono (opcional), cada uno con su botón y la marca *Concedido*.
+- **Ajustes del teléfono:** pantalla propia de la app con la conexión, los permisos, el asistente y “Oye, Sakura”. Se abre desde el menú de tu usuario en Open WebUI (opción **Ajustes del teléfono**, encima de Settings), desde el acceso directo del icono, desde la información de la app en Android y desde la pantalla de error de conexión.
+- La app está en español y en inglés, y sigue el idioma del teléfono.
+
+**Integración con Android**
+- **Compartir con Sakura:** comparte texto, enlaces, fotos o PDF desde cualquier app y se abre un chat nuevo con el texto escrito y los archivos adjuntos, sin enviarse.
+- **Preguntar a Sakura:** aparece en el menú al seleccionar texto en cualquier app.
+- **Accesos directos del icono:** Chat nuevo, Modo de voz, Último chat y Ajustes.
+- **Asistente del teléfono:** Sakura se puede elegir como asistente digital de Android; el gesto o botón de asistente abre directamente el modo de voz.
+
+**Conexión**
+- **Red de casa y exterior:** en el Wi-Fi de casa usa la dirección local si responde, que es más rápida, y fuera de casa la exterior. Cambia sola al pasar de una red a otra y conserva la sesión, sin volver a iniciar sesión.
+- **Aviso sin conexión:** una barra “Sin conexión. Reconectando…” aparece mientras el teléfono no tiene red, y la página se recarga sola al volver si había fallado.
+- **Deslizar para recargar:** deslizar hacia abajo con el chat arriba del todo recarga la página.
+
+**Voz**
+- **“Oye, Sakura” (opcional, desactivado por defecto):** con la app en segundo plano, decir la frase abre el modo de voz. El reconocimiento funciona en el teléfono con un modelo en español de unos 39 MB que se descarga al activarlo; se pausa mientras usas la app. Mantiene el micrófono escuchando y consume batería.
+- El APK pasa de unos 12 MB a unos 38 MB por la librería de reconocimiento de voz.
+
+| Asistente inicial | Probando la conexión | Permisos |
+|:--:|:--:|:--:|
+| <img src="docs/images/setup-connection.png" alt="Bienvenida con las tarjetas En casa y Fuera de casa" width="220"> | <img src="docs/images/setup-testing.png" alt="Una dirección no responde y la otra está conectada" width="220"> | <img src="docs/images/setup-permissions.png" alt="Permisos de notificaciones, micrófono y asistente concedidos" width="220"> |
+
+| Menú de usuario | Ajustes del teléfono | Elegir asistente |
+|:--:|:--:|:--:|
+| <img src="docs/images/phone-settings-menu.png" alt="Opción Ajustes del teléfono en el menú de usuario de Open WebUI" width="220"> | <img src="docs/images/phone-settings.png" alt="Pantalla Ajustes del teléfono con tarjetas" width="220"> | <img src="docs/images/assistant-choose.png" alt="Android pide confirmar Sakura OI Web como asistente digital" width="220"> |
+
+| Compartir una imagen | Deslizar para recargar | Sin conexión |
+|:--:|:--:|:--:|
+| <img src="docs/images/share.png" alt="Imagen compartida adjunta en el cuadro de mensaje" width="220"> | <img src="docs/images/pull-to-refresh.png" alt="Indicador de recarga al deslizar hacia abajo" width="220"> | <img src="docs/images/offline-banner.png" alt="Barra Sin conexión, reconectando" width="220"> |
+
+### Versión 0.3.2
 
 - **Apertura directa:** se quitó la pantalla de carga propia de la app (logo, versión y espera mínima de 3 segundos). Open WebUI se muestra desde el primer momento.
 - **"Sin conexión" solo cuando de verdad no hay conexión:** antes aparecía si la página tardaba más de 5 segundos, aunque el servidor respondiera. Ahora solo sale ante un error real: sin internet, servidor inalcanzable, error de certificado o el servidor responde con un error 5xx. Al tocar **Reintentar**, la flecha gira hasta que la página carga o vuelve a fallar.
@@ -172,7 +214,8 @@ Resumen de todos los cambios de la app. El detalle de cada versión está en [CH
 
 | Versión | versionCode | Cambios |
 |---|---:|---|
-| **0.3.2** | 38 | Apertura directa sin pantalla de carga, aviso de sin conexión solo ante errores reales y caché permanente de los archivos de Open WebUI que no cambian. |
+| **0.6.0** | 39 | Asistente de configuración y de permisos, Ajustes del teléfono, compartir con Sakura, “Preguntar a Sakura”, accesos directos, asistente del teléfono, red de casa y exterior, aviso sin conexión, deslizar para recargar, “Oye, Sakura” e idioma inglés. |
+| 0.3.2 | 38 | Apertura directa sin pantalla de carga, aviso de sin conexión solo ante errores reales y caché permanente de los archivos de Open WebUI que no cambian. |
 | 0.3.1 | 37 | Compilación local sin pantalla de carga; incluida en 0.3.2. |
 | 0.3.0 | 36 | El botón de descarga del visor responde al toque y cada descarga se guarda con un nombre único (fecha + 4 caracteres al azar). |
 | 0.2.11 | 35 | Compilación local con los nombres únicos de descarga; incluida en 0.3.0. |
@@ -198,8 +241,8 @@ Resumen de todos los cambios de la app. El detalle de cada versión está en [CH
 
 1. Prepara una instancia de Open WebUI y confirma que el teléfono pueda abrirla en la red.
 2. Configura HTTPS y un certificado confiable para el host que usarás. La guía explica cómo trabajar con una CA local.
-3. Clona este repositorio y compila la app con la URL de tu servidor.
-4. Instala el APK en Android, acepta el permiso de notificaciones y concede el de micrófono si usarás voz.
+3. Clona este repositorio y compila la app. La dirección del servidor ya no es obligatoria al compilar: la app la pide la primera vez.
+4. Instala el APK en Android, escribe la dirección en el asistente, prueba la conexión y concede los permisos de notificaciones y micrófono si usarás voz.
 5. Configura el TTS que prefieras dentro de Open WebUI si quieres respuestas habladas. No necesitas instalar el servidor Qwen de este ejemplo.
 
 Las guías detallan la instalación del servidor, las variables, los certificados, la URL que hay que cambiar, los permisos y los problemas de carga de archivos:
@@ -221,7 +264,7 @@ Instala Android Studio compatible con Android Gradle Plugin 9.4.1, Android SDK P
 | Android mínimo | API 23 / Android 6.0 | Versión mínima para instalar la app |
 | Android objetivo | API 36 / Android 16 | Comportamientos de Android para los que está configurada |
 | SDK de compilación | API 37 / Android 17 | Plataforma necesaria para compilar; no es requisito para el teléfono |
-| Versión de Sakura OI Web | 0.3.2 (versionCode 38) | Versión del APK de este repositorio |
+| Versión de Sakura OI Web | 0.6.0 (versionCode 39) | Versión del APK de este repositorio |
 
 La versión de Android de tu teléfono es independiente del SDK de compilación. En el dispositivo Android 16 de referencia, la app funciona con target API 36.
 
@@ -230,8 +273,19 @@ La versión de Android de tu teléfono es independiente del SDK de compilación.
 Desde Android Studio abre la carpeta raíz del proyecto. En la terminal integrada de Android Studio, desde esa carpeta, ejecuta:
 
 ```powershell
-.\gradlew.bat assembleDebug -PSAKURA_WEBUI_URL="https://<IP-o-host-del-servidor>:8081/"
+.\gradlew.bat assembleDebug
 ```
+
+Sin más parámetros, la app abre su asistente de configuración la primera vez y guarda las direcciones en el teléfono. Si prefieres que ya vengan escritas, pásalas al compilar (todas son opcionales):
+
+```powershell
+.\gradlew.bat assembleDebug -PSAKURA_WEBUI_URL="https://<dirección-exterior>/" -PSAKURA_WEBUI_LAN_URL="https://<IP-local>:8081/"
+```
+
+- `SAKURA_WEBUI_URL`: dirección exterior, por ejemplo la de Tailscale.
+- `SAKURA_WEBUI_LAN_URL`: dirección de la red de casa (IP local y puerto).
+- `SAKURA_VERSION_SUFFIX`: letra añadida a la versión de una compilación personal (por ejemplo `c` → 0.6.0c).
+- `SAKURA_APPLICATION_ID_SUFFIX`: sufijo del identificador para instalar una versión de prueba junto a la normal (por ejemplo `.prueba`).
 
 El host es el equipo que ejecuta Open WebUI, no el teléfono. Usa una dirección que el teléfono pueda alcanzar por Wi-Fi o VPN. Una IP privada de la red local no es accesible por datos móviles sin una ruta o VPN configurada.
 

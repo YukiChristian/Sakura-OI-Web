@@ -17,7 +17,7 @@ Esta tabla distingue la versión de Android que puede instalar la app del SDK us
 | Android mínimo (minSdk) | API 23 / Android 6.0 | Versión mínima admitida por el APK |
 | Android objetivo (targetSdk) | API 36 / Android 16 | Comportamientos del sistema para los que se configura |
 | SDK de compilación (compileSdk) | API 37 / Android 17 | SDK que debe instalarse para compilar; el teléfono no requiere Android 17 |
-| Sakura OI Web | 0.3.2 (versionCode 38) | Versión actual del proyecto |
+| Sakura OI Web | 0.6.0 (versionCode 39) | Versión actual del proyecto |
 | Android Gradle Plugin | 9.4.1 | Plugin de compilación Android |
 | Gradle Wrapper | 9.6.0 | Versión incluida y usada por el proyecto |
 | Kotlin | 2.2.10 | Versión configurada del plugin de Kotlin |
@@ -36,12 +36,15 @@ Reemplaza el marcador por la dirección HTTPS que el teléfono pueda alcanzar y 
 
 El APK se genera en `app/build/outputs/apk/debug/` (normalmente `app-debug.apk`). Si Android SDK Platform API 37.0 no aparece instalado, Gradle informará el error; instálalo en SDK Manager y ejecuta de nuevo el comando. API 37.1 y las plataformas API 36, 35 o anteriores no son requisitos de compilación para esta configuración. Si el servidor usa una CA local, sigue primero la guía [HTTPS y certificados](HTTPS.md) y agrega su certificado público al build local.
 
-El comando incluye la URL de tu servidor. Si usas el menú **Build → Build APK(s)** sin configurar esa propiedad, el proyecto conserva el host de ejemplo y el APK no podrá encontrar tu Open WebUI.
+Desde la versión 0.6.0 la URL es opcional: si compilas sin ella (también con **Build → Build APK(s)**), la app abre su asistente de configuración la primera vez y guarda las direcciones en el teléfono. Las propiedades solo sirven para que vengan ya escritas.
 
 Para no escribir la URL en cada compilación, guárdala en el archivo de propiedades de Gradle de tu usuario, `%USERPROFILE%\.gradle\gradle.properties` en Windows. Está fuera del repositorio, así que tu dirección no acaba en Git, y Android Studio la usa también con **Build → Build APK(s)** y el botón **Run**:
 
 ```properties
 SAKURA_WEBUI_URL=https://<IP-o-host-del-PC>:8081/
+# Opcionales:
+SAKURA_WEBUI_LAN_URL=https://<IP-local>:8081/
+SAKURA_VERSION_SUFFIX=c
 ```
 
 Referencias oficiales: [compatibilidad de Android Gradle Plugin](https://developer.android.com/build/releases/about-agp), [JDK para builds Android](https://developer.android.com/build/jdks), [Android 16 / API 36](https://developer.android.com/tools/releases/platforms#android_16), [Android 17 / API 37](https://developer.android.com/about/versions/17/release-notes).
@@ -186,6 +189,44 @@ La pantalla “No hay conexión con Sakura” solo aparece ante un error real de
 
 El teléfono tiene que alcanzar el servidor: la IP local no funciona por datos móviles salvo que el servidor esté expuesto de forma segura o haya VPN/ruta. El texto de conexión no inicia el servidor.
 
+## Configuración inicial y Ajustes del teléfono
+
+Si la app no tiene ninguna dirección, `MainActivity` abre `ConnectionActivity` en modo asistente, con el diseño "Conexión inicial":
+
+1. **Conexión:** dos tarjetas, **En casa** (IP local y puerto) y **Fuera de casa** (opcional). **Probar conexión** consulta `/health` de cada dirección y muestra *Probando…*, *Conectado* o el motivo (*No responde*, *Dirección no encontrada*, *Certificado no válido*…). **Guardar e iniciar** solo se activa cuando al menos una responde. Se asume HTTPS si no se escribe `http://`.
+2. **Permisos (`PermissionsActivity`):** Notificaciones, Micrófono y Asistente del teléfono (opcional), cada uno con su botón y la marca *Concedido*. Si se rechazó un permiso, el botón abre la página de la app en los ajustes de Android.
+
+Las direcciones se guardan en el teléfono (`ServerAddress`). Después se cambian en **Ajustes del teléfono** (`SettingsActivity`), que también reúne permisos, asistente y “Oye, Sakura”. Se llega desde:
+
+- el menú de tu usuario en Open WebUI: la app añade **Ajustes del teléfono** encima de *Settings*;
+- el acceso directo **Ajustes** del icono;
+- la información de la app en Android (**Ajustes adicionales en la app**);
+- el enlace **Configurar conexión** de la pantalla de error.
+
+Los textos están en español y en inglés (`values-en`) y siguen el idioma del teléfono.
+
+## Red de casa y exterior
+
+Con las dos direcciones configuradas, en Wi-Fi la app prueba primero la de casa (`/health`, 1,2 s como máximo) y, si no responde, usa la exterior. Al cambiar de red (Wi-Fi ↔ datos) vuelve a decidir y recarga la misma página en la otra dirección. Como el navegador guarda la sesión por separado para cada dirección, `SessionSync` copia el token de Open WebUI de una a otra para no tener que iniciar sesión dos veces; si cierras sesión donde se guardó, la copia se borra. La dirección de casa solo se usa cuando ya existe una sesión que copiar.
+
+La dirección de casa necesita HTTPS con un certificado en el que confíe el teléfono (ver [HTTPS y certificados](HTTPS.md)), y debe figurar en `CORS_ALLOW_ORIGIN` de Open WebUI junto a la exterior.
+
+## Integración con Android
+
+- **Compartir con Sakura:** la app recibe `SEND`/`SEND_MULTIPLE` de texto, imágenes y documentos. El texto se escribe en un chat nuevo (`/?q=`) y los archivos (hasta 20 MB cada uno) se pegan en el cuadro de mensaje, que Open WebUI sube como cualquier archivo pegado.
+- **Preguntar a Sakura:** un alias de la actividad con `PROCESS_TEXT` aparece en el menú de selección de texto.
+- **Accesos directos** (`res/xml/shortcuts.xml`): Chat nuevo, Modo de voz (`/?call=true`), Último chat y Ajustes. Al abrir el modo de voz, la app pulsa sola la confirmación “Start a voice call…” de Open WebUI.
+- **Asistente del teléfono** (`VoiceAssistant.kt`): Android solo lista como asistente digital las apps con `VoiceInteractionService`, una sesión y un reconocedor; la sesión abre Sakura en modo de voz. Se elige en **Apps predeterminadas → Asistente digital**.
+
+## Aviso sin conexión y deslizar para recargar
+
+- Mientras el teléfono no tiene red aparece la barra “Sin conexión. Reconectando…”. Al volver la red, si la página había fallado, se reintenta sola. Open WebUI muestra además su propio aviso de reconexión.
+- Deslizar hacia abajo recarga la página solo si el chat está arriba del todo y no hay un diálogo abierto; Open WebUI desplaza sus paneles por dentro, así que la página informa a la app de antemano (`REFRESH_JS`).
+
+## “Oye, Sakura”
+
+Opcional y desactivado por defecto, en **Ajustes del teléfono**. Al activarlo descarga el modelo español pequeño de Vosk (unos 39 MB) y arranca `WakeWordService`, un servicio en primer plano de micrófono con una notificación permanente. Escucha solo con la app en segundo plano y se pausa al abrirla, para que el modo de voz de Open WebUI pueda usar el micrófono. El modelo no conoce la palabra “Sakura”, así que acepta variantes parecidas (“sacura”, “zakura”) después de “oye”. Para abrir el modo de voz al instante desde otra app conviene conceder **Mostrar sobre otras apps**; sin ese permiso, aparece una notificación que hay que tocar. El reconocimiento funciona en el teléfono y no envía audio a internet, pero mantiene el micrófono escuchando y consume batería.
+
 ## Recursos importantes del código
 
 - `app/src/main/java/com/sakura/webapp/MainActivity.kt`: WebView, carga, archivos, micrófono y navegación.
@@ -194,6 +235,11 @@ El teléfono tiene que alcanzar el servidor: la IP local no funciona por datos m
 - `app/src/main/java/com/sakura/webapp/PageThemeBridge.kt`: color de las barras del sistema según el tema de Open WebUI.
 - `app/src/main/java/com/sakura/webapp/ImmutableAssetCache.kt`: guarda en el teléfono los archivos de Open WebUI que no cambian.
 - `app/src/main/java/com/sakura/webapp/DownloadBridge.kt`: guarda en Descargas los archivos que Open WebUI descarga.
+- `app/src/main/java/com/sakura/webapp/ServerAddress.kt` y `SessionSync.kt`: direcciones de casa y exterior y sesión compartida.
+- `app/src/main/java/com/sakura/webapp/ConnectionActivity.kt`, `PermissionsActivity.kt`, `SettingsActivity.kt` y `SetupUi.kt`: asistente inicial y Ajustes del teléfono.
+- `app/src/main/java/com/sakura/webapp/IncomingIntents.kt` y `ShareBridge.kt`: compartir, seleccionar texto y accesos directos.
+- `app/src/main/java/com/sakura/webapp/VoiceAssistant.kt`: Sakura como asistente digital.
+- `app/src/main/java/com/sakura/webapp/WakeWord.kt`: “Oye, Sakura”.
 - `app/src/main/AndroidManifest.xml`: permisos y Activity.
 - `app/src/main/res/xml/network_security_config.xml`: CA aceptadas.
 - `app/build.gradle.kts`: versiones Android y URL de build.
