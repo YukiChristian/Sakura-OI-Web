@@ -2,6 +2,15 @@
 
 Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 0.7.6 (versionCode 48) — 12 de noviembre de 2026
+
+Incluye la compilación local 0.7.5.
+
+### Cambiado
+- Widget: los botones Chat nuevo y Último chat, los chips de modelos, la cápsula y los botones redondos tienen relleno sólido y un borde fino, y el fondo del widget es más opaco (92 %). Sobre fondos de pantalla con mucho dibujo ya se distinguen en tema claro y oscuro; Android no permite el desenfoque del diseño en los widgets.
+- La animación de activación de «Oye, Sakura» va 1.8 veces más lenta (unos 2.4 s) para cubrir la carga de la app, que arranca debajo desde el primer cuadro.
+- Se quitó por ahora el tono de activación (`WakeActivation.TONE`); el sonido sigue en `res/raw` para usar otro más adelante.
+
 ## 0.7.4 (versionCode 46) — 12 de noviembre de 2026
 
 Reúne las compilaciones locales 0.6.2 y 0.7.0 a 0.7.3. Sigue el diseño "App Android · widgets y «Oye, Sakura»".
