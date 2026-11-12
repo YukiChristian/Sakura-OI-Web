@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lets Android list Sakura under Default apps > Digital assistant. -->
+<voice-interaction-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sessionService="com.sakura.webapp.SakuraVoiceSessionService"
+    android:recognitionService="com.sakura.webapp.SakuraRecognitionService"
+    android:settingsActivity="com.sakura.webapp.SettingsActivity"
+    android:supportsAssist="true" />

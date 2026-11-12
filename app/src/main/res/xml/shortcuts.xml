@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="new_chat"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_chat"
+        android:shortcutShortLabel="@string/shortcut_new_chat"
+        android:shortcutLongLabel="@string/shortcut_new_chat">
+        <intent
+            android:action="com.sakura.webapp.action.NEW_CHAT"
+            android:targetPackage="com.sakura.webapp"
+            android:targetClass="com.sakura.webapp.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="voice"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_voice"
+        android:shortcutShortLabel="@string/shortcut_voice"
+        android:shortcutLongLabel="@string/shortcut_voice">
+        <intent
+            android:action="com.sakura.webapp.action.VOICE"
+            android:targetPackage="com.sakura.webapp"
+            android:targetClass="com.sakura.webapp.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="last_chat"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_history"
+        android:shortcutShortLabel="@string/shortcut_last_chat"
+        android:shortcutLongLabel="@string/shortcut_last_chat">
+        <intent
+            android:action="com.sakura.webapp.action.LAST_CHAT"
+            android:targetPackage="com.sakura.webapp"
+            android:targetClass="com.sakura.webapp.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="settings"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_settings"
+        android:shortcutShortLabel="@string/shortcut_settings"
+        android:shortcutLongLabel="@string/shortcut_settings_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.sakura.webapp"
+            android:targetClass="com.sakura.webapp.SettingsActivity" />
+    </shortcut>
+</shortcuts>
