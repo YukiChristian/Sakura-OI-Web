@@ -59,8 +59,8 @@ class VoiceTileService : TileService() {
 /**
  * Home screen widget, from "App Android · widgets y «Oye, Sakura»". One row: avatar with a mic badge
  * (voice mode), "Habla con" and the model capsule (opens «¿Con quién quieres hablar?»), and round
- * Nuevo chat / Último chat buttons. Two rows or more: "Habla con <modelo>", the «Oye, Sakura» state
- * and the blue mic, Sakura / Lain / Yoko as chips to switch with one tap, and the two chat buttons.
+ * Nuevo chat / Último chat buttons. Two rows or more: "Habla con <modelo>" and the blue mic, Sakura /
+ * Lain / Yoko as chips to switch with one tap, and the two chat buttons.
  * Each widget remembers its model; voice mode and new chats open with it.
  */
 class VoiceWidgetProvider : AppWidgetProvider() {
@@ -130,13 +130,6 @@ class VoiceWidgetProvider : AppWidgetProvider() {
                 views.setImageViewBitmap(R.id.widget_avatar, ChatModels.avatar(context, model, (60 * density).toInt(), ring = true))
                 views.setTextViewText(R.id.widget_title, context.getString(R.string.widget_talk_to, model.name))
                 views.setOnClickPendingIntent(R.id.widget_mic, voice)
-                val listening = WakeWordModel.isEnabled(context) && WakeWordModel.isReady(context)
-                views.setTextViewText(
-                    R.id.widget_status,
-                    if (listening) context.getString(R.string.widget_wake_on, WakePhrase.phrase(context))
-                    else context.getString(R.string.widget_wake_off)
-                )
-                views.setInt(R.id.widget_status_dot, "setColorFilter", if (listening) 0xFF40C057.toInt() else 0xFFA1A1AA.toInt())
                 ChatModels.PERSONAS.forEachIndexed { i, persona ->
                     val (chip, avatar, name) = CHIPS[i]
                     val selected = persona.id == model.id

@@ -196,8 +196,5 @@
     <string name="picker_cancel">Cancel</string>
     <string name="widget_talk_with">Talk to</string>
     <string name="widget_talk_to">Talk to %1$s</string>
-    <string name="widget_wake_on">“%1$s” on</string>
-    <string name="widget_wake_off">Tap the mic to talk</string>
     <string name="widget_preview_title">Talk to Sakura</string>
-    <string name="widget_preview_status">“Oye, Sakura” on</string>
 </resources>
