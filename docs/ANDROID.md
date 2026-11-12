@@ -17,7 +17,7 @@ Esta tabla distingue la versión de Android que puede instalar la app del SDK us
 | Android mínimo (minSdk) | API 23 / Android 6.0 | Versión mínima admitida por el APK |
 | Android objetivo (targetSdk) | API 36 / Android 16 | Comportamientos del sistema para los que se configura |
 | SDK de compilación (compileSdk) | API 37 / Android 17 | SDK que debe instalarse para compilar; el teléfono no requiere Android 17 |
-| Sakura OI Web | 0.6.0 (versionCode 39) | Versión actual del proyecto |
+| Sakura OI Web | 0.6.1 (versionCode 40) | Versión actual del proyecto |
 | Android Gradle Plugin | 9.4.1 | Plugin de compilación Android |
 | Gradle Wrapper | 9.6.0 | Versión incluida y usada por el proyecto |
 | Kotlin | 2.2.10 | Versión configurada del plugin de Kotlin |
@@ -215,7 +215,7 @@ La dirección de casa necesita HTTPS con un certificado en el que confíe el tel
 
 - **Compartir con Sakura:** la app recibe `SEND`/`SEND_MULTIPLE` de texto, imágenes y documentos. El texto se escribe en un chat nuevo (`/?q=`) y los archivos (hasta 20 MB cada uno) se pegan en el cuadro de mensaje, que Open WebUI sube como cualquier archivo pegado.
 - **Preguntar a Sakura:** un alias de la actividad con `PROCESS_TEXT` aparece en el menú de selección de texto.
-- **Accesos directos** (`res/xml/shortcuts.xml`): Chat nuevo, Modo de voz (`/?call=true`), Último chat y Ajustes. Al abrir el modo de voz, la app pulsa sola la confirmación “Start a voice call…” de Open WebUI.
+- **Accesos directos** (`res/xml/shortcuts.xml`): Chat nuevo, Modo de voz (`/?call=true`), Último chat y Ajustes. Al abrir el modo de voz, la app pulsa sola la confirmación “Start a voice call…” de Open WebUI en cada carga de la página (también si se recarga al cambiar a la dirección de casa), durante 30 s como máximo.
 - **Asistente del teléfono** (`VoiceAssistant.kt`): Android solo lista como asistente digital las apps con `VoiceInteractionService`, una sesión y un reconocedor; la sesión abre Sakura en modo de voz. Se elige en **Apps predeterminadas → Asistente digital**.
 
 ## Aviso sin conexión y deslizar para recargar

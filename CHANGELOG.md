@@ -2,6 +2,12 @@
 
 Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 0.6.1 (versionCode 40) — 12 de noviembre de 2026
+
+### Corregido
+- Al abrir el modo de voz (“Oye, Sakura”, acceso directo o asistente) podía quedar el aviso de Open WebUI “Start a voice call using your microphone?”. La app solo lo aceptaba en la primera carga y durante 10 s; si la página se recargaba en la dirección de casa o al copiar la sesión, el aviso quedaba pendiente. Ahora lo acepta en cada carga de una página con `?call=true` y lo espera hasta 30 s.
+- Una petición (modo de voz, compartir, acceso directo) que llegaba mientras la app elegía la dirección al arrancar se perdía y se abría el último chat. Ahora se abre la petición.
+
 ## 0.6.0 (versionCode 39) — 12 de noviembre de 2026
 
 ### Añadido

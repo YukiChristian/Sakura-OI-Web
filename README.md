@@ -1,4 +1,4 @@
-# 🌸 Sakura OI Web 📱 v0.6.0
+# 🌸 Sakura OI Web 📱 v0.6.1
 
 <div align="center">
   <img src="assets/sakura-oi-web-icon.png" alt="Logo de Sakura OI Web: flor con contorno arcoíris y las letras OI" width="160">
@@ -71,7 +71,7 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 
 ## 📦 Versiones documentadas
 
-- App: Sakura OI Web **0.6.0** (versionCode 39). Historial completo en [CHANGELOG.md](CHANGELOG.md).
+- App: Sakura OI Web **0.6.1** (versionCode 40). Historial completo en [CHANGELOG.md](CHANGELOG.md).
 - Notificaciones verificadas en el teléfono Android 16 de referencia con Open WebUI 0.12.3. Pantallas, icono y barras en tema claro y oscuro de 0.2.1 a 0.2.3 verificados en el emulador de Android Studio (API 37).
 - Open WebUI: **0.12.3**, versión verificada en la instalación local.
 - Nombre visible del modelo en Open WebUI: **Sakura**. Los registros identifican **llama.cpp 0.7.0-dev**, compilado para x64 con CUDA desde el commit `ea0c4c2c8`, que carga `SoAIHQ/Qwen3.5-9B-GGUF:Q4_K_M` (Qwen 3.5 de 9B, cuantización Q4_K_M). llama.cpp es el servidor de inferencia; el modelo no pertenece a la familia Llama. El alias Sakura se configura en Open WebUI.
@@ -80,7 +80,12 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 - Herramientas fijadas en el proyecto: Android Gradle Plugin 9.4.1, Gradle 9.6.0, Kotlin 2.2.10 y JDK 17 para ejecutar Gradle. El código Java usa compatibilidad de lenguaje 11.
 - Ideas en desarrollo y pendientes, incluida la activación por voz “Oye, Sakura”, en [docs/IDEAS.md](docs/IDEAS.md).
 
-## 🆕 Novedades de la versión 0.6.0
+## 🆕 Novedades de la versión 0.6.1
+
+- **El modo de voz se abre directo:** al usar “Oye, Sakura”, el acceso directo **Modo de voz** o el asistente del teléfono, a veces quedaba en pantalla el aviso de Open WebUI *“Open link · Start a voice call using your microphone?”*. Pasaba sobre todo en casa, porque la app recarga la página al cambiar a la dirección local y solo aceptaba el aviso en la primera carga. Ahora lo acepta en cada carga y lo espera hasta 30 segundos.
+- Si **Modo de voz** o un contenido compartido llegan mientras la app está arrancando, ya no los reemplaza el último chat.
+
+### Versión 0.6.0
 
 La versión más grande hasta ahora: la app se configura sola desde el teléfono y se integra con Android.
 
@@ -214,7 +219,8 @@ Resumen de todos los cambios de la app. El detalle de cada versión está en [CH
 
 | Versión | versionCode | Cambios |
 |---|---:|---|
-| **0.6.0** | 39 | Asistente de configuración y de permisos, Ajustes del teléfono, compartir con Sakura, “Preguntar a Sakura”, accesos directos, asistente del teléfono, red de casa y exterior, aviso sin conexión, deslizar para recargar, “Oye, Sakura” e idioma inglés. |
+| **0.6.1** | 40 | El modo de voz se abre sin el aviso “Open link” de Open WebUI, también tras cambiar a la dirección de casa. |
+| 0.6.0 | 39 | Asistente de configuración y de permisos, Ajustes del teléfono, compartir con Sakura, “Preguntar a Sakura”, accesos directos, asistente del teléfono, red de casa y exterior, aviso sin conexión, deslizar para recargar, “Oye, Sakura” e idioma inglés. |
 | 0.3.2 | 38 | Apertura directa sin pantalla de carga, aviso de sin conexión solo ante errores reales y caché permanente de los archivos de Open WebUI que no cambian. |
 | 0.3.1 | 37 | Compilación local sin pantalla de carga; incluida en 0.3.2. |
 | 0.3.0 | 36 | El botón de descarga del visor responde al toque y cada descarga se guarda con un nombre único (fecha + 4 caracteres al azar). |
@@ -264,7 +270,7 @@ Instala Android Studio compatible con Android Gradle Plugin 9.4.1, Android SDK P
 | Android mínimo | API 23 / Android 6.0 | Versión mínima para instalar la app |
 | Android objetivo | API 36 / Android 16 | Comportamientos de Android para los que está configurada |
 | SDK de compilación | API 37 / Android 17 | Plataforma necesaria para compilar; no es requisito para el teléfono |
-| Versión de Sakura OI Web | 0.6.0 (versionCode 39) | Versión del APK de este repositorio |
+| Versión de Sakura OI Web | 0.6.1 (versionCode 40) | Versión del APK de este repositorio |
 
 La versión de Android de tu teléfono es independiente del SDK de compilación. En el dispositivo Android 16 de referencia, la app funciona con target API 36.
 
