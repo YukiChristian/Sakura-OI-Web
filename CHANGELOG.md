@@ -2,6 +2,13 @@
 
 Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 0.9.1.5 (versionCode 67) — 12 de noviembre de 2026
+
+Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v0.9.1.5).
+
+### Corregido
+- **Sin marco claro alrededor de la página al abrir el teclado.** Cuando la app le da el foco a la página para abrir el teclado (**Nuevo** del widget o **Chat nuevo** del acceso directo), Android dibujaba su resaltado de foco, un marco claro alrededor de toda la página. Ahora el WebView no muestra ese resaltado (`defaultFocusHighlightEnabled = false`, Android 8 o superior).
+
 ## 0.9.1.4 (versionCode 66) — 12 de noviembre de 2026
 
 Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v0.9.1.4).
