@@ -225,11 +225,13 @@ La dirección de casa necesita HTTPS con un certificado en el que confíe el tel
 
 ## Aviso sin conexión
 
+- Si una carga falla (sin red, DNS, TLS, el servidor tarda demasiado o responde 5xx), o si Open WebUI abre su página `/error` porque no alcanza su servidor, aparece la pantalla «No hay conexión con Sakura» con **Reintentar**. `/error` nunca se guarda como última página y, mientras hay un error, no se guarda el estado del WebView: así, si Android cierra la app en segundo plano, al volver se carga de nuevo en lugar de restaurar la página de error de Android.
 - Mientras el teléfono no tiene red aparece la barra “Sin conexión. Reconectando…”. Al volver la red, si la página había fallado, se reintenta sola. Open WebUI muestra además su propio aviso de reconexión.
 - Desde 0.8.2 deslizar hacia abajo solo desplaza el chat; la app ya no recarga la página con ese gesto.
 
 ## “Oye, Sakura”
 
+- **Que no se apague con el tiempo:** al encenderlo se pide quitar la restricción de batería (diálogo de Android; si no se quita, la pantalla lo avisa con **Quitar restricción**). `WakeWordService` revisa cada 30 s que esté escuchando y que el reconocedor siga recibiendo sonido (lo reinicia si lleva 45 s callado), y tras oír la frase vuelve a escuchar a los 10 s si Sakura no llegó a abrirse. En la compilación de depuración, `adb shell am broadcast -a com.sakura.webapp.debug.WAKE --ez heard true -n com.sakura.webapp/.WakeActivationTestReceiver` simula oír la frase.
 Opcional y desactivado por defecto. Tiene pantalla propia (`WakeWordSettingsActivity`), que se abre desde la tarjeta «Oye, Sakura» de **Ajustes del teléfono** o tocando su notificación. Al activarlo descarga el modelo español pequeño de Vosk (unos 39 MB, con el avance en MB) y arranca `WakeWordService`, un servicio en primer plano de micrófono con una notificación permanente que incluye el botón **Hablar**. Escucha solo con la app en segundo plano y se pausa al abrirla, para que el modo de voz de Open WebUI pueda usar el micrófono. El reconocimiento funciona en el teléfono y no envía audio a internet, pero mantiene el micrófono escuchando y consume batería.
 
 - **Frase y sensibilidad** (`WakePhrase.kt`): “Oye, Sakura”, “Hola, Sakura”, “Sakura, escucha” o una propia. El modelo no conoce la palabra “Sakura”, así que la frase se compara por cómo suena (“sacura”, “sa cura”, “zakura”…). La sensibilidad Estricta, Normal o Relajada fija cuánto tiene que parecerse.
@@ -273,7 +275,7 @@ Opcional y desactivado por defecto. Tiene pantalla propia (`WakeWordSettingsActi
 - `app/src/main/java/com/sakura/webapp/MainActivity.kt`: WebView, carga, archivos, micrófono y navegación.
 - `app/src/main/java/com/sakura/webapp/WebNotificationBridge.kt`: notificaciones de Android para los avisos de Open WebUI.
 - `app/src/main/java/com/sakura/webapp/SakuraKeepAliveService.kt`: mantiene el proceso con mayor prioridad y muestra el aviso silencioso mientras la app está en segundo plano.
-- `app/src/main/java/com/sakura/webapp/PageThemeBridge.kt`: color de las barras del sistema según el tema de Open WebUI.
+- `app/src/main/java/com/sakura/webapp/PageThemeBridge.kt`: color de las barras del sistema: el tema de Open WebUI como base y, cuando cambia algo en la página, el color leído de la pantalla junto a cada barra (`MainActivity.sampleEdgeColors`).
 - `app/src/main/java/com/sakura/webapp/ImmutableAssetCache.kt`: guarda en el teléfono los archivos de Open WebUI que no cambian.
 - `app/src/main/java/com/sakura/webapp/DownloadBridge.kt`: guarda en Descargas los archivos que Open WebUI descarga.
 - `app/src/main/java/com/sakura/webapp/ServerAddress.kt` y `SessionSync.kt`: direcciones de casa y exterior y sesión compartida.

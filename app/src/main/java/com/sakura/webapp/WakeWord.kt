@@ -105,6 +105,41 @@ class WakeWordService : Service(), RecognitionListener {
     private var recognizer: Recognizer? = null
     private var paused = false
     private var lastTrigger = 0L
+    /** When the recognizer last reported anything; it reports every fraction of a second while it hears. */
+    private var lastHeardAt = 0L
+
+    /**
+     * Every 30 seconds: listening again if it stopped while it should be on, and a fresh recognizer if
+     * the current one went quiet (the microphone stopped delivering sound without an error). Without
+     * this, «Oye, Sakura» could stay deaf until the app was opened again.
+     */
+    private val watchdog = object : Runnable {
+        override fun run() {
+            if (!paused && model != null) {
+                if (speech == null) {
+                    Log.i(TAG, "Wake word: listening again")
+                    startListening()
+                } else if (System.currentTimeMillis() - lastHeardAt > SILENT_LIMIT_MS) {
+                    Log.w(TAG, "Wake word: the recognizer went quiet; restarting it")
+                    stopListening()
+                    startListening()
+                }
+            }
+            main.postDelayed(this, WATCHDOG_MS)
+        }
+    }
+
+    /**
+     * After the phrase, listening stops while voice mode opens (Sakura on screen pauses it, leaving it
+     * resumes it). If Sakura did not come up (locked screen, Android blocking the start), this brings
+     * listening back instead of leaving it off.
+     */
+    private val resumeAfterTrigger = Runnable {
+        if (!paused && speech == null) {
+            Log.i(TAG, "Wake word: Sakura did not come up after the phrase; listening again")
+            startListening()
+        }
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -125,6 +160,11 @@ class WakeWordService : Service(), RecognitionListener {
                 startListening()
                 return START_NOT_STICKY
             }
+            // Debug builds only: the same steps as hearing the phrase, for tests without a microphone.
+            ACTION_TEST_HEARD -> {
+                if (BuildConfig.DEBUG && running) heard("(prueba)")
+                return START_NOT_STICKY
+            }
         }
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) !=
             PackageManager.PERMISSION_GRANTED || !WakeWordModel.isReady(this)
@@ -139,6 +179,8 @@ class WakeWordService : Service(), RecognitionListener {
             startForeground(NOTIFICATION_ID, listeningNotification())
         }
         running = true
+        main.removeCallbacks(watchdog)
+        main.postDelayed(watchdog, WATCHDOG_MS)
         warmUpWebEngine()
         paused = intent?.getBooleanExtra(EXTRA_PAUSED, false) ?: false
         if (model == null) {
@@ -175,13 +217,16 @@ class WakeWordService : Service(), RecognitionListener {
         if (paused || speech != null) return
         try {
             val r = Recognizer(m, SAMPLE_RATE).also { recognizer = it }
+            lastHeardAt = System.currentTimeMillis()
             speech = SpeechService(r, SAMPLE_RATE).also { it.startListening(this) }
+            if (BuildConfig.DEBUG) Log.d(TAG, "Wake word: listening")
         } catch (e: Exception) {
             Log.e(TAG, "Could not start listening", e)
         }
     }
 
     private fun stopListening() {
+        if (BuildConfig.DEBUG && speech != null) Log.d(TAG, "Wake word: stopped (paused=$paused)")
         speech?.stop()
         speech?.shutdown()
         speech = null
@@ -207,13 +252,20 @@ class WakeWordService : Service(), RecognitionListener {
     }
 
     private fun check(json: String?, key: String) {
+        lastHeardAt = System.currentTimeMillis()
         val text = runCatching { JSONObject(json ?: return).optString(key) }.getOrNull() ?: return
         if (text.isBlank() || !WakePhrase.matches(this, text)) return
         val now = System.currentTimeMillis()
         if (now - lastTrigger < 4_000) return
         lastTrigger = now
+        heard(text)
+    }
+
+    private fun heard(text: String) {
         Log.i(TAG, "Wake phrase heard: $text")
         stopListening()
+        main.removeCallbacks(resumeAfterTrigger)
+        main.postDelayed(resumeAfterTrigger, RESUME_AFTER_TRIGGER_MS)
         openVoiceMode()
     }
 
@@ -294,6 +346,8 @@ class WakeWordService : Service(), RecognitionListener {
 
     override fun onDestroy() {
         running = false
+        main.removeCallbacks(watchdog)
+        main.removeCallbacks(resumeAfterTrigger)
         stopListening()
         model?.close()
         model = null
@@ -304,12 +358,35 @@ class WakeWordService : Service(), RecognitionListener {
         const val ACTION_STOP = "com.sakura.webapp.wake.STOP"
         const val ACTION_PAUSE = "com.sakura.webapp.wake.PAUSE"
         const val ACTION_RESUME = "com.sakura.webapp.wake.RESUME"
+        const val ACTION_TEST_HEARD = "com.sakura.webapp.wake.TEST_HEARD"
         const val EXTRA_PAUSED = "paused"
         private const val CHANNEL_LISTENING = "wake_listening"
         private const val CHANNEL_HEARD = "wake_heard"
         private const val NOTIFICATION_ID = 4101
         private const val HEARD_NOTIFICATION_ID = 4102
         private const val SAMPLE_RATE = 16_000f
+        private const val WATCHDOG_MS = 30_000L
+        private const val SILENT_LIMIT_MS = 45_000L
+        private const val RESUME_AFTER_TRIGGER_MS = 10_000L
+
+        /** Android may stop the service to save battery unless Sakura is exempt from that. */
+        fun batteryUnrestricted(context: Context): Boolean =
+            Build.VERSION.SDK_INT < 23 ||
+                context.getSystemService(android.os.PowerManager::class.java)
+                    ?.isIgnoringBatteryOptimizations(context.packageName) == true
+
+        /** Android's own dialog to let Sakura run without the battery restriction. */
+        @android.annotation.SuppressLint("BatteryLife")
+        fun requestBatteryUnrestricted(context: Context) {
+            if (Build.VERSION.SDK_INT < 23 || batteryUnrestricted(context)) return
+            runCatching {
+                context.startActivity(
+                    Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, android.net.Uri.parse("package:${context.packageName}"))
+                )
+            }.onFailure {
+                runCatching { context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
+            }
+        }
         private const val TAG = "SakuraWebApp"
 
         @Volatile var running = false

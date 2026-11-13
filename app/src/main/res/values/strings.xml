@@ -255,4 +255,6 @@
         <item quantity="many">%1$d modelos · el widget recordará tu elección</item>
         <item quantity="other">%1$d modelos · el widget recordará tu elección</item>
     </plurals>
+    <string name="wake_battery_missing">Android puede detener «Oye, Sakura» después de un rato para ahorrar batería. Quita la restricción de batería para Sakura.</string>
+    <string name="wake_battery_allow">Quitar restricción</string>
 </resources>

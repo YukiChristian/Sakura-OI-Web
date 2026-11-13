@@ -49,6 +49,7 @@ class WakeWordSettingsActivity : ComponentActivity() {
     private lateinit var downloadAmount: TextView
     private lateinit var downloadBar: SetupParts.Progress
     private lateinit var overlayBanner: View
+    private lateinit var batteryBanner: View
     private lateinit var phraseValue: TextView
     private lateinit var sensitivity: SetupParts.Segmented
     private lateinit var sensitivityHelp: TextView
@@ -183,6 +184,12 @@ class WakeWordSettingsActivity : ComponentActivity() {
             startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
         }
         addView(overlayBanner, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = ui.dp(12) })
+
+        // Without this, Android stops listening after a while to save battery.
+        batteryBanner = parts.banner(getString(R.string.wake_battery_missing), getString(R.string.wake_battery_allow)) {
+            WakeWordService.requestBatteryUnrestricted(this@WakeWordSettingsActivity)
+        }
+        addView(batteryBanner, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = ui.dp(12) })
     }
 
     private fun showStatus(status: Status, text: String) {
@@ -303,6 +310,7 @@ class WakeWordSettingsActivity : ComponentActivity() {
         val enabled = WakeWordModel.isEnabled(this)
         val canOverlay = Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this)
         overlayBanner.visibility = if (enabled && !canOverlay) View.VISIBLE else View.GONE
+        batteryBanner.visibility = if (enabled && !WakeWordService.batteryUnrestricted(this)) View.VISIBLE else View.GONE
         if (downloading) return
         wakeSwitch.set(enabled)
         downloadBox.visibility = View.GONE
@@ -331,6 +339,8 @@ class WakeWordSettingsActivity : ComponentActivity() {
     private fun turnOn() {
         WakeWordModel.setEnabled(this, true)
         VoiceWidgetProvider.refreshAll(this)
+        // Ask once, right away: listening in the background all day needs it.
+        WakeWordService.requestBatteryUnrestricted(this)
         if (WakeWordModel.isReady(this)) {
             WakeWordService.start(this)
             refresh()

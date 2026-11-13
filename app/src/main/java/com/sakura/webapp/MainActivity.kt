@@ -1,5 +1,11 @@
 package com.sakura.webapp
 
+import android.os.SystemClock
+import android.view.PixelCopy
+import android.os.Looper
+import android.os.Handler
+import android.graphics.Rect
+import android.graphics.Bitmap
 import android.Manifest
 import android.annotation.SuppressLint
 import android.animation.ObjectAnimator
@@ -64,6 +70,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var navigationBarScrim: View
     /** Open WebUI's declared theme color (meta[name=theme-color]) as 0xRRGGBB, or -1 if unknown. */
     private var pageThemeColor = -1
+    /** Colors drawn at the page's top and bottom edges (0xRRGGBB, -1 = unknown), see PageThemeBridge. */
+    private var pageTopColor = -1
+    private var pageBottomColor = -1
     private lateinit var assetCache: ImmutableAssetCache
     private lateinit var shareBridge: ShareBridge
     private lateinit var sessionSync: SessionSync
@@ -89,6 +98,13 @@ class MainActivity : ComponentActivity() {
     private var barsBottom = 0
     /** The page's process died and its WebView was destroyed; the activity is being rebuilt. */
     private var rendererGone = false
+    /** Until when a Nuevo chat from the widget or the shortcut wants the keyboard up. */
+    private var keyboardWantedUntil = 0L
+
+    private fun openKeyboard() {
+        webView.requestFocus()
+        getSystemService(InputMethodManager::class.java)?.showSoftInput(webView, InputMethodManager.SHOW_IMPLICIT)
+    }
     private val pauseWebViewTask = Runnable {
         if (::webView.isInitialized && !lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) webView.onPause()
     }
@@ -284,6 +300,14 @@ class MainActivity : ComponentActivity() {
                     request: WebResourceRequest
                 ): WebResourceResponse? = assetCache.intercept(request)
 
+                // Open WebUI opens /error when it cannot reach its server: the app's connection screen
+                // (with Reintentar, and a retry when the network comes back) takes its place.
+                override fun doUpdateVisitedHistory(view: WebView, url: String, isReload: Boolean) {
+                    super.doUpdateVisitedHistory(view, url, isReload)
+                    val uri = runCatching { Uri.parse(url) }.getOrNull() ?: return
+                    if (isOpenWebUiOrigin(uri) && isErrorRoute(uri)) handleMainFrameFailure()
+                }
+
                 override fun onReceivedError(
                     view: WebView,
                     request: WebResourceRequest,
@@ -444,8 +468,10 @@ class MainActivity : ComponentActivity() {
             fun showKeyboard() {
                 if (!trustedPageLoaded) return
                 runOnUiThread {
-                    webView.requestFocus()
-                    getSystemService(InputMethodManager::class.java)?.showSoftInput(webView, InputMethodManager.SHOW_IMPLICIT)
+                    // Asked while coming back, before the window has focus: Android then hides the keyboard
+                    // (stateAlwaysHidden) once it does, so it is asked again on focus (onWindowFocusChanged).
+                    keyboardWantedUntil = SystemClock.uptimeMillis() + 3_000
+                    openKeyboard()
                 }
             }
 
@@ -459,12 +485,24 @@ class MainActivity : ComponentActivity() {
             handleDownload(url, userAgent, contentDisposition, mimeType)
         }
         webView.addJavascriptInterface(
-            PageThemeBridge(isTrustedPage = { trustedPageLoaded }) { themeColor ->
-                runOnUiThread {
-                    pageThemeColor = themeColor
-                    updateSystemBars()
-                }
-            },
+            PageThemeBridge(
+                isTrustedPage = { trustedPageLoaded },
+                onThemeColor = { themeColor ->
+                    runOnUiThread {
+                        pageThemeColor = themeColor
+                        updateSystemBars()
+                    }
+                },
+                onEdgeColors = { top, bottom ->
+                    // Read from the CSS: used where the pixels cannot be read (Android 7 and older).
+                    if (Build.VERSION.SDK_INT < 26) runOnUiThread {
+                        pageTopColor = top
+                        pageBottomColor = bottom
+                        updateSystemBars()
+                    }
+                },
+                onEdgesChanged = { runOnUiThread { sampleEdgeColors() } },
+            ),
             PageThemeBridge.JS_NAME
         )
         swipeLayout = FrameLayout(this).apply {
@@ -906,21 +944,66 @@ class MainActivity : ComponentActivity() {
      * Never infer the theme from screen pixels: dialogs, images and dark overlays can
      * make a light page look dark without changing the selected WebUI theme.
      */
+    /**
+     * The color drawn next to each system bar, read from the screen (a short strip 4 dp inside the
+     * page's top and bottom edges), so each bar continues the page: the open sidebar's grey, the
+     * header with its blur, a gradient at the bottom.
+     */
+    private fun sampleEdgeColors() {
+        if (Build.VERSION.SDK_INT < 26 || !::webView.isInitialized || isFinishing) return
+        val w = webView.width
+        val h = webView.height
+        if (w < 40 || h < 40 || !webView.isShown) return
+        val at = IntArray(2).also { webView.getLocationInWindow(it) }
+        val x = at[0] + (12 * resources.displayMetrics.density).toInt()
+        fun read(y: Int, done: (Int) -> Unit) {
+            val strip = Bitmap.createBitmap(16, 1, Bitmap.Config.ARGB_8888)
+            try {
+                PixelCopy.request(window, Rect(x, y, x + 16, y + 1), strip, { result ->
+                    if (result == PixelCopy.SUCCESS) {
+                        var r = 0; var g = 0; var b = 0
+                        for (i in 0 until 16) {
+                            val c = strip.getPixel(i, 0)
+                            r += Color.red(c); g += Color.green(c); b += Color.blue(c)
+                        }
+                        done(Color.rgb(r / 16, g / 16, b / 16) and 0xFFFFFF)
+                    }
+                    strip.recycle()
+                }, Handler(Looper.getMainLooper()))
+            } catch (e: IllegalArgumentException) {
+                strip.recycle()
+            }
+        }
+        // A little inside each edge: the page's outermost pixels are often a hairline (a border, a shadow).
+        val inset = (4 * resources.displayMetrics.density).toInt()
+        read(at[1] + inset) { top ->
+            read(at[1] + h - 1 - inset) { bottom ->
+                if (top != pageTopColor || bottom != pageBottomColor) {
+                    pageTopColor = top
+                    pageBottomColor = bottom
+                    updateSystemBars()
+                }
+            }
+        }
+    }
+
     private fun updateSystemBars() {
         if (!::connectionView.isInitialized) return
         val showingPage = connectionView.visibility != View.VISIBLE
         val barColor = if (showingPage && pageThemeColor >= 0) {
             pageThemeColor or 0xFF000000.toInt()
         } else screenBackground
-        statusBarScrim.setBackgroundColor(barColor)
-        navigationBarScrim.setBackgroundColor(barColor)
-        contentRoot.setBackgroundColor(barColor)
+        // Each bar takes the color drawn at its edge of the page (the open sidebar's grey, for example).
+        val topColor = if (showingPage && pageTopColor >= 0) pageTopColor or 0xFF000000.toInt() else barColor
+        val bottomColor = if (showingPage && pageBottomColor >= 0) pageBottomColor or 0xFF000000.toInt() else barColor
+        statusBarScrim.setBackgroundColor(topColor)
+        navigationBarScrim.setBackgroundColor(bottomColor)
+        contentRoot.setBackgroundColor(bottomColor)
         // What shows for a moment where the page has not drawn yet: its own colour, not white.
         if (::webView.isInitialized) webView.setBackgroundColor(barColor)
-        val useDarkIcons = ColorUtils.calculateLuminance(barColor) > 0.5
         WindowInsetsControllerCompat(window, contentRoot).apply {
-            isAppearanceLightStatusBars = useDarkIcons
-            isAppearanceLightNavigationBars = useDarkIcons
+            isAppearanceLightStatusBars = ColorUtils.calculateLuminance(topColor) > 0.5
+            isAppearanceLightNavigationBars = ColorUtils.calculateLuminance(bottomColor) > 0.5
         }
     }
 
@@ -999,7 +1082,7 @@ class MainActivity : ComponentActivity() {
     private fun persistLastPageUrl(url: String? = webView.url) {
         val currentUrl = url ?: return
         val uri = runCatching { Uri.parse(currentUrl) }.getOrNull() ?: return
-        if (!isOpenWebUiOrigin(uri)) return
+        if (!isOpenWebUiOrigin(uri) || isErrorRoute(uri)) return
         // A shared text (?q=), voice launch (?call=) or widget model (?models=) should not come back next time.
         val keep = if (uri.getQueryParameter("q") != null || uri.getQueryParameter("call") != null ||
             uri.getQueryParameter("models") != null
@@ -1015,8 +1098,13 @@ class MainActivity : ComponentActivity() {
     private fun lastKnownPageUrl(): String {
         val savedUrl = getSharedPreferences(SESSION_PREFS, MODE_PRIVATE)
             .getString(KEY_LAST_PAGE_URL, null) ?: return ServerAddress.current
+        // Saved by an older version while Open WebUI showed its error page: start from the beginning.
+        if (runCatching { isErrorRoute(Uri.parse(savedUrl)) }.getOrDefault(false)) return ServerAddress.current
         return ServerAddress.rebase(savedUrl)
     }
+
+    /** Open WebUI's page for "the server does not answer" (/error), which the app replaces with its own screen. */
+    private fun isErrorRoute(uri: Uri): Boolean = uri.path?.trimEnd('/') == "/error"
 
     private fun requestNotificationPermission(requestId: String) {
         pendingNotificationRequestId?.let { resolveNotificationRequest() }
@@ -1078,7 +1166,11 @@ class MainActivity : ComponentActivity() {
         // A dead WebView has no state to keep; the rebuilt screen opens the last page instead.
         if (!::webView.isInitialized || rendererGone) return super.onSaveInstanceState(outState)
         persistLastPageUrl()
-        webView.saveState(outState)
+        // A failed load or Open WebUI's error page is not kept: restored later, Android's own error page
+        // came back without any new load, so the app never showed its connection screen. Without the
+        // state, the app loads the last page again and handles a failure as usual.
+        val onError = mainFrameLoadFailed || webView.url?.let { runCatching { isErrorRoute(Uri.parse(it)) }.getOrDefault(false) } == true
+        if (!onError) webView.saveState(outState)
         super.onSaveInstanceState(outState)
     }
 
@@ -1095,6 +1187,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && SystemClock.uptimeMillis() < keyboardWantedUntil && ::webView.isInitialized) {
+            webView.postDelayed({ if (SystemClock.uptimeMillis() < keyboardWantedUntil) openKeyboard() }, 120)
+        }
         if (hasFocus && returningToScreen) {
             returningToScreen = false
             // Now the keyboard state is the current one: lay the page out again with it.
@@ -1411,7 +1506,7 @@ class MainActivity : ComponentActivity() {
                 // Open WebUI may draw the box again right after the chat opens (and the cursor goes with
                 // the old one): for 3 seconds after the first focus, put it back whenever it is lost,
                 // unless the user touches something else.
-                let stop = false, tries = 0, focusedAt = 0;
+                let stop = false, tries = 0, focusedAt = 0, asked = false;
                 const cancel = function(e) {
                     const box = document.getElementById('chat-input');
                     const area = box ? (box.closest('form') || box) : null;
@@ -1424,8 +1519,16 @@ class MainActivity : ComponentActivity() {
                     if (stop) return finish();
                     const box = document.getElementById('chat-input');
                     const inside = !!box && box.contains(document.activeElement);
-                    if (!inside && focus() && !focusedAt) focusedAt = Date.now();
-                    if (inside && !focusedAt) focusedAt = Date.now();
+                    if (!inside && focus()) {
+                        asked = true;
+                        if (!focusedAt) focusedAt = Date.now();
+                    }
+                    if (inside) {
+                        // Open WebUI may have put the cursor there itself (allowed now): still open the keyboard.
+                        if (!asked && window.SakuraApp && window.SakuraApp.showKeyboard) window.SakuraApp.showKeyboard();
+                        asked = true;
+                        if (!focusedAt) focusedAt = Date.now();
+                    }
                     if ((focusedAt && Date.now() - focusedAt > 3000) || ++tries > 80) return finish();
                     setTimeout(tick, 200);
                 }, 400);

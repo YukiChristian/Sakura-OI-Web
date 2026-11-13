@@ -2,6 +2,18 @@
 
 Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 0.9.1.4 (versionCode 66) — 12 de noviembre de 2026
+
+Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v0.9.1.4).
+
+### Corregido
+- **«Oye, Sakura» ya no deja de escuchar con el tiempo.** `WakeWordService` revisa cada 30 segundos que esté escuchando y que el reconocedor siga recibiendo sonido, y lo reinicia si no; después de oír la frase vuelve a escuchar a los 10 segundos si Sakura no llegó a abrirse (pantalla bloqueada, Android impidió abrirla). Al encenderlo se pide quitar la restricción de batería (`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`, con el diálogo de Android); si no se quita, la pantalla «Oye, Sakura» lo avisa con el botón **Quitar restricción**.
+- **Pantalla propia de «sin conexión» en lugar de «Webpage not available».** Cuando Open WebUI no alcanza su servidor abre `/error`; la app guardaba esa página como la última y, si Android la cerraba en segundo plano, al volver restauraba la página de error de Android sin intentar cargar nada. Ahora `/error` nunca se guarda como última página, el estado de la página no se guarda mientras hay un error, y cuando Open WebUI va a `/error` aparece «No hay conexión con Sakura» con **Reintentar**.
+- **Nuevo** del widget y **Chat nuevo** vuelven a abrir el teclado cuando Open WebUI ya había puesto el cursor en el cuadro.
+
+### Cambiado
+- **Las barras de Android toman el color de la app junto a ellas:** la barra de estado el de la orilla superior de la página y la de navegación el de la inferior, leídos de la pantalla (`PixelCopy`, 4 dp hacia dentro para saltar bordes). Con la barra lateral abierta las dos quedan del gris de la barra lateral; en el chat siguen el encabezado y el fondo.
+
 ## 0.9.1.3 (versionCode 65) — 12 de noviembre de 2026
 
 Incluye la compilación local 0.9.1.2. Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v0.9.1.3).
