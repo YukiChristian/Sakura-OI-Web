@@ -2,6 +2,13 @@
 
 Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 0.9.1.6 (versionCode 68) — 13 de noviembre de 2026
+
+Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v0.9.1.6).
+
+### Cambiado
+- **Vuelve el resaltado de foco de Android en la página**, como hasta la 0.9.1.4. El marco claro alrededor de la pantalla que se quiso quitar en la 0.9.1.5 no venía de ese resaltado sino del tema (un filo sobre la barra lateral, que en el teléfono ocupa toda la pantalla), y ya se corrigió en el tema; por eso se quita `defaultFocusHighlightEnabled = false`.
+
 ## 0.9.1.5 (versionCode 67) — 12 de noviembre de 2026
 
 Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v0.9.1.5).

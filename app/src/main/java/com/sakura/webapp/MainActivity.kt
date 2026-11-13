@@ -218,9 +218,6 @@ class MainActivity : ComponentActivity() {
             // The page's own process (the renderer) keeps an important priority while the app is in the
             // background, so Android does not kill it and the page does not have to load again on return.
             if (Build.VERSION.SDK_INT >= 26) setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false)
-            // Without this Android draws its focus highlight (a light frame around the whole page) when the
-            // app gives the page focus to open the keyboard (a Nuevo chat from the widget or the shortcut).
-            if (Build.VERSION.SDK_INT >= 26) defaultFocusHighlightEnabled = false
             webViewClient = object : WebViewClient() {
                 /**
                  * Android killed the page's process anyway (or it crashed). Without this the whole app
