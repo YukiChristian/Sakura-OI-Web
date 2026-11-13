@@ -2,6 +2,14 @@
 
 Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 0.9.1.3 (versionCode 65) — 12 de noviembre de 2026
+
+Incluye la compilación local 0.9.1.2. Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v0.9.1.3).
+
+### Corregido
+- **Ya no aparece un recuadro blanco del tamaño del teclado** al cambiar de app y regresar. Al volver, Android entregaba todavía la altura del teclado de antes de salir y la página se encogía para dejarle espacio. Ahora `MainActivity` no reserva espacio para el teclado hasta que la ventana vuelve a tener el foco (`returningToScreen`); al salir, el cuadro de mensaje suelta el cursor y el teclado se cierra (`NO_AUTOFOCUS_JS.leave`); cuando el teclado empieza a esconderse, la página ocupa su espacio de inmediato (`WindowInsetsAnimationCompat`), y el WebView se pausa 200 ms después, ya redibujado a su tamaño, para que al volver no reaparezca la imagen anterior encogida. Lo que llega a verse antes de que la página se dibuje toma su color (`setBackgroundColor`) en lugar de blanco. Probado con grabaciones de pantalla en el emulador: apps recientes, inicio, otra app, con el teclado abierto y cerrado.
+- **Si Android cierra el proceso que dibuja la página, la app se recupera.** Antes no manejaba `onRenderProcessGone` y Android cerraba toda la app; al volver arrancaba de cero (la pantalla guardada, un destello blanco y la página cargando). Ahora la pantalla se reconstruye en el mismo chat, y el proceso de la página conserva prioridad alta en segundo plano (`setRendererPriorityPolicy`).
+
 ## 0.9.1.1 (versionCode 63) — 12 de noviembre de 2026
 
 Desde esta versión la numeración tiene cuatro partes (0.9.1.1, 0.9.1.2…), para avanzar más despacio hacia la 1.0. Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v0.9.1.1).

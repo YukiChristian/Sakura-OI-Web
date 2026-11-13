@@ -40,8 +40,8 @@ android {
         targetSdk = 36
         buildConfigField("String", "WEBUI_URL", "\"$sakuraWebUiUrl\"")
         buildConfigField("String", "WEBUI_LAN_URL", "\"$sakuraWebUiLanUrl\"")
-        versionCode = 63
-        versionName = "0.9.1.1$sakuraVersionSuffix"
+        versionCode = 65
+        versionName = "0.9.1.3$sakuraVersionSuffix"
         applicationIdSuffix = sakuraApplicationIdSuffix
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

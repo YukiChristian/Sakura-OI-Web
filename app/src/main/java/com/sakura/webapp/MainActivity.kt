@@ -49,6 +49,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.Lifecycle
+import androidx.core.view.WindowInsetsAnimationCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import kotlin.math.roundToInt
@@ -77,6 +79,19 @@ class MainActivity : ComponentActivity() {
     /** False until the first page is opened; a share or shortcut arriving earlier waits here. */
     private var firstLoadStarted = true
     private var requestBeforeFirstLoad: IncomingIntents.Request? = null
+    /**
+     * Just back on screen and the window has no focus yet: the keyboard height Android hands over then
+     * can still be the one from before leaving, and making room for it showed a white box for a moment.
+     */
+    private var returningToScreen = false
+    /** Leaving the screen: the page takes the keyboard's room first, so the keyboard slides away over it. */
+    private var leavingScreen = false
+    private var barsBottom = 0
+    /** The page's process died and its WebView was destroyed; the activity is being rebuilt. */
+    private var rendererGone = false
+    private val pauseWebViewTask = Runnable {
+        if (::webView.isInitialized && !lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) webView.onPause()
+    }
     /** A Nuevo chat that should open with the keyboard, waiting for the page to finish loading. */
     private var focusComposerPending = false
     /** "wifi" or "other"; address checks only run when this changes, not on every signal update. */
@@ -184,7 +199,26 @@ class MainActivity : ComponentActivity() {
             settings.setSupportZoom(true)
             settings.builtInZoomControls = true
             settings.displayZoomControls = false
+            // The page's own process (the renderer) keeps an important priority while the app is in the
+            // background, so Android does not kill it and the page does not have to load again on return.
+            if (Build.VERSION.SDK_INT >= 26) setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false)
             webViewClient = object : WebViewClient() {
+                /**
+                 * Android killed the page's process anyway (or it crashed). Without this the whole app
+                 * closed and started over on the way back; now the screen is rebuilt on the same page.
+                 */
+                override fun onRenderProcessGone(view: WebView, detail: android.webkit.RenderProcessGoneDetail): Boolean {
+                    Log.w(TAG, "Page process gone (crash: ${detail.didCrash()}); rebuilding the screen")
+                    // The chat on screen (changed inside the page, so not saved by a page load) is the one
+                    // the rebuilt screen opens.
+                    runCatching { persistLastPageUrl(view.url) }
+                    rendererGone = true
+                    (view.parent as? ViewGroup)?.removeView(view)
+                    view.destroy()
+                    recreate()
+                    return true
+                }
+
                 override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
                     super.onPageStarted(view, url, favicon)
                     pageReady = false
@@ -470,12 +504,16 @@ class MainActivity : ComponentActivity() {
 
         ViewCompat.setOnApplyWindowInsetsListener(contentRoot) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            barsBottom = bars.bottom
+            // Room for the keyboard only when it is really up; not right after coming back until the
+            // window has focus again (returningToScreen), nor while leaving (leavingScreen).
+            val imeShown = insets.isVisible(WindowInsetsCompat.Type.ime()) && !returningToScreen && !leavingScreen
+            val ime = if (imeShown) insets.getInsets(WindowInsetsCompat.Type.ime()).bottom else 0
             val margins = intArrayOf(
                 bars.left,
                 bars.top,
                 bars.right,
-                maxOf(bars.bottom, ime.bottom)
+                maxOf(bars.bottom, ime)
             )
             listOf(swipeLayout, connectionView).forEach { view ->
                 (view.layoutParams as FrameLayout.LayoutParams).apply {
@@ -488,6 +526,32 @@ class MainActivity : ComponentActivity() {
                 .also { offlineBanner.layoutParams = it }
             insets
         }
+        // When the keyboard starts to hide (also when Android hides it because another app takes the
+        // screen), the page takes its room at once, so the keyboard slides away over the page instead of
+        // leaving a white space behind for a moment.
+        ViewCompat.setWindowInsetsAnimationCallback(contentRoot, object : WindowInsetsAnimationCompat.Callback(
+            WindowInsetsAnimationCompat.Callback.DISPATCH_MODE_STOP
+        ) {
+            override fun onStart(
+                animation: WindowInsetsAnimationCompat,
+                bounds: WindowInsetsAnimationCompat.BoundsCompat,
+            ): WindowInsetsAnimationCompat.BoundsCompat {
+                val hiding = animation.typeMask and WindowInsetsCompat.Type.ime() != 0 &&
+                    ViewCompat.getRootWindowInsets(contentRoot)?.isVisible(WindowInsetsCompat.Type.ime()) == false
+                if (hiding) {
+                    listOf(swipeLayout, connectionView).forEach { view ->
+                        (view.layoutParams as FrameLayout.LayoutParams).apply { bottomMargin = barsBottom }
+                            .also { view.layoutParams = it }
+                    }
+                }
+                return bounds
+            }
+
+            override fun onProgress(
+                insets: WindowInsetsCompat,
+                runningAnimations: MutableList<WindowInsetsAnimationCompat>,
+            ): WindowInsetsCompat = insets
+        })
         updateSystemBars()
         ViewCompat.requestApplyInsets(contentRoot)
         CookieManager.getInstance().apply {
@@ -851,6 +915,8 @@ class MainActivity : ComponentActivity() {
         statusBarScrim.setBackgroundColor(barColor)
         navigationBarScrim.setBackgroundColor(barColor)
         contentRoot.setBackgroundColor(barColor)
+        // What shows for a moment where the page has not drawn yet: its own colour, not white.
+        if (::webView.isInitialized) webView.setBackgroundColor(barColor)
         val useDarkIcons = ColorUtils.calculateLuminance(barColor) > 0.5
         WindowInsetsControllerCompat(window, contentRoot).apply {
             isAppearanceLightStatusBars = useDarkIcons
@@ -1009,7 +1075,8 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
-        if (!::webView.isInitialized) return super.onSaveInstanceState(outState)
+        // A dead WebView has no state to keep; the rebuilt screen opens the last page instead.
+        if (!::webView.isInitialized || rendererGone) return super.onSaveInstanceState(outState)
         persistLastPageUrl()
         webView.saveState(outState)
         super.onSaveInstanceState(outState)
@@ -1026,10 +1093,19 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && returningToScreen) {
+            returningToScreen = false
+            // Now the keyboard state is the current one: lay the page out again with it.
+            if (::contentRoot.isInitialized) ViewCompat.requestApplyInsets(contentRoot)
+        }
+    }
+
     override fun onStop() {
         // Off screen (not just our own file picker): a voice call left open lets go of the microphone,
         // so «Oye, Sakura» can hear the phrase again right away.
-        if (::webView.isInitialized && !skipLockOnce) {
+        if (::webView.isInitialized && !skipLockOnce && !rendererGone) {
             webView.evaluateJavascript("window.__sakuraMic && window.__sakuraMic.release();", null)
         }
         super.onStop()
@@ -1087,15 +1163,33 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onPause() {
-        if (!::webView.isInitialized) return super.onPause()
+        if (!::webView.isInitialized || rendererGone) return super.onPause()
         persistLastPageUrl()
         WakeWordService.send(this, WakeWordService.ACTION_RESUME)
-        webView.onPause()
+        // Leave without a cursor in the message box or a keyboard up: coming back, Android would show the
+        // keyboard again for a moment (its space as a white box) before the app hides it.
+        // The page first takes the keyboard's room (right now, not on the next insets), so while the
+        // keyboard slides away during the exit animation it covers the page instead of an empty space.
+        leavingScreen = true
+        listOf(swipeLayout, connectionView).forEach { view ->
+            (view.layoutParams as FrameLayout.LayoutParams).apply { bottomMargin = barsBottom }
+                .also { view.layoutParams = it }
+        }
+        webView.evaluateJavascript("window.__sakuraNoAutofocus && window.__sakuraNoAutofocus.leave && window.__sakuraNoAutofocus.leave();", null)
+        getSystemService(InputMethodManager::class.java)?.hideSoftInputFromWindow(webView.windowToken, 0)
+        // Pause the page a moment later, once it has drawn itself at the new size: paused right away,
+        // the old (shorter) picture came back for a moment on the way in, with white space under it.
+        contentRoot.removeCallbacks(pauseWebViewTask)
+        contentRoot.postDelayed(pauseWebViewTask, 200)
         super.onPause()
     }
 
     override fun onResume() {
         super.onResume()
+        leavingScreen = false
+        if (!hasWindowFocus()) returningToScreen = true
+        else if (::contentRoot.isInitialized) ViewCompat.requestApplyInsets(contentRoot)
+        if (::contentRoot.isInitialized) contentRoot.removeCallbacks(pauseWebViewTask)
         if (::webView.isInitialized) webView.onResume()
         // The server addresses were changed in settings: open the same page on the new ones.
         if (::webView.isInitialized && ServerAddress.version(this) != addressVersion) {
@@ -1138,7 +1232,7 @@ class MainActivity : ComponentActivity() {
         pendingUploadCallback = null
         pendingAudioPermissionRequest?.deny()
         pendingAudioPermissionRequest = null
-        if (::webView.isInitialized) {
+        if (::webView.isInitialized && !rendererGone) {
             webView.stopLoading()
             webView.webChromeClient = null
             webView.webViewClient = WebViewClient()
@@ -1403,7 +1497,15 @@ class MainActivity : ComponentActivity() {
                 window.__sakuraNoAutofocus = {
                     arm: function() { if (!asked()) release(); },
                     // Nuevo chat from the widget or the shortcut: the box may take the cursor for a moment.
-                    allow: function() { allowUntil = Date.now() + 3000; }
+                    allow: function() { allowUntil = Date.now() + 3000; },
+                    // The app leaves the screen: the box lets go of the cursor, so Android has no keyboard to
+                    // bring back on the way in (it reserved its space, a white box, until the app hid it).
+                    leave: function() {
+                        allowUntil = 0;
+                        touchedComposer = false;
+                        const el = document.activeElement;
+                        if (inBox(el)) el.blur();
+                    }
                 };
                 window.__sakuraNoAutofocus.arm();
             })();
