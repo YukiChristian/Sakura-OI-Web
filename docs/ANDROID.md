@@ -275,6 +275,7 @@ Opcional y desactivado por defecto. Tiene pantalla propia (`WakeWordSettingsActi
 - `app/src/main/java/com/sakura/webapp/MainActivity.kt`: WebView, carga, archivos, micrófono y navegación.
 - `app/src/main/java/com/sakura/webapp/WebNotificationBridge.kt`: notificaciones de Android para los avisos de Open WebUI.
 - `app/src/main/java/com/sakura/webapp/SakuraKeepAliveService.kt`: mantiene el proceso con mayor prioridad y muestra el aviso silencioso mientras la app está en segundo plano.
+- `app/src/main/java/com/sakura/webapp/WebShareBridge.kt`: `navigator.share` y `navigator.canShare` para la página (el WebView no los trae); guarda los archivos en la caché (`res/xml/shared_files.xml`, `FileProvider` con autoridad `<applicationId>.files`) y abre el menú de compartir de Android.
 - `app/src/main/java/com/sakura/webapp/PageThemeBridge.kt`: color de las barras del sistema: el tema de Open WebUI como base y, cuando cambia algo en la página, el color leído de la pantalla junto a cada barra (`MainActivity.sampleEdgeColors`).
 - `app/src/main/java/com/sakura/webapp/ImmutableAssetCache.kt`: guarda en el teléfono los archivos de Open WebUI que no cambian.
 - `app/src/main/java/com/sakura/webapp/DownloadBridge.kt`: guarda en Descargas los archivos que Open WebUI descarga.

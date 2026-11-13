@@ -242,6 +242,7 @@ class MainActivity : ComponentActivity() {
                     if (trustedPageLoaded) {
                         view.evaluateJavascript(WebNotificationBridge.SHIM_JS, null)
                         view.evaluateJavascript(DownloadBridge.SHIM_JS, null)
+                        view.evaluateJavascript(WebShareBridge.SHIM_JS, null)
                     }
                 }
 
@@ -261,6 +262,7 @@ class MainActivity : ComponentActivity() {
                     if (trustedPageLoaded) {
                         view.evaluateJavascript(WebNotificationBridge.SHIM_JS, null)
                         view.evaluateJavascript(DownloadBridge.SHIM_JS, null)
+                        view.evaluateJavascript(WebShareBridge.SHIM_JS, null)
                         view.evaluateJavascript(PageThemeBridge.WATCH_JS, null)
                         view.evaluateJavascript(SessionSync.SYNC_JS, null)
                         view.evaluateJavascript(appMenuScript(), null)
@@ -444,6 +446,18 @@ class MainActivity : ComponentActivity() {
             }
         )
         webView.addJavascriptInterface(downloadBridge, DownloadBridge.JS_NAME)
+        webView.addJavascriptInterface(
+            WebShareBridge(applicationContext, isTrustedPage = { trustedPageLoaded }) { chooser ->
+                runOnUiThread {
+                    try {
+                        startActivity(chooser)
+                    } catch (e: android.content.ActivityNotFoundException) {
+                        showToast(getString(R.string.share_out_failed))
+                    }
+                }
+            },
+            WebShareBridge.JS_NAME
+        )
         shareBridge = ShareBridge(applicationContext, isTrustedPage = { trustedPageLoaded }) { skipped ->
             runOnUiThread {
                 if (skipped > 0) showToast(getString(R.string.share_skipped, skipped))

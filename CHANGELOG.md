@@ -2,6 +2,13 @@
 
 Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 0.9.1.7 (versionCode 69) — 13 de noviembre de 2026
+
+Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v0.9.1.7).
+
+### Agregado
+- **Compartir abre el menú de compartir de Android.** El WebView de Android no tiene la Web Share API, así que el botón **Compartir** del visor de imágenes y del visor de archivos abría la imagen en lugar de compartirla. Ahora la app le da a la página `navigator.share` y `navigator.canShare` (`WebShareBridge`): los archivos se guardan en la caché de la app (carpeta `compartir`, se borra después de una hora) y se entregan con un `FileProvider` al menú nativo, que muestra la vista previa de la imagen y las apps. También funciona para compartir texto y enlaces.
+
 ## 0.9.1.6 (versionCode 68) — 13 de noviembre de 2026
 
 Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v0.9.1.6).

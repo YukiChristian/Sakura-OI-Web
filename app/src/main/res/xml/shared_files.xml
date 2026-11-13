@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Files the page shares through Android's share menu (WebShareBridge), kept in the app's cache. -->
+<paths>
+    <cache-path name="compartir" path="compartir/" />
+</paths>

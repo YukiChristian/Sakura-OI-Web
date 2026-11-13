@@ -255,4 +255,5 @@
     </plurals>
     <string name="wake_battery_missing">Android may stop “Oye, Sakura” after a while to save battery. Remove the battery restriction for Sakura.</string>
     <string name="wake_battery_allow">Remove restriction</string>
+    <string name="share_out_failed">Could not open the share menu</string>
 </resources>

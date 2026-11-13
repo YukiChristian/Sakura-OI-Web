@@ -1,4 +1,4 @@
-# 🌸 Sakura OI Web 📱 v0.9.1.6
+# 🌸 Sakura OI Web 📱 v0.9.1.7
 
 <div align="center">
   <img src="assets/sakura-oi-web-icon.png" alt="Logo de Sakura OI Web: flor con contorno arcoíris y las letras OI" width="160">
@@ -71,7 +71,7 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 
 ## 📦 Versiones documentadas
 
-- App: Sakura OI Web **0.9.1.6** (versionCode 68). Historial completo en [CHANGELOG.md](CHANGELOG.md).
+- App: Sakura OI Web **0.9.1.7** (versionCode 69). Historial completo en [CHANGELOG.md](CHANGELOG.md).
 - Notificaciones verificadas en el teléfono Android 16 de referencia con Open WebUI 0.12.3. Pantallas, icono y barras en tema claro y oscuro de 0.2.1 a 0.2.3 verificados en el emulador de Android Studio (API 37).
 - Open WebUI: **0.12.3**, versión verificada en la instalación local.
 - Nombre visible del modelo en Open WebUI: **Sakura**. Los registros identifican **llama.cpp 0.7.0-dev**, compilado para x64 con CUDA desde el commit `ea0c4c2c8`, que carga `SoAIHQ/Qwen3.5-9B-GGUF:Q4_K_M` (Qwen 3.5 de 9B, cuantización Q4_K_M). llama.cpp es el servidor de inferencia; el modelo no pertenece a la familia Llama. El alias Sakura se configura en Open WebUI.
@@ -80,9 +80,13 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 - Herramientas fijadas en el proyecto: Android Gradle Plugin 9.4.1, Gradle 9.6.0, Kotlin 2.2.10 y JDK 17 para ejecutar Gradle. El código Java usa compatibilidad de lenguaje 11.
 - Ideas en desarrollo y pendientes, incluida la activación por voz “Oye, Sakura”, en [docs/IDEAS.md](docs/IDEAS.md).
 
-## 🆕 Novedades de la versión 0.9.1.6
+## 🆕 Novedades de la versión 0.9.1.7
 
 **Descarga el APK firmado en [Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/latest).** Si ya tienes la app, Sakura te avisa sola y se actualiza encima.
+
+- **Compartir de verdad:** el botón **Compartir** del visor de imágenes abre el menú de compartir de Android con la imagen, para mandarla a WhatsApp, Drive, Quick Share o cualquier app.
+
+### Versión 0.9.1.6
 
 - **Vuelve el resaltado de foco de Android**, como hasta la 0.9.1.4: el marco claro alrededor de la pantalla venía del tema y ya se corrigió ahí.
 
@@ -332,7 +336,8 @@ Resumen de todos los cambios de la app. El detalle de cada versión está en [CH
 
 | Versión | versionCode | Cambios |
 |---|---:|---|
-| **0.9.1.6** | 68 | Vuelve el resaltado de foco de Android en la página; el marco claro alrededor de la pantalla se corrigió en el tema. |
+| **0.9.1.7** | 69 | **Compartir** abre el menú nativo de Android con la imagen o el archivo. |
+| 0.9.1.6 | 68 | Vuelve el resaltado de foco de Android en la página; el marco claro alrededor de la pantalla se corrigió en el tema. |
 | 0.9.1.5 | 67 | Sin el marco claro de Android alrededor de la página al abrir el teclado desde **Nuevo** o **Chat nuevo**. |
 | 0.9.1.4 | 66 | «Oye, Sakura» se recupera solo y pide quitar la restricción de batería; barras del color de la app junto a ellas; pantalla propia de «sin conexión» en lugar de la página de error de Android. |
 | 0.9.1.3 | 65 | Sin recuadro blanco del teclado al cambiar de app y regresar; la app se recupera en el mismo chat si Android cierra el proceso de la página. |
@@ -396,7 +401,7 @@ Instala Android Studio compatible con Android Gradle Plugin 9.4.1, Android SDK P
 | Android mínimo | API 23 / Android 6.0 | Versión mínima para instalar la app |
 | Android objetivo | API 36 / Android 16 | Comportamientos de Android para los que está configurada |
 | SDK de compilación | API 37 / Android 17 | Plataforma necesaria para compilar; no es requisito para el teléfono |
-| Versión de Sakura OI Web | 0.9.1.6 (versionCode 68) | Versión del APK de este repositorio |
+| Versión de Sakura OI Web | 0.9.1.7 (versionCode 69) | Versión del APK de este repositorio |
 
 La versión de Android de tu teléfono es independiente del SDK de compilación. En el dispositivo Android 16 de referencia, la app funciona con target API 36.
 
