@@ -2,6 +2,14 @@
 
 Cambios de Sakura Hanami Open WebUI (antes Sakura OI Web y SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 1.0 Beta 003 (versionCode 72) — 13 de noviembre de 2026
+
+Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v1.0-Beta-003).
+
+### Cambiado
+- **«Oye, Sakura» arranca todo a la vez.** En el instante en que se oye la frase suenan el tono y la vibración, se abre Sakura y aparece la animación; antes la app esperaba al primer cuadro de la animación.
+- **Nueva animación de activación.** La pantalla se cubre con un velo que la difumina en medio segundo (niebla rosada en claro, grafito en oscuro); en Android 12 o superior, además, se desenfoca lo que hay detrás (`FLAG_BLUR_BEHIND`, si el teléfono lo permite). Unos pétalos sueltos y abstractos caen girando, y la línea Rosa Sakura recorre los bordes. Todo se queda hasta que Modo voz escucha (como mucho 16 s) y se desvanece descubriendo la pantalla de la llamada; si la conexión falla, se quita enseguida. Con las animaciones del sistema apagadas, solo el velo y el borde.
+
 ## 1.0 Beta 002 (versionCode 71) — 13 de noviembre de 2026
 
 Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v1.0-Beta-002).
