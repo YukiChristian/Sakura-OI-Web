@@ -17,7 +17,7 @@ Esta tabla distingue la versión de Android que puede instalar la app del SDK us
 | Android mínimo (minSdk) | API 23 / Android 6.0 | Versión mínima admitida por el APK |
 | Android objetivo (targetSdk) | API 36 / Android 16 | Comportamientos del sistema para los que se configura |
 | SDK de compilación (compileSdk) | API 37 / Android 17 | SDK que debe instalarse para compilar; el teléfono no requiere Android 17 |
-| Sakura Hanami Open WebUI | 1.0 Beta 005 (versionCode 74) | Versión actual del proyecto |
+| Sakura Hanami Open WebUI | 1.0 Beta 006 (versionCode 75) | Versión actual del proyecto |
 | Android Gradle Plugin | 9.4.1 | Plugin de compilación Android |
 | Gradle Wrapper | 9.6.0 | Versión incluida y usada por el proyecto |
 | Kotlin | 2.2.10 | Versión configurada del plugin de Kotlin |
@@ -308,4 +308,4 @@ Opcional y desactivado por defecto. Tiene pantalla propia (`WakeWordSettingsActi
 ## Barra lateral en el teléfono (1.0 Beta 005)
 
 - `PHONE_BUTTON_JS` (en `MainActivity`) agrega **Teléfono** a la fila de abajo del tema (`.sk-barra-fila`): copia en vivo el aspecto de `#sidebar-calendar-button` y el alto de `.sk-barra-buscar-arriba`, y se ordena con `order` (foto, Teléfono, Buscar) porque el tema vuelve a poner Buscar tras la foto. Al tocarlo llama a `SakuraApp.openSettings()`. Un `MutationObserver` lo repone cuando el tema redibuja la barra.
-- El mismo script escucha el deslizamiento hacia arriba (más de 48 px, más vertical que horizontal, en menos de 0,8 s) en `.sk-barra-fila` y `.sk-barra-dock` y pulsa **Buscar**.
+- En 1.0 Beta 005 el mismo script abría **Buscar** al deslizar hacia arriba en el panel de abajo; se quitó en 1.0 Beta 006 porque estorbaba al moverse entre los chats.

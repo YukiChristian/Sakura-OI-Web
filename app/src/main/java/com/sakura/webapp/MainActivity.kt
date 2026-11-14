@@ -1515,7 +1515,6 @@ class MainActivity : ComponentActivity() {
         """.trimIndent()
 
         /**
-         * Swiping up on the sidebar's bottom panel opens the search (see swipeToSearch).
          * «Teléfono» in the phone sidebar's bottom row, right after the user's own picture (the theme's
          * `.sk-barra-fila`, with the profile and «Buscar»): it opens the app's own settings. It takes the look of
          * the «Agenda» pill at the top (colours, rounding, font, shadow — read live, so it follows light and dark
@@ -1570,26 +1569,6 @@ class MainActivity : ComponentActivity() {
                     if (me && me.style.order !== '-2') me.style.order = '-2';
                     if (btn.style.order !== '-1') btn.style.order = '-1';
                     paint(btn, row);
-                    // Swiping up on the bottom panel (this row and the bar under it) opens the search, like «Buscar».
-                    [row, document.querySelector('#sidebar .sk-barra-dock')].forEach(swipeToSearch);
-                }
-                function swipeToSearch(panel) {
-                    if (!panel || panel.__sakuraSwipe) return;
-                    panel.__sakuraSwipe = true;
-                    let x0 = 0, y0 = 0, t0 = 0, done = false;
-                    panel.addEventListener('touchstart', function(e) {
-                        const t = e.touches[0];
-                        x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); done = false;
-                    }, { passive: true });
-                    panel.addEventListener('touchmove', function(e) {
-                        if (done) return;
-                        const t = e.touches[0], dx = t.clientX - x0, dy = t.clientY - y0;
-                        if (dy < -48 && Math.abs(dy) > Math.abs(dx) * 1.5 && Date.now() - t0 < 800) {
-                            done = true;
-                            const search = document.querySelector('#sidebar .sk-barra-buscar-arriba');
-                            if (search) search.click();
-                        }
-                    }, { passive: true });
                 }
                 // The sidebar is drawn again now and then (and the theme switches light/dark): put it back, at most
                 // once per frame.

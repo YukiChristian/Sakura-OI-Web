@@ -1,4 +1,4 @@
-# 🌸 Sakura Hanami Open WebUI 📱 v1.0 Beta 005
+# 🌸 Sakura Hanami Open WebUI 📱 v1.0 Beta 006
 
 <div align="center">
   <img src="assets/sakura-oi-web-icon.png" alt="Logo de Sakura OI Web: flor con contorno arcoíris y las letras OI" width="160">
@@ -71,7 +71,7 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 
 ## 📦 Versiones documentadas
 
-- App: Sakura Hanami Open WebUI **1.0 Beta 005** (versionCode 74). Historial completo en [CHANGELOG.md](CHANGELOG.md).
+- App: Sakura Hanami Open WebUI **1.0 Beta 006** (versionCode 75). Historial completo en [CHANGELOG.md](CHANGELOG.md).
 - Notificaciones verificadas en el teléfono Android 16 de referencia con Open WebUI 0.12.3. Pantallas, icono y barras en tema claro y oscuro de 0.2.1 a 0.2.3 verificados en el emulador de Android Studio (API 37).
 - Open WebUI: **0.12.3**, versión verificada en la instalación local.
 - Nombre visible del modelo en Open WebUI: **Sakura**. Los registros identifican **llama.cpp 0.7.0-dev**, compilado para x64 con CUDA desde el commit `ea0c4c2c8`, que carga `SoAIHQ/Qwen3.5-9B-GGUF:Q4_K_M` (Qwen 3.5 de 9B, cuantización Q4_K_M). llama.cpp es el servidor de inferencia; el modelo no pertenece a la familia Llama. El alias Sakura se configura en Open WebUI.
@@ -80,12 +80,15 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 - Herramientas fijadas en el proyecto: Android Gradle Plugin 9.4.1, Gradle 9.6.0, Kotlin 2.2.10 y JDK 17 para ejecutar Gradle. El código Java usa compatibilidad de lenguaje 11.
 - Ideas en desarrollo y pendientes, incluida la activación por voz “Oye, Sakura”, en [docs/IDEAS.md](docs/IDEAS.md).
 
-## 🆕 Novedades de la versión 1.0 Beta 005
+## 🆕 Novedades de la versión 1.0 Beta 006
 
 **Descarga el APK firmado en [Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/latest).** Si ya tienes la app, Sakura te avisa sola y se actualiza encima.
 
+- **Sin el gesto de deslizar para buscar:** estorbaba al moverse entre los chats.
+
+### Versión 1.0 Beta 005
+
 - **Botón Teléfono:** en la barra lateral, entre tu foto y Buscar, abre los Ajustes del teléfono de la app.
-- **Deslizar hacia arriba** en el panel de abajo de la barra lateral abre la búsqueda.
 
 ### Versión 1.0 Beta 004
 
@@ -361,7 +364,8 @@ Resumen de todos los cambios de la app. El detalle de cada versión está en [CH
 
 | Versión | versionCode | Cambios |
 |---|---:|---|
-| **1.0 Beta 005** | 74 | Botón Teléfono en la barra lateral (abre los Ajustes del teléfono); deslizar hacia arriba en el panel de abajo abre la búsqueda. |
+| **1.0 Beta 006** | 75 | Se quita el gesto de deslizar hacia arriba que abría la búsqueda. |
+| 1.0 Beta 005 | 74 | Botón Teléfono en la barra lateral (abre los Ajustes del teléfono); deslizar hacia arriba en el panel de abajo abría la búsqueda (quitado en 1.0 Beta 006). |
 | 1.0 Beta 004 | 73 | Activación con cristal de color, logo, bokeh y neón vivo; Modo voz sin líneas en los bordes. |
 | 1.0 Beta 003 | 72 | «Oye, Sakura» abre la app al instante, con velo difuminado, pétalos sueltos y la línea rosa hasta la llamada. |
 | 1.0 Beta 002 | 71 | Sin espacio blanco al abrir o cerrar el teclado (la página sigue al teclado); tono Marimba de madera; prueba automática del teclado. |
@@ -431,7 +435,7 @@ Instala Android Studio compatible con Android Gradle Plugin 9.4.1, Android SDK P
 | Android mínimo | API 23 / Android 6.0 | Versión mínima para instalar la app |
 | Android objetivo | API 36 / Android 16 | Comportamientos de Android para los que está configurada |
 | SDK de compilación | API 37 / Android 17 | Plataforma necesaria para compilar; no es requisito para el teléfono |
-| Versión de Sakura Hanami Open WebUI | 1.0 Beta 005 (versionCode 74) | Versión del APK de este repositorio |
+| Versión de Sakura Hanami Open WebUI | 1.0 Beta 006 (versionCode 75) | Versión del APK de este repositorio |
 
 La versión de Android de tu teléfono es independiente del SDK de compilación. En el dispositivo Android 16 de referencia, la app funciona con target API 36.
 
