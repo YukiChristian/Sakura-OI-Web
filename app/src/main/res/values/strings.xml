@@ -278,4 +278,5 @@
     <string name="training_missed">No te escuché bien. Acércate un poco y repite la %1$d.</string>
     <string name="training_missing_one">Falta 1 grabación</string>
     <string name="training_missing_many">Faltan %1$d grabaciones</string>
+    <string name="phone_button">Teléfono</string>
 </resources>

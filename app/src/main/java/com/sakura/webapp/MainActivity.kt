@@ -280,6 +280,7 @@ class MainActivity : ComponentActivity() {
                         if (restBottomColor >= 0) applyBackdrop(restBottomColor, force = true)
                         view.evaluateJavascript(SessionSync.SYNC_JS, null)
                         view.evaluateJavascript(appMenuScript(), null)
+                        view.evaluateJavascript(phoneButtonScript(), null)
                         if (shareBridge.hasPending) view.evaluateJavascript(ShareBridge.ATTACH_JS, null)
                         // On every page: Open WebUI's "¿Iniciar una llamada de voz con tu micrófono?"
                         // is accepted as soon as it shows, however the page was opened.
@@ -1197,6 +1198,9 @@ class MainActivity : ComponentActivity() {
     private fun appMenuScript(): String =
         APP_MENU_JS.replace("__LABEL__", JSONObject.quote(getString(R.string.app_menu_item)))
 
+    private fun phoneButtonScript(): String =
+        PHONE_BUTTON_JS.replace("__LABEL__", JSONObject.quote(getString(R.string.phone_button)))
+
     private fun showToast(message: String) {
         runOnUiThread { Toast.makeText(this, message, Toast.LENGTH_LONG).show() }
     }
@@ -1507,6 +1511,95 @@ class MainActivity : ComponentActivity() {
                 new MutationObserver(function() {
                     document.querySelectorAll('[role="menu"]').forEach(addItem);
                 }).observe(document.body, { childList: true, subtree: true });
+            })();
+        """.trimIndent()
+
+        /**
+         * Swiping up on the sidebar's bottom panel opens the search (see swipeToSearch).
+         * «Teléfono» in the phone sidebar's bottom row, right after the user's own picture (the theme's
+         * `.sk-barra-fila`, with the profile and «Buscar»): it opens the app's own settings. It takes the look of
+         * the «Agenda» pill at the top (colours, rounding, font, shadow — read live, so it follows light and dark
+         * mode) and the height of «Buscar», so the row lines up. Only the app adds it: a browser has no phone
+         * settings.
+         */
+        private val PHONE_BUTTON_JS = """
+            (function() {
+                if (window.__sakuraPhoneButton || !window.$APP_MENU_JS_NAME) return;
+                window.__sakuraPhoneButton = true;
+                const label = __LABEL__;
+                const icon = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" ' +
+                    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.6"/>' +
+                    '<path d="M10.5 5.6h3"/><path d="M11.2 18.3h1.6"/></svg>';
+                const LOOK = ['borderRadius', 'backgroundColor', 'boxShadow', 'borderTop', 'borderRight', 'borderBottom', 'borderLeft',
+                    'color', 'fontFamily', 'fontSize', 'fontWeight', 'letterSpacing'];
+                function paint(btn, row) {
+                    const ref = document.getElementById('sidebar-calendar-button');
+                    if (ref) {
+                        const cs = getComputedStyle(ref);
+                        LOOK.forEach(function(p) { if (btn.style[p] !== cs[p]) btn.style[p] = cs[p]; });
+                    }
+                    const search = row.querySelector('.sk-barra-buscar-arriba');
+                    const h = search ? getComputedStyle(search).height : '44px';
+                    if (btn.style.height !== h) btn.style.height = h;
+                }
+                function add() {
+                    const row = document.querySelector('#sidebar .sk-barra-fila');
+                    if (!row) return;
+                    let btn = document.getElementById('sakura-phone-button');
+                    if (!btn) {
+                        btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.id = 'sakura-phone-button';
+                        btn.setAttribute('aria-label', label);
+                        btn.innerHTML = icon + '<span>' + label + '</span>';
+                        Object.assign(btn.style, {
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                            padding: '0 16px', flex: 'none', cursor: 'pointer', whiteSpace: 'nowrap', lineHeight: '20px',
+                            boxSizing: 'border-box', margin: '0'
+                        });
+                        btn.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.$APP_MENU_JS_NAME.openSettings();
+                        });
+                    }
+                    if (btn.parentElement !== row) row.appendChild(btn);
+                    // Placed by order, not by moving nodes (the theme keeps «Buscar» right after the picture):
+                    // picture, «Teléfono», «Buscar».
+                    const me = row.querySelector('.sk-barra-yo');
+                    if (me && me.style.order !== '-2') me.style.order = '-2';
+                    if (btn.style.order !== '-1') btn.style.order = '-1';
+                    paint(btn, row);
+                    // Swiping up on the bottom panel (this row and the bar under it) opens the search, like «Buscar».
+                    [row, document.querySelector('#sidebar .sk-barra-dock')].forEach(swipeToSearch);
+                }
+                function swipeToSearch(panel) {
+                    if (!panel || panel.__sakuraSwipe) return;
+                    panel.__sakuraSwipe = true;
+                    let x0 = 0, y0 = 0, t0 = 0, done = false;
+                    panel.addEventListener('touchstart', function(e) {
+                        const t = e.touches[0];
+                        x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); done = false;
+                    }, { passive: true });
+                    panel.addEventListener('touchmove', function(e) {
+                        if (done) return;
+                        const t = e.touches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+                        if (dy < -48 && Math.abs(dy) > Math.abs(dx) * 1.5 && Date.now() - t0 < 800) {
+                            done = true;
+                            const search = document.querySelector('#sidebar .sk-barra-buscar-arriba');
+                            if (search) search.click();
+                        }
+                    }, { passive: true });
+                }
+                // The sidebar is drawn again now and then (and the theme switches light/dark): put it back, at most
+                // once per frame.
+                let queued = false;
+                new MutationObserver(function() {
+                    if (queued) return;
+                    queued = true;
+                    requestAnimationFrame(function() { queued = false; add(); });
+                }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+                add();
             })();
         """.trimIndent()
 

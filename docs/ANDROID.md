@@ -17,7 +17,7 @@ Esta tabla distingue la versión de Android que puede instalar la app del SDK us
 | Android mínimo (minSdk) | API 23 / Android 6.0 | Versión mínima admitida por el APK |
 | Android objetivo (targetSdk) | API 36 / Android 16 | Comportamientos del sistema para los que se configura |
 | SDK de compilación (compileSdk) | API 37 / Android 17 | SDK que debe instalarse para compilar; el teléfono no requiere Android 17 |
-| Sakura Hanami Open WebUI | 1.0 Beta 004 (versionCode 73) | Versión actual del proyecto |
+| Sakura Hanami Open WebUI | 1.0 Beta 005 (versionCode 74) | Versión actual del proyecto |
 | Android Gradle Plugin | 9.4.1 | Plugin de compilación Android |
 | Gradle Wrapper | 9.6.0 | Versión incluida y usada por el proyecto |
 | Kotlin | 2.2.10 | Versión configurada del plugin de Kotlin |
@@ -304,3 +304,8 @@ Opcional y desactivado por defecto. Tiene pantalla propia (`WakeWordSettingsActi
 - Lo que aún no está dibujado muestra `restBottomColor`: el color leído en el borde de abajo de la página con el teclado cerrado (lo que el teclado destapa). Ese color también va al fondo del WebView, a `contentRoot` y, con `applyBackdrop`, al fondo base de la página (`html, body`), que Open WebUI pinta blanco debajo del fondo de pantalla del tema.
 - `FOCUS_COMPOSER_JS` deja de devolver el cursor al cuadro de mensaje si el usuario cerró el teclado (el `visualViewport` vuelve a crecer).
 - Prueba: [`tools/keyboard-gap-test`](../tools/keyboard-gap-test/README.md) graba el emulador con `screenrecord` en cinco casos y busca franjas blancas planas a todo lo ancho en cada cuadro (OpenCV).
+
+## Barra lateral en el teléfono (1.0 Beta 005)
+
+- `PHONE_BUTTON_JS` (en `MainActivity`) agrega **Teléfono** a la fila de abajo del tema (`.sk-barra-fila`): copia en vivo el aspecto de `#sidebar-calendar-button` y el alto de `.sk-barra-buscar-arriba`, y se ordena con `order` (foto, Teléfono, Buscar) porque el tema vuelve a poner Buscar tras la foto. Al tocarlo llama a `SakuraApp.openSettings()`. Un `MutationObserver` lo repone cuando el tema redibuja la barra.
+- El mismo script escucha el deslizamiento hacia arriba (más de 48 px, más vertical que horizontal, en menos de 0,8 s) en `.sk-barra-fila` y `.sk-barra-dock` y pulsa **Buscar**.

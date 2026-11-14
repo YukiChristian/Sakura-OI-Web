@@ -276,4 +276,5 @@
     <string name="training_missed">I did not hear you well. Come a little closer and repeat number %1$d.</string>
     <string name="training_missing_one">1 recording left</string>
     <string name="training_missing_many">%1$d recordings left</string>
+    <string name="phone_button">Phone</string>
 </resources>
