@@ -1540,6 +1540,11 @@ class MainActivity : ComponentActivity() {
                     const search = row.querySelector('.sk-barra-buscar-arriba');
                     const h = search ? getComputedStyle(search).height : '44px';
                     if (btn.style.height !== h) btn.style.height = h;
+                    // «Buscar» is narrower with «Teléfono» beside it: its icon and word go in the middle of the box.
+                    if (search && search.style.justifyContent !== 'center') {
+                        search.style.justifyContent = 'center';
+                        search.style.textAlign = 'center';
+                    }
                 }
                 function add() {
                     const row = document.querySelector('#sidebar .sk-barra-fila');

@@ -2,6 +2,13 @@
 
 Cambios de Sakura Hanami Open WebUI (antes Sakura OI Web y SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 1.0 Beta 007 (versionCode 76) — 14 de noviembre de 2026
+
+Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v1.0-Beta-007).
+
+### Cambiado
+- **Buscar centrado.** En la fila de abajo de la barra lateral, con **Teléfono** al lado, la lupa y la palabra **Buscar** quedan en el centro de su cuadro.
+
 ## 1.0 Beta 006 (versionCode 75) — 14 de noviembre de 2026
 
 Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v1.0-Beta-006).
