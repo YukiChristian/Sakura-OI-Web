@@ -28,14 +28,19 @@ class SetupParts(private val ui: SetupUi) {
     private val context: Context get() = ui.context
     private fun pick(light: Long, dark: Long) = (if (ui.night) dark else light).toInt()
 
-    val pink = 0xFFD6336C.toInt()
-    val pinkTile = pick(0xFFFDE8F1, 0xFF3A1F2A)
-    val blue = pick(0xFF2361C7, 0xFF6F9CEB)
-    val blueSoft = pick(0x142361C7, 0x266F9CEB)
-    val blueText = pick(0xFF1D4FA3, 0xFF9DBDF2)
-    val green = pick(0xFF2B8A5A, 0xFF5CC28A)
-    val greenTile = pick(0xFFE5F3E7, 0xFF173A26)
-    val greenText = pick(0xFF1F6B45, 0xFF8BD6A8)
+    // Hanami: Rosa Sakura is the identity, slate blue marks what is chosen or in progress, green what is
+    // active or done, amber asks for attention without alarm (never red for a temporary problem).
+    val pink = pick(0xFFD6336C, 0xFFF06595)
+    val pinkTile = pick(0x24D6336C, 0x38F06595)
+    val blue = pick(0xFF3E5F99, 0xFF8FA9DA)
+    val blueSoft = pick(0x1A3E5F99, 0x298FA9DA)
+    val blueText = pick(0xFF334E7D, 0xFFB3C6EA)
+    val green = pick(0xFF2B8A5A, 0xFF4CC38A)
+    val greenTile = pick(0x242B8A5A, 0x382B8A5A)
+    val greenText = pick(0xFF1F6B45, 0xFF4CC38A)
+    val amber = pick(0xFFB38A00, 0xFFF5D06A)
+    val amberText = pick(0xFF7A5D00, 0xFFF5D06A)
+    val amberTile = pick(0x1FB38A00, 0x24FAC83C)
     val redTile = pick(0xFFFBE6E3, 0xFF3F1C19)
     val redText = pick(0xFFA32A22, 0xFFF2A49B)
     val panel = pick(0xFFFAFAFA, 0xFF18181B)
@@ -155,18 +160,19 @@ class SetupParts(private val ui: SetupUi) {
         }
     }
 
-    /** Yellow notice with an icon and a button: "Para abrir Sakura al instante falta un permiso." */
-    fun banner(text: String, button: String, onClick: () -> Unit) = LinearLayout(context).apply {
+    /** Amber notice naming exactly what is missing, with the button that solves it (A1). */
+    fun banner(text: CharSequence, button: String, onClick: () -> Unit) = LinearLayout(context).apply {
         gravity = Gravity.CENTER_VERTICAL
-        setPadding(ui.dp(12), ui.dp(10), ui.dp(10), ui.dp(10))
-        background = rounded(14f, pick(0xFFFFF7E0, 0xFF3A3012), pick(0xFFF2DD9B, 0xFF5C4A1A))
-        addView(icon(R.drawable.ic_ui_warning, pick(0xFFA07800, 0xFFE0B84A), 18))
-        addView(ui.text(text, 13f, pick(0xFF5C4600, 0xFFF2DD9B), semibold = true),
-            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
-                marginStart = ui.dp(10)
-                marginEnd = ui.dp(10)
-            })
-        addView(darkButton(button, onClick))
+        setPadding(ui.dp(14), ui.dp(10), ui.dp(10), ui.dp(10))
+        background = rounded(16f, amberTile)
+        addView(ui.text("", 13.5f, ui.ink).apply { this.text = text },
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = ui.dp(10) })
+        addView(darkButton(button, onClick).apply {
+            setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14f)
+            typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD)
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ui.dp(38))
+            (background as GradientDrawable).cornerRadius = ui.dp(19).toFloat()
+        })
     }
 
     /** Segmented control: grey track, the selected option on a white raised segment. */
@@ -177,7 +183,7 @@ class SetupParts(private val ui: SetupUi) {
                 isClickable = true
                 isFocusable = true
                 setOnClickListener { select(i); onSelect(i) }
-                layoutParams = LinearLayout.LayoutParams(0, ui.dp(38), 1f)
+                layoutParams = LinearLayout.LayoutParams(0, ui.dp(40), 1f)
             }
         }
         val view = LinearLayout(context).apply {
@@ -196,14 +202,14 @@ class SetupParts(private val ui: SetupUi) {
         }
     }
 
-    /** Thin rounded progress bar (8 dp), blue on a pale blue track. */
+    /** Thin rounded progress bar (6 dp), slate on a pale track, with a light that runs along the fill. */
     inner class Progress {
-        private val fill = View(context).apply { background = rounded(4f, blue) }
+        private val fill = Shimmer(context, blue, ui.dp(3).toFloat())
         val view = FrameLayout(context).apply {
-            background = rounded(4f, pick(0x262361C7, 0x336F9CEB))
+            background = rounded(3f, pick(0x1F3E5F99, 0x338FA9DA))
             clipToOutline = true
             addView(fill, FrameLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT))
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ui.dp(8))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ui.dp(6))
         }
 
         fun set(percent: Int) = view.post {
@@ -332,8 +338,11 @@ class PillSwitch(context: Context, private val on: Int, private val off: Int, pr
 }
 
 /** Animated voice level bars ("Te escucho…"); they move while [running] is true. */
-class LevelBars(context: Context, private val count: Int, private val barWidth: Float, private val color: Int) : View(context) {
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = this@LevelBars.color }
+class LevelBars(context: Context, private val count: Int, private val barWidth: Float, color: Int) : View(context) {
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color }
+    /** Slate while listening, amber after a missed take. */
+    var color: Int = color
+        set(value) { field = value; paint.color = value; invalidate() }
     private var phase = 0f
     private val animator = ValueAnimator.ofFloat(0f, 1f).apply {
         duration = 900
@@ -341,14 +350,17 @@ class LevelBars(context: Context, private val count: Int, private val barWidth: 
         interpolator = LinearInterpolator()
         addUpdateListener { phase = it.animatedValue as Float; invalidate() }
     }
+    /** Fixed heights for reduced motion: still bars that still look like a voice. */
+    private val STILL = floatArrayOf(0.35f, 0.55f, 0.8f, 0.5f, 1f, 0.7f, 0.9f, 0.45f, 0.75f, 0.55f, 0.35f)
     var running = false
         set(value) {
             field = value
-            if (value && isAttachedToWindow) animator.start() else animator.cancel()
+            // With reduced motion the bars stay still; the text still says «Te escucho…».
+            if (value && isAttachedToWindow && motionAllowed()) animator.start() else animator.cancel()
             invalidate()
         }
 
-    override fun onAttachedToWindow() { super.onAttachedToWindow(); if (running) animator.start() }
+    override fun onAttachedToWindow() { super.onAttachedToWindow(); if (running && motionAllowed()) animator.start() }
     override fun onDetachedFromWindow() { animator.cancel(); super.onDetachedFromWindow() }
 
     override fun onDraw(canvas: Canvas) {
@@ -357,10 +369,46 @@ class LevelBars(context: Context, private val count: Int, private val barWidth: 
         for (i in 0 until count) {
             // Each bar breathes between 30 % and 100 % of the height, 0.08 of a cycle after the previous one.
             val t = phase - i * 0.0889f
-            val scale = if (running) 0.3f + 0.7f * (0.5f - 0.5f * kotlin.math.cos(2 * PI.toFloat() * t)) else 0.3f
+            val scale = if (running && animator.isRunning) 0.3f + 0.7f * (0.5f - 0.5f * kotlin.math.cos(2 * PI.toFloat() * t)) else if (running) STILL[i % STILL.size] else 0.3f
             val bar = h * scale
             val x = i * (barWidth + gap)
             canvas.drawRoundRect(RectF(x, (h - bar) / 2, x + barWidth, (h + bar) / 2), barWidth / 2, barWidth / 2, paint)
         }
     }
 }
+
+/** The download bar's fill: [color] with a soft light that sweeps it every 1.4 s (still with reduced motion). */
+class Shimmer(context: Context, private val color: Int, private val radius: Float) : View(context) {
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val light = Paint(Paint.ANTI_ALIAS_FLAG)
+    private var phase = 0f
+    private val animator = ValueAnimator.ofFloat(0f, 1f).apply {
+        duration = 1400
+        repeatCount = ValueAnimator.INFINITE
+        interpolator = LinearInterpolator()
+        addUpdateListener { phase = it.animatedValue as Float; invalidate() }
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        if (ValueAnimator.areAnimatorsEnabled()) animator.start()
+    }
+
+    override fun onDetachedFromWindow() { animator.cancel(); super.onDetachedFromWindow() }
+
+    override fun onDraw(canvas: Canvas) {
+        val w = width.toFloat()
+        val h = height.toFloat()
+        paint.color = color
+        canvas.drawRoundRect(RectF(0f, 0f, w, h), radius, radius, paint)
+        if (!animator.isRunning || w <= 0f) return
+        val band = h * 20
+        val x = -band + (w + 2 * band) * phase
+        light.shader = android.graphics.LinearGradient(x, 0f, x + band, 0f,
+            intArrayOf(0x00FFFFFF, 0x73FFFFFF, 0x00FFFFFF), null, android.graphics.Shader.TileMode.CLAMP)
+        canvas.drawRoundRect(RectF(0f, 0f, w, h), radius, radius, light)
+    }
+}
+
+/** Is motion allowed? Off when the user turned animations off (Android's «Quitar animaciones»). */
+fun motionAllowed(): Boolean = ValueAnimator.areAnimatorsEnabled()

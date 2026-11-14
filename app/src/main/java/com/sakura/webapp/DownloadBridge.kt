@@ -17,7 +17,7 @@ import java.util.concurrent.Executors
  * Android WebView ignores `<a download href="blob:...">`, which is how Open WebUI (through
  * file-saver) saves generated images and exported files, so the Download button did nothing.
  * [SHIM_JS] catches those links, reads the file in the page and hands it to this bridge
- * (`window.SakuraDownloads`), which writes it to Downloads/Sakura OI Web.
+ * (`window.SakuraDownloads`), which writes it to Downloads/Sakura Hanami Open WebUI.
  */
 class DownloadBridge(
     private val context: Context,
@@ -136,7 +136,7 @@ class DownloadBridge(
 
     companion object {
         const val JS_NAME = "SakuraDownloads"
-        const val FOLDER = "Sakura OI Web"
+        const val FOLDER = "Sakura Hanami Open WebUI"
         private const val TAG = "SakuraWebApp"
         private const val KEY_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
         private val random = java.security.SecureRandom()

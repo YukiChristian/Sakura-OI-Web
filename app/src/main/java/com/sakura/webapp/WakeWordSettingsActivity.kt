@@ -34,9 +34,9 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 
 /**
- * «Oye, Sakura», from "App Android · widgets y «Oye, Sakura»": the switch with its live state (model
- * download with progress, listening, missing permission), what it means (offline, battery, pauses in
- * the app), the phrase and sensitivity, training with the user's voice, and the one-tap shortcuts.
+ * «Oye, Sakura», from "App de Android · Parte 1" (A1–A4, Hanami): the switch with one live state (model
+ * download with progress, listening, a missing permission named exactly), the phrase and sensitivity,
+ * training with the user's voice, and «Accesos rápidos» in one row; everything fits on one screen.
  */
 class WakeWordSettingsActivity : ComponentActivity() {
     private lateinit var ui: SetupUi
@@ -44,7 +44,9 @@ class WakeWordSettingsActivity : ComponentActivity() {
     private lateinit var titleText: TextView
     private lateinit var wakeSwitch: PillSwitch
     private lateinit var statusDot: View
+    private lateinit var statusIcon: android.widget.ImageView
     private lateinit var statusText: TextView
+    private val dimmed = mutableListOf<View>()
     private lateinit var downloadBox: LinearLayout
     private lateinit var downloadAmount: TextView
     private lateinit var downloadBar: SetupParts.Progress
@@ -66,7 +68,7 @@ class WakeWordSettingsActivity : ComponentActivity() {
         }
     }
 
-    private enum class Status { OFF, ON, BUSY, ERROR }
+    private enum class Status { OFF, ON, BUSY, WARN, ERROR }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -95,8 +97,9 @@ class WakeWordSettingsActivity : ComponentActivity() {
         setContentView(page)
 
         column.addView(mainCard())
-        column.addView(phraseCard())
-        column.addView(voiceCard())
+        // While the model downloads, only what depends on it is dimmed (A2).
+        dimmed += phraseCard().also { column.addView(it) }
+        dimmed += voiceCard().also { column.addView(it) }
         column.addView(shortcutsCard())
     }
 
@@ -117,24 +120,21 @@ class WakeWordSettingsActivity : ComponentActivity() {
             addView(parts.tile(R.drawable.ic_ui_mic, parts.pink, parts.pinkTile))
             addView(LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
-                addView(LinearLayout(context).apply {
-                    gravity = Gravity.CENTER_VERTICAL
-                    addView(titleText)
-                    addView(ui.text(getString(R.string.setup_optional), 11.5f, ui.muted, semibold = true).apply {
-                        setPadding(ui.dp(8), ui.dp(2), ui.dp(8), ui.dp(2))
-                        background = GradientDrawable().apply { cornerRadius = ui.dp(11).toFloat(); setColor(ui.tile) }
-                    }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                        .apply { marginStart = ui.dp(8) })
-                })
+                addView(titleText)
                 addView(ui.text(getString(R.string.wake_short_description), 13.5f, ui.muted).apply { setPadding(0, ui.dp(2), 0, 0) })
             }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = ui.dp(12) })
         })
 
         // The switch panel.
         statusDot = View(context)
-        statusText = ui.text("", 13f, ui.muted, semibold = true)
-        wakeSwitch = PillSwitch(context, ui.ink, if (ui.night) 0xFF3F3F46.toInt() else 0xFFD4D4D8.toInt(),
-            if (ui.night) 0xFF18181B.toInt() else Color.WHITE).apply {
+        statusIcon = parts.icon(R.drawable.ic_ui_warning, parts.amber, 14).apply { visibility = View.GONE }
+        statusText = ui.text("", 13f, ui.muted, semibold = true).apply {
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+        }
+        // Slate blue when on, as everything chosen in Hanami; it stays blue even while a permission is missing.
+        wakeSwitch = PillSwitch(context, parts.blue, if (ui.night) 0xFF3F3F46.toInt() else 0xFFD4D4D8.toInt(), Color.WHITE).apply {
             contentDescription = getString(R.string.wake_listen_title)
             onToggle = { on -> if (on) requestWakeWord() else turnOff() }
         }
@@ -152,6 +152,7 @@ class WakeWordSettingsActivity : ComponentActivity() {
                 addView(LinearLayout(context).apply {
                     gravity = Gravity.CENTER_VERTICAL
                     addView(statusDot, LinearLayout.LayoutParams(ui.dp(7), ui.dp(7)).apply { marginEnd = ui.dp(6) })
+                    addView(statusIcon, LinearLayout.LayoutParams(ui.dp(14), ui.dp(14)).apply { marginEnd = ui.dp(5) })
                     addView(statusText)
                 })
             }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
@@ -165,22 +166,16 @@ class WakeWordSettingsActivity : ComponentActivity() {
             orientation = LinearLayout.VERTICAL
             visibility = View.GONE
             addView(LinearLayout(context).apply {
-                addView(ui.text(getString(R.string.wake_model_name), 13f, ui.ink, semibold = true),
+                addView(ui.text(getString(R.string.wake_model_name), 13f, ui.muted),
                     LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-                addView(downloadAmount)
+                addView(downloadAmount.apply { setTextColor(ui.ink) })
             }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = ui.dp(6) })
             addView(downloadBar.view)
-            addView(ui.text(getString(R.string.wake_model_once), 12.5f, ui.faint).apply { setPadding(0, ui.dp(6), 0, 0) })
+            addView(ui.text(getString(R.string.wake_model_once), 12.5f, ui.muted).apply { setPadding(0, ui.dp(6), 0, 0) })
         }
         addView(downloadBox, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = ui.dp(12) })
 
-        addView(FlowLayout(context, ui.dp(6)).apply {
-            addView(parts.chip(R.drawable.ic_ui_shield, getString(R.string.wake_chip_offline)))
-            addView(parts.chip(R.drawable.ic_ui_battery, getString(R.string.wake_chip_battery)))
-            addView(parts.chip(R.drawable.ic_ui_mic, getString(R.string.wake_chip_pauses)))
-        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = ui.dp(12) })
-
-        overlayBanner = parts.banner(getString(R.string.wake_overlay_missing), getString(R.string.wake_overlay_allow)) {
+        overlayBanner = parts.banner(getText(R.string.wake_overlay_missing), getString(R.string.wake_overlay_allow)) {
             startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
         }
         addView(overlayBanner, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = ui.dp(12) })
@@ -192,23 +187,42 @@ class WakeWordSettingsActivity : ComponentActivity() {
         addView(batteryBanner, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = ui.dp(12) })
     }
 
+    /** One short state with its dot or, for a warning, its icon: it never relies on colour alone. */
     private fun showStatus(status: Status, text: String) {
         val color = when (status) {
-            Status.ON -> parts.green
-            Status.BUSY -> parts.blue
+            Status.ON -> parts.greenText
+            Status.BUSY -> parts.blueText
+            Status.WARN -> parts.amberText
             Status.ERROR -> ui.error
             Status.OFF -> ui.faint
         }
         statusText.text = text
         statusText.setTextColor(color)
-        statusDot.background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(color) }
+        val icon = status == Status.WARN || status == Status.ERROR
+        statusIcon.visibility = if (icon) View.VISIBLE else View.GONE
+        statusIcon.imageTintList = android.content.res.ColorStateList.valueOf(if (status == Status.WARN) parts.amber else ui.error)
+        statusDot.visibility = if (icon) View.GONE else View.VISIBLE
+        statusDot.background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(if (status == Status.ON) parts.green else if (status == Status.BUSY) parts.blue else color)
+        }
+    }
+
+    private fun dim(on: Boolean) = dimmed.forEach { card ->
+        card.alpha = if (on) 0.5f else 1f
+        setEnabledDeep(card, !on)
+    }
+
+    private fun setEnabledDeep(view: View, enabled: Boolean) {
+        view.isEnabled = enabled
+        if (view is ViewGroup) for (i in 0 until view.childCount) setEnabledDeep(view.getChildAt(i), enabled)
     }
 
     // ── Frase y sensibilidad ─────────────────────────────────────────────────────────────────────
 
     private fun phraseCard() = parts.card().apply {
         addView(parts.sectionLabel(getString(R.string.wake_section_phrase)))
-        phraseValue = ui.text("", 16f, ui.ink, bold = true)
+        phraseValue = ui.text("", 13f, ui.muted)
         addView(LinearLayout(context).apply {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(0, ui.dp(4), 0, ui.dp(14))
@@ -216,7 +230,7 @@ class WakeWordSettingsActivity : ComponentActivity() {
             addView(parts.tile(R.drawable.ic_ui_wave))
             addView(LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
-                addView(ui.text(getString(R.string.wake_phrase_label), 13f, ui.faint, semibold = true))
+                addView(ui.text(getString(R.string.wake_phrase_label), 15.5f, ui.ink, semibold = true))
                 addView(phraseValue)
             }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
                 marginStart = ui.dp(12)
@@ -233,7 +247,10 @@ class WakeWordSettingsActivity : ComponentActivity() {
             refresh()
         }
         addView(sensitivity.view)
-        sensitivityHelp = ui.text("", 13f, ui.faint).apply { setPadding(0, ui.dp(8), 0, 0) }
+        sensitivityHelp = ui.text("", 13f, ui.muted).apply {
+            setPadding(0, ui.dp(8), 0, 0)
+            accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+        }
         addView(sensitivityHelp)
     }
 
@@ -261,9 +278,26 @@ class WakeWordSettingsActivity : ComponentActivity() {
 
     // ── Accesos rápidos ──────────────────────────────────────────────────────────────────────────
 
-    private fun shortcutsCard() = parts.card(padTop = 14, padBottom = 4).apply {
-        addView(parts.sectionLabel(getString(R.string.quick_heading)).apply { setPadding(0, 0, 0, ui.dp(2)) })
-        addView(ui.text(getString(R.string.quick_description), 13f, ui.faint).apply { setPadding(0, 0, 0, ui.dp(4)) })
+    private fun shortcutsCard() = parts.card(padTop = 4, padBottom = 4).apply {
+        addView(parts.Row(
+            R.drawable.ic_ui_widget, getString(R.string.quick_heading), getString(R.string.quick_entry_text),
+            parts.icon(R.drawable.ic_ui_chevron_right, ui.faint, 18), last = true
+        ) { showShortcuts() }.view)
+    }
+
+    /** «Accesos rápidos»: the quick settings tile, the widget and the headphones, in a sheet. */
+    private fun showShortcuts() {
+        val dialog = Dialog(this)
+        val body = parts.card(padTop = 14, padBottom = 4).apply {
+            elevation = 0f
+            addView(parts.sectionLabel(getString(R.string.quick_heading)).apply { setPadding(0, 0, 0, ui.dp(2)) })
+            addView(ui.text(getString(R.string.quick_description), 13f, ui.muted).apply { setPadding(0, 0, 0, ui.dp(4)) })
+            shortcutRows(this)
+        }
+        bottomSheet(dialog, body)
+    }
+
+    private fun shortcutRows(card: LinearLayout) = card.apply {
         val tile = if (Build.VERSION.SDK_INT >= 33) parts.ghostButton(getString(R.string.quick_add)) { requestTile() } else null
         addView(parts.Row(
             R.drawable.ic_ui_tile, getString(R.string.quick_tile_title),
@@ -280,6 +314,32 @@ class WakeWordSettingsActivity : ComponentActivity() {
             R.drawable.ic_ui_headphones, getString(R.string.quick_headset_title), getString(R.string.quick_headset_text),
             parts.icon(R.drawable.ic_ui_chevron_right, ui.hintColor, 18), last = true
         ) { SettingsActivity.openAssistantSettings(this@WakeWordSettingsActivity) }.view)
+    }
+
+    /** Shows [content] in a sheet that rises from the bottom (a fade with reduced motion). */
+    private fun bottomSheet(dialog: Dialog, content: View) {
+        val sheet = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(ui.dp(14), ui.dp(10), ui.dp(14), ui.dp(24))
+            background = GradientDrawable().apply {
+                cornerRadii = FloatArray(8) { if (it < 4) ui.dp(26).toFloat() else 0f }
+                setColor(ui.ground)
+            }
+            addView(View(context).apply {
+                background = GradientDrawable().apply { cornerRadius = ui.dp(3).toFloat(); setColor(if (ui.night) 0xFF3F3F46.toInt() else 0xFFD4D4D8.toInt()) }
+            }, LinearLayout.LayoutParams(ui.dp(36), ui.dp(4)).apply { gravity = Gravity.CENTER_HORIZONTAL; bottomMargin = ui.dp(12) })
+            addView(content)
+        }
+        dialog.setContentView(FrameLayout(this).apply { addView(sheet) })
+        dialog.window?.apply {
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            setGravity(Gravity.BOTTOM)
+            setDimAmount(0.32f)
+            addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+            if (!motionAllowed()) setWindowAnimations(0)
+        }
+        dialog.show()
     }
 
     @android.annotation.SuppressLint("NewApi")
@@ -309,9 +369,11 @@ class WakeWordSettingsActivity : ComponentActivity() {
 
         val enabled = WakeWordModel.isEnabled(this)
         val canOverlay = Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this)
-        overlayBanner.visibility = if (enabled && !canOverlay) View.VISIBLE else View.GONE
-        batteryBanner.visibility = if (enabled && !WakeWordService.batteryUnrestricted(this)) View.VISIBLE else View.GONE
+        // One notice at a time: the overlay permission first, then the battery restriction.
+        overlayBanner.visibility = if (enabled && !downloading && !canOverlay) View.VISIBLE else View.GONE
+        batteryBanner.visibility = if (enabled && !downloading && canOverlay && !WakeWordService.batteryUnrestricted(this)) View.VISIBLE else View.GONE
         if (downloading) return
+        dim(false)
         wakeSwitch.set(enabled)
         downloadBox.visibility = View.GONE
         when {
@@ -319,6 +381,7 @@ class WakeWordSettingsActivity : ComponentActivity() {
             ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED ->
                 showStatus(Status.ERROR, getString(R.string.wake_status_no_mic))
             !WakeWordModel.isReady(this) -> showStatus(Status.ERROR, getString(R.string.wake_state_no_model))
+            !canOverlay -> showStatus(Status.WARN, getString(R.string.wake_state_no_overlay))
             else -> showStatus(Status.ON, getString(R.string.wake_state_on))
         }
     }
@@ -351,6 +414,9 @@ class WakeWordSettingsActivity : ComponentActivity() {
         wakeSwitch.set(true)
         showStatus(Status.BUSY, getString(R.string.wake_state_downloading))
         downloadBox.visibility = View.VISIBLE
+        overlayBanner.visibility = View.GONE
+        batteryBanner.visibility = View.GONE
+        dim(true)
         downloadAmount.text = ""
         downloadBar.set(0)
         Thread {
@@ -360,7 +426,8 @@ class WakeWordSettingsActivity : ComponentActivity() {
                     if (percent != shown) {
                         shown = percent
                         runOnUiThread {
-                            downloadAmount.text = getString(R.string.wake_model_progress, read / 1_000_000, total / 1_000_000, percent)
+                            downloadAmount.text = getString(R.string.wake_model_progress, read / 1_000_000, total / 1_000_000)
+                            downloadBar.view.contentDescription = "$percent %"
                             downloadBar.set(percent)
                         }
                     }
@@ -390,9 +457,13 @@ class WakeWordSettingsActivity : ComponentActivity() {
         refresh()
     }
 
-    // ── «Frase de activación» bottom sheet ───────────────────────────────────────────────────────
+    // ── «Frase de activación» bottom sheet (A3) ─────────────────────────────────────────────────
 
-    /** Presets plus «Escribe tu propia frase…»; changing the phrase clears the training samples. */
+    /**
+     * The presets and the user's own phrase as a radio group: the chosen row in slate blue, «Recomendada» in
+     * grey so it does not compete, the own phrase checked while typing (2 to 4 words, not only common ones),
+     * and «Guardar y entrenar», which saves it and opens the training.
+     */
     private fun choosePhrase() {
         val current = WakePhrase.phrase(this)
         val presets = WakePhrase.PRESETS
@@ -400,43 +471,86 @@ class WakeWordSettingsActivity : ComponentActivity() {
         val dialog = Dialog(this)
         val rows = mutableListOf<LinearLayout>()
         val radios = mutableListOf<View>()
+        val check = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            visibility = View.GONE
+            accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+        }
+        val checkIcon = parts.icon(R.drawable.ic_ui_check, parts.green, 14)
+        val checkText = ui.text("", 12.5f, parts.greenText, semibold = true)
+        check.addView(checkIcon)
+        check.addView(checkText, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = ui.dp(6) })
         val custom = EditText(this).apply {
             hint = getString(R.string.wake_phrase_custom)
             setText(if (selected == presets.size) current else "")
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
             setTextColor(ui.ink)
-            setHintTextColor(if (ui.night) 0xFF8B8B93.toInt() else 0xFF8A8A93.toInt())
+            setHintTextColor(if (ui.night) 0xFF9D9DA6.toInt() else 0xFF55555C.toInt())
             background = null
             setPadding(0, 0, 0, 0)
             isSingleLine = true
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
             imeOptions = EditorInfo.IME_ACTION_DONE
         }
+        fun validate(): Boolean {
+            val verdict = PhraseCheck.of(custom.text.toString())
+            val on = selected == presets.size && custom.text.isNotBlank()
+            check.visibility = if (on) View.VISIBLE else View.GONE
+            val color = if (verdict.ok) parts.greenText else parts.amberText
+            checkIcon.setImageResource(if (verdict.ok) R.drawable.ic_ui_check else R.drawable.ic_ui_warning)
+            checkIcon.imageTintList = android.content.res.ColorStateList.valueOf(if (verdict.ok) parts.green else parts.amber)
+            checkText.setTextColor(color)
+            checkText.text = when (verdict) {
+                PhraseCheck.Short -> getString(R.string.wake_phrase_short)
+                PhraseCheck.Long -> getString(R.string.wake_phrase_long)
+                PhraseCheck.Common -> getString(R.string.wake_phrase_common)
+                is PhraseCheck.Good -> getString(R.string.wake_phrase_good, verdict.words)
+            }
+            return verdict.ok
+        }
         fun paint() = rows.forEachIndexed { i, row ->
             val on = i == selected
             row.background = GradientDrawable().apply {
                 cornerRadius = ui.dp(14).toFloat()
-                setColor(if (on) (if (ui.night) 0xFF3A1F2A.toInt() else 0xFFFDF1F5.toInt()) else parts.panel)
-                setStroke(ui.dp(if (on) 2 else 1), if (on) parts.pink else parts.panelRing)
+                setColor(if (on) parts.blueSoft else ui.card)
+                setStroke(ui.dp(if (on) 1.5f else 1f), if (on) parts.blue else (if (ui.night) 0x1FFFFFFF else 0x1418181B))
             }
             radios[i].background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setStroke(ui.dp(if (on) 7 else 2), if (on) parts.pink else (if (ui.night) 0xFF52525B.toInt() else 0xFFC4C4C8.toInt()))
+                setStroke(ui.dp(if (on) 6f else 1.5f), if (on) parts.blue else 0xFF71717A.toInt())
             }
+            row.isSelected = on
         }
-        fun option(index: Int, content: View, trailing: View? = null) = LinearLayout(this).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(ui.dp(14), 0, ui.dp(14), 0)
+        fun option(index: Int, content: View, trailing: View? = null, below: View? = null) = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(ui.dp(14), ui.dp(14), ui.dp(14), ui.dp(14))
+            minimumHeight = ui.dp(52)
             isClickable = true
             isFocusable = true
             val radio = View(context)
             radios += radio
-            addView(radio, LinearLayout.LayoutParams(ui.dp(22), ui.dp(22)))
-            addView(content, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = ui.dp(12) })
-            if (trailing != null) addView(trailing)
+            addView(LinearLayout(context).apply {
+                gravity = Gravity.CENTER_VERTICAL
+                addView(radio, LinearLayout.LayoutParams(ui.dp(20), ui.dp(20)))
+                addView(content, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = ui.dp(12) })
+                if (trailing != null) addView(trailing)
+            })
+            if (below != null) addView(below, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                marginStart = ui.dp(32)
+                topMargin = ui.dp(8)
+            })
+            accessibilityDelegate = object : View.AccessibilityDelegate() {
+                override fun onInitializeAccessibilityNodeInfo(host: View, info: android.view.accessibility.AccessibilityNodeInfo) {
+                    super.onInitializeAccessibilityNodeInfo(host, info)
+                    info.className = "android.widget.RadioButton"
+                    info.isCheckable = true
+                    info.isChecked = host.isSelected
+                }
+            }
             setOnClickListener {
                 selected = index
                 paint()
+                validate()
                 val ime = getSystemService(InputMethodManager::class.java)
                 if (index == presets.size) {
                     custom.requestFocus()
@@ -447,72 +561,65 @@ class WakeWordSettingsActivity : ComponentActivity() {
                 }
             }
             rows += this
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ui.dp(54)).apply { bottomMargin = ui.dp(6) }
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = ui.dp(8) }
         }
-        custom.setOnFocusChangeListener { _, focused -> if (focused) { selected = presets.size; paint() } }
+        custom.setOnFocusChangeListener { _, focused -> if (focused) { selected = presets.size; paint(); validate() } }
+        custom.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) { validate() }
+        })
 
-        val sheet = LinearLayout(this).apply {
+        val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(ui.dp(18), ui.dp(10), ui.dp(18), ui.dp(30))
-            background = GradientDrawable().apply {
-                cornerRadii = FloatArray(8) { if (it < 4) ui.dp(26).toFloat() else 0f }
-                setColor(ui.card)
-            }
-            addView(View(context).apply {
-                background = GradientDrawable().apply { cornerRadius = ui.dp(3).toFloat(); setColor(if (ui.night) 0xFF3F3F46.toInt() else 0xFFD4D4D8.toInt()) }
-            }, LinearLayout.LayoutParams(ui.dp(40), ui.dp(5)).apply { gravity = Gravity.CENTER_HORIZONTAL; bottomMargin = ui.dp(14) })
             addView(ui.text(getString(R.string.wake_phrase_label), 20f, ui.ink, bold = true))
             addView(ui.text(getString(R.string.wake_phrase_sheet_text), 14f, ui.muted).apply { setPadding(0, ui.dp(2), 0, ui.dp(12)) })
             presets.forEachIndexed { i, preset ->
-                val recommended = if (i == 0) ui.text(getString(R.string.wake_phrase_recommended), 12f,
-                    if (ui.night) 0xFFF08DB0.toInt() else 0xFFB02A5B.toInt(), semibold = true) else null
-                addView(option(i, ui.text(preset, 16f, ui.ink, semibold = true), recommended))
+                val recommended = if (i == 0) ui.text(getString(R.string.wake_phrase_recommended), 12f, ui.muted, semibold = true).apply {
+                    setPadding(ui.dp(9), ui.dp(3), ui.dp(9), ui.dp(3))
+                    background = GradientDrawable().apply { cornerRadius = ui.dp(11).toFloat(); setColor(ui.tile) }
+                } else null
+                addView(option(i, ui.text(preset, 16f, ui.ink), recommended))
             }
-            addView(option(presets.size, custom))
+            addView(option(presets.size, custom, below = check))
+            addView(ui.text(getString(R.string.wake_phrase_rule), 13f, ui.muted).apply { setPadding(ui.dp(4), ui.dp(2), ui.dp(4), ui.dp(12)) })
             addView(LinearLayout(context).apply {
-                setPadding(0, ui.dp(10), 0, 0)
                 addView(TextView(context).apply {
                     text = getString(R.string.picker_cancel)
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 15.5f)
                     setTextColor(ui.ink)
                     typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
                     gravity = Gravity.CENTER
                     background = GradientDrawable().apply {
-                        cornerRadius = ui.dp(25).toFloat(); setColor(ui.tile)
-                        setStroke(ui.dp(1), if (ui.night) 0xFF3F3F46.toInt() else 0xFFE4E4E7.toInt())
+                        cornerRadius = ui.dp(25).toFloat(); setColor(ui.card)
+                        setStroke(ui.dp(1), if (ui.night) 0x1FFFFFFF else 0x1F18181B)
                     }
                     setOnClickListener { dialog.dismiss() }
                 }, LinearLayout.LayoutParams(0, ui.dp(50), 1f))
                 addView(TextView(context).apply {
-                    text = getString(R.string.setup_save)
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                    text = getString(R.string.wake_phrase_save_train)
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 15.5f)
                     setTextColor(if (ui.night) 0xFF18181B.toInt() else Color.WHITE)
                     typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD)
                     gravity = Gravity.CENTER
                     background = GradientDrawable().apply { cornerRadius = ui.dp(25).toFloat(); setColor(ui.ink) }
                     setOnClickListener {
                         val phrase = if (selected < presets.size) presets[selected] else custom.text.toString().trim()
-                        if (WakePhrase.words(phrase).isEmpty()) {
+                        if (selected == presets.size && !validate()) {
                             custom.requestFocus()
                             return@setOnClickListener
                         }
                         if (phrase != current) applyPhrase(phrase)
                         dialog.dismiss()
+                        startActivity(Intent(this@WakeWordSettingsActivity, VoiceTrainingActivity::class.java))
                     }
-                }, LinearLayout.LayoutParams(0, ui.dp(50), 1.4f).apply { marginStart = ui.dp(10) })
+                }, LinearLayout.LayoutParams(0, ui.dp(50), 1.5f).apply { marginStart = ui.dp(10) })
             })
         }
         paint()
-        dialog.setContentView(FrameLayout(this).apply { addView(sheet) })
-        dialog.window?.apply {
-            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            setGravity(Gravity.BOTTOM)
-            setDimAmount(0.4f)
-            addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-            setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
-        }
-        dialog.show()
+        validate()
+        bottomSheet(dialog, content)
+        dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
     }
 
     private fun applyPhrase(phrase: String) {
@@ -521,5 +628,30 @@ class WakeWordSettingsActivity : ComponentActivity() {
         if (WakeWordService.running) WakeWordService.start(this)
         VoiceWidgetProvider.refreshAll(this)
         refresh()
+    }
+}
+
+/** Checks the user's own phrase while typing: 2 to 4 words, and not only words said all the time. */
+sealed class PhraseCheck(val ok: Boolean) {
+    object Short : PhraseCheck(false)
+    object Long : PhraseCheck(false)
+    object Common : PhraseCheck(false)
+    class Good(val words: Int) : PhraseCheck(true)
+
+    companion object {
+        private val COMMON = setOf(
+            "oye", "hola", "hey", "ey", "ok", "okey", "vale", "bien", "si", "no", "ya", "eh", "a", "la", "el", "lo",
+            "que", "y", "o", "de", "en", "un", "una", "me", "te", "se", "mi", "tu", "por", "favor", "escucha", "ven",
+        )
+
+        fun of(text: String): PhraseCheck {
+            val words = WakePhrase.words(text)
+            return when {
+                words.size < 2 -> Short
+                words.size > 4 -> Long
+                words.none { it.length >= 4 && it !in COMMON } -> Common
+                else -> Good(words.size)
+            }
+        }
     }
 }

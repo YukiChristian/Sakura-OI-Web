@@ -35,6 +35,8 @@ class SessionSync(
             }
             // Signed in: keep the widgets' list of models current.
             ChatModels.refresh(context)
+            // A page of the server answered: the widgets drop «Tu PC no responde».
+            PcStatus.markOnline(context)
             return ""
         }
         if (savedToken == null) return ""

@@ -1,9 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Widget colours (light; values-night holds the dark set). -->
+<!-- Widget colours, Hanami (light; values-night holds the dark set): white glass at 72 % over the wallpaper,
+     graphite ink, a graphite mic and amber for "Tu PC no responde". -->
 <resources>
-    <color name="widget_glass">#CCFFFFFF</color>
+    <color name="widget_glass">#B8FFFFFF</color>
+    <color name="widget_glass_ring">#A6FFFFFF</color>
     <color name="widget_ink">#FF18181B</color>
-    <color name="widget_muted">#FF52525B</color>
-    <color name="widget_tint">#D9F1F1F3</color>
-    <color name="widget_tint_ring">#FFDCDCE0</color>
+    <color name="widget_muted">#FF4D4D54</color>
+    <color name="widget_off">#FF8E8E96</color>
+    <color name="widget_tint">#B3FFFFFF</color>
+    <color name="widget_tint_ring">#1A18181B</color>
+    <color name="widget_mic">#FF18181B</color>
+    <color name="widget_on_mic">#FFFFFFFF</color>
+    <color name="widget_warn_bg">#2EB38A00</color>
+    <color name="widget_warn">#FF8A6A00</color>
+    <color name="widget_warn_ink">#FF5C4600</color>
 </resources>

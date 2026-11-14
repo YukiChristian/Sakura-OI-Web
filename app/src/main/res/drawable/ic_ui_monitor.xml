@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Stroke icon: a PC screen, for «Tu PC no responde». -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1.9"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M4,4h16a1,1 0 0 1 1,1v10a1,1 0 0 1 -1,1H4a1,1 0 0 1 -1,-1V5a1,1 0 0 1 1,-1zM8,20h8M12,16v4" />
+</vector>

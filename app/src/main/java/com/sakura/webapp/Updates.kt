@@ -29,8 +29,8 @@ object Updates {
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    /** The version number without a personal suffix: "0.8.0c" -> "0.8.0". */
-    val current: String get() = BuildConfig.VERSION_NAME.takeWhile { it.isDigit() || it == '.' }
+    /** The version without a personal suffix: "0.8.0c" -> "0.8.0", "1.0 Beta 001c" -> "1.0 Beta 001". */
+    val current: String get() = BuildConfig.VERSION_NAME.trim().removeSuffix("c").trim()
 
     fun isAutomatic(context: Context) = prefs(context).getBoolean("auto", true)
 
@@ -38,16 +38,27 @@ object Updates {
 
     fun lastCheck(context: Context) = prefs(context).getLong("last_check", 0L)
 
-    /** True when [candidate] is a higher version than [installed] ("0.10.0" > "0.9.3"). */
+    /**
+     * True when [candidate] is a higher version than [installed]: "0.10.0" > "0.9.3", and from 1.0 the betas
+     * ("1.0 Beta 001", tag "v1.0-Beta-001") go up by their number, below the final "1.0".
+     */
     fun isNewer(candidate: String, installed: String): Boolean {
-        val a = candidate.trimStart('v', 'V').split('.').map { it.takeWhile(Char::isDigit).toIntOrNull() ?: 0 }
-        val b = installed.split('.').map { it.takeWhile(Char::isDigit).toIntOrNull() ?: 0 }
+        val (a, betaA) = parse(candidate)
+        val (b, betaB) = parse(installed)
         for (i in 0 until maxOf(a.size, b.size)) {
             val x = a.getOrElse(i) { 0 }
             val y = b.getOrElse(i) { 0 }
             if (x != y) return x > y
         }
-        return false
+        return betaA > betaB
+    }
+
+    /** The numbers of a version and its beta (Int.MAX_VALUE for a final version). */
+    private fun parse(version: String): Pair<List<Int>, Int> {
+        val text = version.trim().trimStart('v', 'V')
+        val numbers = text.takeWhile { it.isDigit() || it == '.' }.split('.').map { it.toIntOrNull() ?: 0 }
+        val beta = Regex("beta[ _.-]*(\\d+)", RegexOption.IGNORE_CASE).find(text)?.groupValues?.get(1)?.toIntOrNull()
+        return numbers to (beta ?: Int.MAX_VALUE)
     }
 
     /** The newest release seen, if it is newer than this app. */
@@ -120,7 +131,7 @@ object Updates {
         File(app.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), name).delete()
         val id = manager.enqueue(
             DownloadManager.Request(Uri.parse(url))
-                .setTitle("Sakura OI Web ${release.version}")
+                .setTitle("${app.getString(R.string.app_name)} ${release.version}")
                 .setMimeType("application/vnd.android.package-archive")
                 .setDestinationInExternalFilesDir(app, Environment.DIRECTORY_DOWNLOADS, name)
                 .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)

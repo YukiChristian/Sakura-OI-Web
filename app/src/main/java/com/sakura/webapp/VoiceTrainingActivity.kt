@@ -28,10 +28,12 @@ import org.vosk.android.RecognitionListener
 import org.vosk.android.SpeechService
 
 /**
- * «Entrenar tu voz», from "App Android · widgets y «Oye, Sakura»": the user says the phrase [SAMPLES]
- * times (progress bar, big mic, level bars) and the transcripts the offline model writes are kept as
- * accepted variants (see WakePhrase). Then «Prueba en vivo» lists what it hears and whether Sakura
- * would wake up, without opening anything. The background listener pauses while this screen listens.
+ * «Entrenar tu voz», from "App de Android · Parte 1" (A5–A7, Hanami): the user says the phrase [SAMPLES]
+ * times (the instruction inside the card, steps, the slate mic with its halo and level bars) and the
+ * transcripts the offline model writes are kept as accepted variants (see WakePhrase). A take that does
+ * not sound like the phrase does not count and turns the mic amber, with what to do. Then «Prueba en
+ * vivo» lists what it hears and whether Sakura would wake up, without opening anything. The background
+ * listener pauses while this screen listens.
  */
 class VoiceTrainingActivity : ComponentActivity(), RecognitionListener {
     private lateinit var ui: SetupUi
@@ -44,6 +46,11 @@ class VoiceTrainingActivity : ComponentActivity(), RecognitionListener {
     private lateinit var stepText: TextView
     private lateinit var hintText: TextView
     private lateinit var trainBars: LevelBars
+    private lateinit var micHalo: PulseHalo
+    private lateinit var micDisc: View
+    private lateinit var missedBox: LinearLayout
+    private lateinit var missedText: TextView
+    private var missed = false
 
     // Trained + live test
     private lateinit var trainedCard: LinearLayout
@@ -54,7 +61,7 @@ class VoiceTrainingActivity : ComponentActivity(), RecognitionListener {
     private lateinit var testBars: LevelBars
     private lateinit var results: LinearLayout
 
-    private lateinit var saveButton: View
+    private lateinit var saveButton: android.widget.Button
     private var model: Model? = null
     private var recognizer: Recognizer? = null
     private var speech: SpeechService? = null
@@ -77,18 +84,16 @@ class VoiceTrainingActivity : ComponentActivity(), RecognitionListener {
         val column = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(ui.dp(14), ui.dp(4), ui.dp(14), ui.dp(12))
-            addView(ui.text(getString(R.string.training_intro_short, SAMPLES), 14.5f, ui.muted).apply {
-                gravity = Gravity.CENTER
-                setPadding(ui.dp(10), ui.dp(4), ui.dp(10), ui.dp(14))
-            })
         }
         column.addView(recordingCard(phrase))
         column.addView(trainedCard())
         column.addView(testCard())
 
+        // The bottom band: the button says what is missing until it can save (A5–A7).
         val bottom = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(ui.dp(14), ui.dp(8), ui.dp(14), ui.dp(14))
+            setPadding(ui.dp(14), ui.dp(10), ui.dp(14), ui.dp(12))
+            setBackgroundColor(if (ui.night) 0xFF17171B.toInt() else 0xFFF1F1F3.toInt())
             saveButton = ui.primaryButton(getString(R.string.training_save)) {
                 WakePhrase.setSamples(this@VoiceTrainingActivity, samples)
                 VoiceWidgetProvider.refreshAll(this@VoiceTrainingActivity)
@@ -124,9 +129,14 @@ class VoiceTrainingActivity : ComponentActivity(), RecognitionListener {
         refresh()
     }
 
-    private fun recordingCard(phrase: String) = parts.card(padTop = 18, padBottom = 18).apply {
+    private fun recordingCard(phrase: String) = parts.card(padTop = 16, padBottom = 18).apply {
         gravity = Gravity.CENTER_HORIZONTAL
         trainCard = this
+        // The instruction lives inside the card, on its solid ground (not over the wallpaper).
+        addView(ui.text(getString(R.string.training_intro_short, SAMPLES), 13.5f, ui.muted).apply {
+            gravity = Gravity.CENTER
+            setPadding(ui.dp(6), 0, ui.dp(6), ui.dp(12))
+        })
         trainSteps = parts.Steps(SAMPLES)
         addView(trainSteps.view, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             .apply { bottomMargin = ui.dp(18) })
@@ -136,20 +146,40 @@ class VoiceTrainingActivity : ComponentActivity(), RecognitionListener {
             gravity = Gravity.CENTER
             setPadding(0, ui.dp(4), 0, ui.dp(12))
         })
+        micHalo = PulseHalo(context, parts.blue)
+        micDisc = FrameLayout(context).apply {
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(parts.blue) }
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            addView(parts.icon(R.drawable.ic_ui_mic, if (ui.night) 0xFF18181B.toInt() else Color.WHITE, 30).apply {
+                layoutParams = FrameLayout.LayoutParams(ui.dp(30), ui.dp(30), Gravity.CENTER)
+            })
+        }
         addView(FrameLayout(context).apply {
-            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(parts.blueSoft) }
-            addView(FrameLayout(context).apply {
-                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(parts.blue) }
-                elevation = ui.dp(6).toFloat()
-                addView(parts.icon(R.drawable.ic_ui_mic, Color.WHITE, 38).apply {
-                    layoutParams = FrameLayout.LayoutParams(ui.dp(38), ui.dp(38), Gravity.CENTER)
-                })
-            }, FrameLayout.LayoutParams(ui.dp(96), ui.dp(96), Gravity.CENTER))
-        }, LinearLayout.LayoutParams(ui.dp(116), ui.dp(116)))
+            addView(micHalo, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            addView(micDisc, FrameLayout.LayoutParams(ui.dp(76), ui.dp(76), Gravity.CENTER))
+        }, LinearLayout.LayoutParams(ui.dp(104), ui.dp(104)))
         trainBars = LevelBars(context, 11, ui.dp(5).toFloat(), parts.blue)
-        addView(trainBars, LinearLayout.LayoutParams(ui.dp(95), ui.dp(34)).apply { topMargin = ui.dp(16) })
-        hintText = ui.text("", 13f, ui.faint, semibold = true).apply { gravity = Gravity.CENTER; setPadding(0, ui.dp(6), 0, 0) }
+        addView(trainBars, LinearLayout.LayoutParams(ui.dp(95), ui.dp(34)).apply { topMargin = ui.dp(10) })
+        hintText = ui.text("", 13f, ui.muted).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, ui.dp(8), 0, 0)
+            accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+        }
         addView(hintText)
+        // «No te escuché bien»: amber, never red; the take does not count and nothing is lost.
+        missedText = ui.text("", 13.5f, ui.ink)
+        missedBox = LinearLayout(context).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            visibility = View.GONE
+            setPadding(ui.dp(14), ui.dp(12), ui.dp(14), ui.dp(12))
+            background = GradientDrawable().apply { cornerRadius = ui.dp(14).toFloat(); setColor(parts.amberTile) }
+            accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_ASSERTIVE
+            addView(parts.icon(R.drawable.ic_ui_warning, parts.amber, 18))
+            addView(missedText, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = ui.dp(10) })
+        }
+        addView(missedBox, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            topMargin = ui.dp(12)
+        })
     }
 
     private fun trainedCard() = parts.card(padTop = 18, padBottom = 18).apply {
@@ -181,8 +211,9 @@ class VoiceTrainingActivity : ComponentActivity(), RecognitionListener {
     private fun testCard() = parts.card().apply {
         testCard = this
         addView(ui.text(getString(R.string.training_live_title), 16f, ui.ink, bold = true))
-        addView(ui.text(getString(R.string.training_live_text), 13f, ui.faint).apply { setPadding(0, 0, 0, ui.dp(12)) })
+        addView(ui.text(getString(R.string.training_live_text), 13f, ui.muted).apply { setPadding(0, 0, 0, ui.dp(12)) })
         testBars = LevelBars(context, 11, ui.dp(3).toFloat(), parts.blue)
+        testBars.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         listeningText = ui.text(getString(R.string.training_listening), 14f, parts.blueText, semibold = true).apply {
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
@@ -202,7 +233,7 @@ class VoiceTrainingActivity : ComponentActivity(), RecognitionListener {
         super.onResume()
         WakeWordService.send(this, WakeWordService.ACTION_PAUSE)
         if (!WakeWordModel.isReady(this)) {
-            hint(getString(R.string.training_no_model), ui.error)
+            hint(getString(R.string.training_no_model), parts.amberText)
             listeningText.text = getString(R.string.training_no_model)
             return
         }
@@ -241,7 +272,7 @@ class VoiceTrainingActivity : ComponentActivity(), RecognitionListener {
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Could not load the speech model", e)
-                    runOnUiThread { hint(getString(R.string.training_no_model), ui.error) }
+                    runOnUiThread { hint(getString(R.string.training_no_model), parts.amberText) }
                 }
             }.start()
             return
@@ -264,6 +295,7 @@ class VoiceTrainingActivity : ComponentActivity(), RecognitionListener {
         recognizer = null
         trainBars.running = false
         testBars.running = false
+        micHalo.running = false
     }
 
     private fun refresh() {
@@ -275,11 +307,39 @@ class VoiceTrainingActivity : ComponentActivity(), RecognitionListener {
         trainedSteps.set(samples.size, current = false)
         stepText.text = getString(R.string.training_recording, minOf(samples.size + 1, SAMPLES), SAMPLES)
         trainedText.text = getString(R.string.training_trained_text, samples.size, SAMPLES)
-        trainBars.running = listening && !testing
+        trainBars.running = listening && !testing && !missed
         testBars.running = listening && testing
-        if (listening && !testing) hint(getString(R.string.training_hint))
-        ui.setEnabledLook(saveButton, samples.size >= MIN_SAMPLES)
-        if (!saveButton.isEnabled) saveButton.alpha = 0.3f
+        micHalo.running = listening && !testing && !missed
+        if (listening && !testing && !missed) hint(getString(R.string.training_hint))
+        paintMic()
+        // «Faltan 3 grabaciones» until every take is in; then «Guardar».
+        val left = SAMPLES - samples.size
+        val ready = left <= 0
+        saveButton.isEnabled = ready
+        saveButton.alpha = 1f
+        saveButton.text = when {
+            ready -> getString(R.string.training_save)
+            left == 1 -> getString(R.string.training_missing_one)
+            else -> getString(R.string.training_missing_many, left)
+        }
+        saveButton.setTextColor(if (ready) (if (ui.night) 0xFF18181B.toInt() else Color.WHITE) else ui.muted)
+        saveButton.background = GradientDrawable().apply {
+            cornerRadius = ui.dp(26).toFloat()
+            setColor(if (ready) ui.ink else (if (ui.night) 0xFF2A2A2F.toInt() else 0xFFE4E4E7.toInt()))
+            if (!ready) setStroke(ui.dp(1), if (ui.night) 0x1FFFFFFF else 0x1418181B)
+        }
+        saveButton.typeface = android.graphics.Typeface.create(if (ready) "sans-serif" else "sans-serif-medium",
+            if (ready) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
+    }
+
+    /** Slate while it listens; amber, and still, after a take it did not hear well (200 ms). */
+    private fun paintMic() {
+        val color = if (missed) parts.amber else parts.blue
+        val disc = micDisc.background as GradientDrawable
+        disc.setColor(color)
+        trainBars.color = color
+        missedBox.visibility = if (missed && !testing) View.VISIBLE else View.GONE
+        if (missed) hintText.text = ""
     }
 
     private fun hint(text: String, color: Int = ui.faint) {
@@ -303,6 +363,17 @@ class VoiceTrainingActivity : ComponentActivity(), RecognitionListener {
             listeningText.text = getString(R.string.training_listening)
             return
         }
+        // A take that does not sound like the phrase does not count; the earlier ones stay.
+        if (WakePhrase.score(text, WakePhrase.phrase(this), emptyList()) < MISS_SCORE) {
+            missed = true
+            missedText.text = getString(R.string.training_missed, samples.size + 1)
+            refresh()
+            main.removeCallbacksAndMessages(null)
+            // Back to listening after a moment; the notice stays until the next good take.
+            main.postDelayed({ if (speech != null) { trainBars.running = true; micHalo.running = true } }, 1_200)
+            return
+        }
+        missed = false
         samples += WakePhrase.words(text).joinToString(" ")
         if (samples.size >= SAMPLES) {
             showTrained = true
@@ -311,7 +382,7 @@ class VoiceTrainingActivity : ComponentActivity(), RecognitionListener {
         }
         refresh()
         // Show what was heard for a moment, then ask for the next take.
-        hint(getString(R.string.training_got_heard, samples.size, text), parts.green)
+        hint(getString(R.string.training_got_heard, samples.size, text), parts.greenText)
         main.removeCallbacksAndMessages(null)
         main.postDelayed({ if (!testing && speech != null) hint(getString(R.string.training_hint)) }, 1_800)
     }
@@ -331,13 +402,12 @@ class VoiceTrainingActivity : ComponentActivity(), RecognitionListener {
                 @Deprecated("Deprecated in Java")
                 override fun getOpacity() = android.graphics.PixelFormat.TRANSLUCENT
             }
-            addView(FrameLayout(context).apply {
-                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(if (wakes) parts.greenTile else parts.redTile) }
-                addView(parts.icon(if (wakes) R.drawable.ic_ui_check_mark else R.drawable.ic_ui_close,
-                    if (wakes) parts.green else ui.error, 14).apply {
-                    layoutParams = FrameLayout.LayoutParams(ui.dp(14), ui.dp(14), Gravity.CENTER)
-                })
-            }, LinearLayout.LayoutParams(ui.dp(26), ui.dp(26)))
+            addView(if (wakes) parts.icon(R.drawable.ic_ui_check_mark, parts.green, 18)
+                else View(context).apply {
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                    background = GradientDrawable().apply { cornerRadius = ui.dp(1).toFloat(); setColor(ui.muted) }
+                }, if (wakes) LinearLayout.LayoutParams(ui.dp(18), ui.dp(18))
+                else LinearLayout.LayoutParams(ui.dp(14), ui.dp(2)).apply { marginStart = ui.dp(2); marginEnd = ui.dp(2) })
             addView(ui.text(getString(R.string.wake_quoted, text), 15f, ui.ink, semibold = true).apply {
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
@@ -346,7 +416,7 @@ class VoiceTrainingActivity : ComponentActivity(), RecognitionListener {
                 marginEnd = ui.dp(8)
             })
             addView(ui.text(getString(if (wakes) R.string.training_would_wake else R.string.training_would_not),
-                12.5f, if (wakes) parts.greenText else parts.redText, semibold = true))
+                13f, if (wakes) parts.greenText else ui.muted, semibold = wakes))
         }
         results.addView(row, 0)
         while (results.childCount > 4) results.removeViewAt(results.childCount - 1)
@@ -368,7 +438,42 @@ class VoiceTrainingActivity : ComponentActivity(), RecognitionListener {
 
     companion object {
         private const val SAMPLES = 5
-        private const val MIN_SAMPLES = 3
+        /** Below this likeness to the phrase a take is «No te escuché bien» (the model may still write it oddly). */
+        private const val MISS_SCORE = 0.4
         private const val TAG = "SakuraWebApp"
+    }
+}
+
+/** The halo that beats around the training mic (1.6 s); still when motion is reduced or it stops listening. */
+class PulseHalo(context: android.content.Context, private val color: Int) : View(context) {
+    private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+    private var phase = 0f
+    private val animator = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+        duration = 1600
+        repeatCount = android.animation.ValueAnimator.INFINITE
+        interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+        addUpdateListener { phase = it.animatedValue as Float; invalidate() }
+    }
+    var running = false
+        set(value) {
+            field = value
+            if (value && isAttachedToWindow && motionAllowed()) animator.start() else { animator.cancel(); phase = 0f }
+            invalidate()
+        }
+
+    init { importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO }
+
+    override fun onAttachedToWindow() { super.onAttachedToWindow(); if (running && motionAllowed()) animator.start() }
+    override fun onDetachedFromWindow() { animator.cancel(); super.onDetachedFromWindow() }
+
+    override fun onDraw(canvas: android.graphics.Canvas) {
+        if (!running) return
+        val c = width / 2f
+        val base = 38 * resources.displayMetrics.density
+        val grow = (c - base) * phase
+        val alpha = ((1f - phase) * 0.38f * 255).toInt()
+        paint.color = color
+        paint.alpha = alpha
+        canvas.drawCircle(c, height / 2f, base + grow, paint)
     }
 }

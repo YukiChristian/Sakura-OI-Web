@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mic switched off while the PC does not answer: only a ring, so it does not invite a tap. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="@color/widget_tint" />
+    <stroke android:width="1dp" android:color="@color/widget_tint_ring" />
+</shape>

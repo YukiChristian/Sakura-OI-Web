@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Widget mediano 4 × 1: micrófono azul, avatar y nombre del modelo (▾ abre «¿Con quién quieres hablar?») y los
-     botones redondos Nuevo chat, Calendario y Notas (los que quepan, en ese orden). -->
+<!-- Widget mediano 4 × 1 (W4): micrófono grafito, avatar y nombre del modelo (▾ abre «¿Con quién quieres hablar?»)
+     y los botones Nuevo y Agenda con su nombre bajo el ícono (62 × 52). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
@@ -8,15 +8,15 @@
     android:background="@drawable/widget_bg_pill"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingStart="9dp"
-    android:paddingEnd="10dp">
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp">
 
     <ImageView
         android:id="@+id/widget_mic"
         style="@style/WidgetMic"
         android:layout_width="56dp"
         android:layout_height="56dp"
-        android:padding="16dp" />
+        android:padding="17dp" />
 
     <LinearLayout
         android:id="@+id/widget_model"
@@ -44,21 +44,45 @@
             android:textSize="16sp" />
     </LinearLayout>
 
-    <ImageView
-        android:id="@+id/widget_new_chat"
-        style="@style/WidgetRound"
-        android:contentDescription="@string/shortcut_new_chat"
-        android:src="@drawable/ic_ui_chat_plus" />
+    <LinearLayout
+        android:id="@+id/widget_buttons"
+        android:layout_width="wrap_content"
+        android:layout_height="52dp"
+        android:orientation="horizontal">
 
-    <ImageView
-        android:id="@+id/widget_calendar"
-        style="@style/WidgetRound"
-        android:contentDescription="@string/widget_action_calendar"
-        android:src="@drawable/ic_ui_calendar" />
+        <LinearLayout
+            android:id="@+id/widget_new_chat"
+            style="@style/WidgetButton"
+            android:layout_width="62dp"
+            android:contentDescription="@string/shortcut_new_chat">
 
-    <ImageView
-        android:id="@+id/widget_notes"
-        style="@style/WidgetRound"
-        android:contentDescription="@string/widget_action_notes"
-        android:src="@drawable/ic_ui_notes" />
+            <ImageView
+                android:id="@+id/widget_new_chat_icon"
+                style="@style/WidgetButtonIcon"
+                android:src="@drawable/ic_ui_chat_plus" />
+
+            <TextView
+                android:id="@+id/widget_new_chat_label"
+                style="@style/WidgetButtonLabel"
+                android:text="@string/widget_action_new" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/widget_calendar"
+            style="@style/WidgetButton"
+            android:layout_width="62dp"
+            android:layout_marginStart="6dp"
+            android:contentDescription="@string/widget_action_calendar">
+
+            <ImageView
+                android:id="@+id/widget_calendar_icon"
+                style="@style/WidgetButtonIcon"
+                android:src="@drawable/ic_ui_calendar" />
+
+            <TextView
+                android:id="@+id/widget_calendar_label"
+                style="@style/WidgetButtonLabel"
+                android:text="@string/widget_action_calendar" />
+        </LinearLayout>
+    </LinearLayout>
 </LinearLayout>

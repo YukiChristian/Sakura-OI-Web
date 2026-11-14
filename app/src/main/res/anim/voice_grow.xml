@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Voice mode grows from the border ring after «Oye, Sakura» (900–1300 ms of the activation). -->
+<!-- Voice mode grows from the border ring after «Oye, Sakura» (scale 0.86 → 1, 400 ms, cubic-bezier(.2,.8,.2,1)). -->
 <set xmlns:android="http://schemas.android.com/apk/res/android"
     android:duration="400"
-    android:interpolator="@android:interpolator/decelerate_cubic">
+    android:interpolator="@anim/voice_grow_ease">
     <scale
-        android:fromXScale="0.9"
-        android:fromYScale="0.9"
+        android:fromXScale="0.86"
+        android:fromYScale="0.86"
         android:pivotX="50%"
         android:pivotY="50%"
         android:toXScale="1"

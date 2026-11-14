@@ -937,8 +937,23 @@ class MainActivity : ComponentActivity() {
     }
 
     /** Called only for real failures: no network, DNS or TLS errors, or the server answering 5xx. */
+    /**
+     * After «Oye, Sakura»: lets the ring fade once voice mode has opened the microphone (the moment it goes from
+     * «te oí» to «te escucho»), checked every 150 ms; after 6 s it fades anyway.
+     */
+    private fun waitForVoice(tries: Int) {
+        if (!WakeActivation.isShowing) return
+        if (tries >= 40) { WakeActivation.appShown(); return }
+        webView.evaluateJavascript("(window.__sakuraMic && window.__sakuraMic.live()) || 0") { value ->
+            if ((value?.trim('"')?.toIntOrNull() ?: 0) > 0) WakeActivation.appShown()
+            else webView.postDelayed({ waitForVoice(tries + 1) }, 150)
+        }
+    }
+
     private fun handleMainFrameFailure() {
         mainFrameLoadFailed = true
+        // The widgets check too, so they can say «Tu PC no responde».
+        PcStatus.check(this, force = true)
         showConnectionError()
     }
 
@@ -1201,6 +1216,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
+        // On screen: the «Oye, Sakura» ring stays until voice mode listens, then fades as it grows from it.
+        if (hasFocus && WakeActivation.isShowing) waitForVoice(0)
         if (hasFocus && SystemClock.uptimeMillis() < keyboardWantedUntil && ::webView.isInitialized) {
             webView.postDelayed({ if (SystemClock.uptimeMillis() < keyboardWantedUntil) openKeyboard() }, 120)
         }

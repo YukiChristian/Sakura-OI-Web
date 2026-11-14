@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Shared pieces of the widgets ("Widgets · 1, 3 y 8 modelos, con Notas y Calendario"). -->
+<!-- Shared pieces of the widgets (Hanami, «Widgets · claro/oscuro»). -->
 <resources>
+    <!-- Graphite in light, white in dark; the same mic in every size so it is recognised. -->
     <style name="WidgetMic">
         <item name="android:background">@drawable/widget_circle_blue</item>
         <item name="android:src">@drawable/ic_ui_mic</item>
-        <item name="android:tint">#FFFFFFFF</item>
+        <item name="android:tint">@color/widget_on_mic</item>
     </style>
 
     <!-- The ▾ is part of the name (drawableEnd), so it stays right after it; a long name is cut with "…". -->
     <style name="WidgetModelName">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:drawablePadding">2dp</item>
+        <item name="android:drawablePadding">3dp</item>
         <item name="android:drawableTint">@color/widget_muted</item>
         <item name="android:ellipsize">end</item>
         <item name="android:maxLines">1</item>
@@ -19,10 +20,10 @@
         <item name="android:textStyle">bold</item>
     </style>
 
-    <!-- A 34 dp avatar in a 42 dp slot: the selected one adds its ring in the 4 dp around it. -->
+    <!-- A 40 dp avatar in a 48 dp target, so a tap never lands on the neighbour. -->
     <style name="WidgetSlot">
-        <item name="android:layout_width">42dp</item>
-        <item name="android:layout_height">42dp</item>
+        <item name="android:layout_width">48dp</item>
+        <item name="android:layout_height">48dp</item>
     </style>
 
     <style name="WidgetBarCell">
@@ -34,8 +35,8 @@
     </style>
 
     <style name="WidgetBarIcon">
-        <item name="android:layout_width">20dp</item>
-        <item name="android:layout_height">20dp</item>
+        <item name="android:layout_width">19dp</item>
+        <item name="android:layout_height">19dp</item>
         <item name="android:importantForAccessibility">no</item>
         <item name="android:tint">@color/widget_ink</item>
     </style>
@@ -51,31 +52,31 @@
         <item name="android:importantForAccessibility">no</item>
     </style>
 
-    <style name="WidgetBarDivider">
-        <item name="android:layout_width">1dp</item>
-        <item name="android:layout_height">match_parent</item>
-        <item name="android:layout_marginTop">12dp</item>
-        <item name="android:layout_marginBottom">12dp</item>
-        <item name="android:background">@color/widget_tint_ring</item>
-        <item name="android:importantForAccessibility">no</item>
-    </style>
-
-    <style name="WidgetRound">
-        <item name="android:layout_width">42dp</item>
-        <item name="android:layout_height">42dp</item>
-        <item name="android:layout_marginStart">8dp</item>
-        <item name="android:background">@drawable/widget_circle_tint</item>
-        <item name="android:padding">11.5dp</item>
-        <item name="android:tint">@color/widget_ink</item>
-    </style>
-
-    <style name="WidgetSquare">
+    <!-- Medium and small widgets: a rounded button with its name under the icon. -->
+    <style name="WidgetButton">
         <item name="android:layout_width">0dp</item>
         <item name="android:layout_height">match_parent</item>
         <item name="android:layout_weight">1</item>
         <item name="android:background">@drawable/widget_button_tint</item>
-        <item name="android:padding">12.5dp</item>
-        <item name="android:scaleType">fitCenter</item>
+        <item name="android:gravity">center</item>
+        <item name="android:orientation">vertical</item>
+    </style>
+
+    <style name="WidgetButtonIcon">
+        <item name="android:layout_width">17dp</item>
+        <item name="android:layout_height">17dp</item>
+        <item name="android:importantForAccessibility">no</item>
         <item name="android:tint">@color/widget_ink</item>
+    </style>
+
+    <style name="WidgetButtonLabel">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">3dp</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:textColor">@color/widget_ink</item>
+        <item name="android:textSize">11.5sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:importantForAccessibility">no</item>
     </style>
 </resources>

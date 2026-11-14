@@ -24,13 +24,31 @@ data class ChatModel(val id: String, val name: String, val color: Int, val avata
 object ChatModels {
     val PERSONAS = listOf(
         ChatModel("sakura", "Sakura", 0xFFD6336C.toInt(), R.drawable.avatar_sakura),
-        ChatModel("lain", "Lain", 0xFF3D5A9E.toInt(), R.drawable.avatar_lain),
-        ChatModel("yoko", "Yoko", 0xFFE8452C.toInt(), R.drawable.avatar_yoko),
+        ChatModel("lain", "Lain", 0xFF3E5F99.toInt(), R.drawable.avatar_lain),
+        ChatModel("yoko", "Yoko", 0xFFE5484D.toInt(), R.drawable.avatar_yoko),
     )
-    /** Initials of the other models, in the design's colours (picked by name, so each keeps its own). */
+    /**
+     * Initials of the other models in Hanami's palette, without purples: orange, green, amber, teal, lime and
+     * graphite (picked by name, so each keeps its own).
+     */
     private val OTHER_COLORS = intArrayOf(
-        0xFF6D5BD0.toInt(), 0xFF1A8A7A.toInt(), 0xFFC27A00.toInt(), 0xFF2F6FD6.toInt(), 0xFF7A4A2A.toInt(), 0xFF5A6B7A.toInt(),
+        0xFFD9681F.toInt(), 0xFF2B8A5A.toInt(), 0xFFA87F00.toInt(), 0xFF1A8A9A.toInt(), 0xFF5F8A12.toInt(), 0xFF52525B.toInt(),
     )
+    /** The same colours lighter for dark mode, so each ring and initial keeps 3:1 on graphite glass. */
+    private val NIGHT = mapOf(
+        0xFFD6336C.toInt() to 0xFFF06595.toInt(), 0xFF3E5F99.toInt() to 0xFF8FA9DA.toInt(), 0xFFE5484D.toInt() to 0xFFFF6B70.toInt(),
+        0xFFD9681F.toInt() to 0xFFF08C4A.toInt(), 0xFF2B8A5A.toInt() to 0xFF4CC38A.toInt(), 0xFFA87F00.toInt() to 0xFFE0B43A.toInt(),
+        0xFF1A8A9A.toInt() to 0xFF3FB5C4.toInt(), 0xFF5F8A12.toInt() to 0xFF93C142.toInt(), 0xFF52525B.toInt() to 0xFFA1A1AA.toInt(),
+    )
+
+    /** The model's colour for the current light or dark mode. */
+    fun color(context: Context, model: ChatModel): Int {
+        val night = (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+        return if (night) NIGHT[model.color] ?: model.color else model.color
+    }
+
+    fun isPersona(model: ChatModel) = PERSONAS.any { it.id == model.id }
     private const val PREFS = "widget_models"
     private const val KEY_LIST = "pinned_list"
     private const val KEY_LIST_AT = "pinned_list_at"
@@ -123,7 +141,7 @@ object ChatModels {
     }
 
     /**
-     * The models pinned in Open WebUI (its sidebar's pinned models, `ui.pinnedModels` in the user's
+     * Sakura, Lain and Yoko (when the server has them) and then the models pinned in Open WebUI (its sidebar's pinned models, `ui.pinnedModels` in the user's
      * settings), in that order, among the visible ones; uses the session the app already keeps (see
      * SessionSync). Blocking; throws when there is no session or the server does not answer.
      */
@@ -141,7 +159,9 @@ object ChatModels {
         }
         val pinned = get("$base/api/v1/users/user/settings", token).optJSONObject("ui")?.optJSONArray("pinnedModels")
         val ids = pinned?.let { array -> (0 until array.length()).map { array.optString(it) } }.orEmpty()
-        return ids.mapNotNull { id -> visible.firstOrNull { it.id == id } }
+        // «Tus compañeras» first whenever the server has them, pinned or not; then the other pinned models.
+        val companions = PERSONAS.mapNotNull { p -> visible.firstOrNull { it.id == p.id } }
+        return (companions + ids.mapNotNull { id -> visible.firstOrNull { it.id == id } }).distinctBy { it.id }
     }
 
     private fun get(url: String, token: String): JSONObject {
@@ -182,7 +202,7 @@ object ChatModels {
             }
             canvas.drawCircle(c, c, r, paint)
         } else {
-            paint.color = model.color
+            paint.color = color(context, model)
             canvas.drawCircle(c, c, r, paint)
             drawCentered(canvas, shortName(model).trim().take(1).uppercase(), c, r * 0.95f, 0xFFFFFFFF.toInt())
         }
@@ -190,7 +210,7 @@ object ChatModels {
             canvas.drawCircle(c, c, c - density, Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 style = Paint.Style.STROKE
                 strokeWidth = 2 * density
-                color = model.color
+                color = this@ChatModels.color(context, model)
             })
         }
         return out

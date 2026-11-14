@@ -1,9 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Widget colours (light; values-night holds the dark set). -->
+<!-- Widget colours, Hanami dark: graphite glass at 70 %, the mic inverted (white with a graphite icon). -->
 <resources>
-    <color name="widget_glass">#CC18181B</color>
-    <color name="widget_ink">#FFFFFFFF</color>
-    <color name="widget_muted">#A6FFFFFF</color>
-    <color name="widget_tint">#D92C2C31</color>
-    <color name="widget_tint_ring">#FF414147</color>
+    <color name="widget_glass">#B31C1C21</color>
+    <color name="widget_glass_ring">#1AFFFFFF</color>
+    <color name="widget_ink">#FFFAFAFA</color>
+    <color name="widget_muted">#FFB4B4BC</color>
+    <color name="widget_off">#FF77777F</color>
+    <color name="widget_tint">#12FFFFFF</color>
+    <color name="widget_tint_ring">#1AFFFFFF</color>
+    <color name="widget_mic">#FFFAFAFA</color>
+    <color name="widget_on_mic">#FF18181B</color>
+    <color name="widget_warn_bg">#33FAC83C</color>
+    <color name="widget_warn">#FFF5D06A</color>
+    <color name="widget_warn_ink">#FFF5E2A8</color>
 </resources>

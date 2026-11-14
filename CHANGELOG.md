@@ -1,6 +1,25 @@
 # Historial de versiones
 
-Cambios de Sakura OI Web (antes SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
+Cambios de Sakura Hanami Open WebUI (antes Sakura OI Web y SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
+
+## 1.0 Beta 001 (versionCode 70) — 13 de noviembre de 2026
+
+Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v1.0-Beta-001).
+
+### Cambiado
+- **Nuevo nombre: Sakura Hanami Open WebUI.** Así aparece en los ajustes de Android, en los avisos y en las pantallas de la app; debajo del icono dice **Sakura Hanami**, porque Android corta los nombres largos. El identificador (`com.sakura.webapp`), el repositorio y el nombre del archivo APK no cambian, así que se instala encima y el aviso de actualización sigue funcionando. Las descargas nuevas van a **Descargas/Sakura Hanami Open WebUI**.
+- **Versiones 1.0 Beta.** Desde esta versión el número es «1.0 Beta 001» y con cada corrección sube solo el último número (002, 003…). `Updates.isNewer` ordena las betas entre sí, por debajo de la 1.0 final y por encima de la 0.9.1.7 (pruebas en `UpdatesTest`).
+- **Widgets con el diseño Hanami.** Cristal blanco al 72 % (grafito al 70 % en oscuro) sobre el fondo de pantalla, el micrófono grafito (blanco en oscuro) y colores por modelo sin morados. La fila del grande muestra solo a los demás modelos: tocar uno lo pasa arriba sin abrir la app («Cambiar a Lain»), y si no caben el último lugar es «+N» («Ver los 9 modelos»). La barra dice **Nuevo chat · Agenda · Notas · Último chat**; el mediano y el chico tienen **Nuevo** y **Agenda** con su nombre bajo el icono, en botones de 48 dp o más.
+- **Sakura, Lain y Yoko siempre en el widget** cuando el servidor las tiene, fijadas o no en Open WebUI; después van los demás modelos fijados.
+- **«¿Con quién quieres hablar?»** es una hoja que sube desde abajo, con **Tus compañeras** arriba y **Otros modelos** aparte, la elegida en azul pizarra y anunciada como botón de opción.
+- **Ajustes de «Oye, Sakura».** El interruptor es azul pizarra y hay un solo estado a la vez: «Activo · en segundo plano», «Descargando el modelo de voz…» o, si falta el permiso, «Escucha, pero no se abre sola» con un aviso ámbar que nombra el permiso **Mostrar sobre otras apps** y el botón **Permitir**. Mientras se descarga el modelo, la barra tiene un brillo que avanza, dice cuántos MB van y solo se atenúa lo que depende de la descarga. **Accesos rápidos** es una sola fila que abre el ajuste rápido, el widget y los audífonos.
+- **Frase de activación:** la frase propia se revisa mientras escribes (de 2 a 4 palabras y alguna poco común) y **Guardar y entrenar** abre el entrenamiento.
+- **Entrenar tu voz:** la instrucción va dentro de la tarjeta, el micrófono azul pizarra late suave y el botón dice lo que falta («Faltan 3 grabaciones») hasta que cambia a **Guardar**. Una grabación que no se parece a la frase no cuenta: el micrófono pasa a ámbar y dice «No te escuché bien. Acércate un poco y repite la 3», sin perder las anteriores. En la prueba en vivo, «No se activa» va en gris con un guion.
+- **Activación de «Oye, Sakura»:** sin logo; solo el trazo, una línea Rosa Sakura con borde rosa oscuro que nace arriba al centro y baja por los dos lados (800 ms). Suena el tono con una vibración ligera. El aro se queda completo hasta que Modo voz abre el micrófono y se desvanece mientras Modo voz crece desde él (escala 0.86 → 1). Con las animaciones del sistema apagadas solo brilla el borde.
+
+### Agregado
+- **«Tu PC no responde» en los widgets.** Si el servidor no contesta, el micrófono y los accesos se apagan para no fallar en silencio y el grande explica por qué, en ámbar, con **Reintentar**. Se revisa cada 30 minutos, al tocar Reintentar y cuando la app no puede cargar la página; vuelve a la normalidad cuando una página del servidor carga.
+- **Movimiento reducido:** con las animaciones de Android apagadas, la hoja de modelos solo se funde, las barras de voz quedan quietas y la descarga muestra una barra fija.
 
 ## 0.9.1.7 (versionCode 69) — 13 de noviembre de 2026
 

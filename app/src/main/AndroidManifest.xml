@@ -6,6 +6,8 @@
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- A light vibration with the activation tone of «Oye, Sakura». -->
+    <uses-permission android:name="android.permission.VIBRATE" />
     <!-- «Oye, Sakura»: lets the user exempt Sakura from battery optimisation, so Android does not stop
          listening after a while. Android shows its own dialog; nothing changes without the user. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
@@ -53,7 +55,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="@string/app_name"
+            android:label="@string/app_launcher_name"
             android:launchMode="singleTop"
             android:theme="@style/Theme.SakuraWebApp"
             android:windowSoftInputMode="adjustResize|stateAlwaysHidden">

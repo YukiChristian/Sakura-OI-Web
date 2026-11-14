@@ -2,6 +2,7 @@ package com.sakura.webapp
 
 import android.animation.ValueAnimator
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
@@ -14,6 +15,9 @@ import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.provider.Settings
 import android.util.Log
 import android.view.RoundedCorner
@@ -24,25 +28,22 @@ import android.view.animation.PathInterpolator
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * What happens when «Oye, Sakura» is heard, from "Oye, Sakura · proceso de activación", slowed down
- * by [WakeActivation.SLOWER] and, for now, without the activation tone: the flower blooms at the top
- * centre, a Sakura-pink line runs down both edges of the screen dropping petals, the two strokes meet
- * at the bottom (≈ 1.6 s) and the line fades (1.6–2.4 s). Voice mode starts loading at the first
- * frame, under the animation, so the app is ready sooner. Drawn over any app (and over Sakura itself)
- * when Sakura may draw over other apps.
+ * What happens when «Oye, Sakura» is heard, from "App de Android · Parte 1 · Activación" (Hanami): the tone
+ * and a light vibration, then only the stroke says Sakura woke up — no logo, nothing over the screen or the
+ * camera. Two Rosa Sakura lines with a dark pink border are born at the top centre and run down both edges
+ * (0–800 ms), meet at the bottom and the ring stays complete until voice mode is on screen, then it fades
+ * while voice mode grows from it. Voice mode starts loading at the first frame, under the stroke. With
+ * reduced motion the border only glows (no run), and tone and vibration stay. Drawn over any app (and over
+ * Sakura itself) when Sakura may draw over other apps.
  */
 object WakeActivation {
     private const val TAG = "SakuraWebApp"
-    /** The design's timeline (1.35 s) runs this many times slower, to cover the app while it loads. */
-    const val SLOWER = 1.8f
-    /** How long the overlay stays: the slowed timeline plus a short margin. */
-    private val TOTAL = (1_350 * SLOWER).toLong() + 100
+    /** The ring waits at most this long for voice mode before it fades anyway (a cold start takes a few seconds). */
+    private const val MAX_HOLD = 6_500L
 
-    /** The activation tone is off for now; [playTone] is kept for a future sound. */
-    private const val TONE = false
+    @Volatile private var current: BorderTraceView? = null
 
     fun playTone(context: Context) {
-        if (!TONE) return
         try {
             val player = MediaPlayer()
             player.setAudioAttributes(
@@ -61,15 +62,40 @@ object WakeActivation {
         } catch (e: Exception) {
             Log.w(TAG, "Could not play the activation tone", e)
         }
+        vibrate(context)
+    }
+
+    /** One light tick with the tone. */
+    private fun vibrate(context: Context) {
+        try {
+            val vibrator = if (Build.VERSION.SDK_INT >= 31) {
+                context.getSystemService(VibratorManager::class.java)?.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION") context.getSystemService(Vibrator::class.java)
+            } ?: return
+            if (!vibrator.hasVibrator()) return
+            if (Build.VERSION.SDK_INT >= 29) vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
+            else if (Build.VERSION.SDK_INT >= 26) vibrator.vibrate(VibrationEffect.createOneShot(25, 90))
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not vibrate", e)
+        }
     }
 
     fun canDraw(context: Context) = Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(context)
 
+    /** True while the ring is on screen, waiting for voice mode. */
+    val isShowing: Boolean get() = current != null
+
+    /** Called by MainActivity once voice mode listens: the ring may fade now. */
+    fun appShown() {
+        current?.release()
+    }
+
     /**
-     * Shows the border animation and, on its first frame, calls [open] (and would play the tone), so Sakura
-     * loads beneath the animation from the moment it starts. The overlay lives on its own thread:
-     * starting Sakura (the WebView) keeps the main thread busy, and the animation must not freeze.
-     * If the overlay cannot draw within 700 ms, Sakura opens anyway.
+     * Shows the border animation and, on its first frame, plays the tone and calls [open], so Sakura loads
+     * beneath the stroke from the moment it starts. The overlay lives on its own thread: starting Sakura
+     * (the WebView) keeps the main thread busy, and the animation must not freeze. If the overlay cannot
+     * draw within 700 ms, Sakura opens anyway.
      */
     fun run(context: Context, open: () -> Unit) {
         val app = context.applicationContext
@@ -89,17 +115,17 @@ object WakeActivation {
         val border = Handler(thread.looper)
         border.post {
             lateinit var view: BorderTraceView
-            view = BorderTraceView(app) {
-                begin()
-                border.postDelayed({
-                    runCatching { wm.removeView(view) }
-                    thread.quitSafely()
-                }, TOTAL)
+            view = BorderTraceView(app, border, onFirstFrame = { begin() }) {
+                if (current === view) current = null
+                runCatching { wm.removeView(view) }
+                thread.quitSafely()
             }
+            current = view
             try {
                 wm.addView(view, overlayParams())
             } catch (e: Exception) {
                 Log.w(TAG, "Could not show the activation border", e)
+                current = null
                 thread.quitSafely()
                 begin()
             }
@@ -127,157 +153,164 @@ object WakeActivation {
         // Android 12+ only lets touches through another app's overlay at 80 % opacity or less.
         if (Build.VERSION.SDK_INT >= 31) alpha = 0.8f
     }
-}
 
-/** The border trace, the blooming flower, the meeting flash and the petals, on a 1.35 s clock. */
-private class BorderTraceView(context: Context, private val onFirstFrame: () -> Unit) : View(context) {
-    private val density = resources.displayMetrics.density
-    private val pink = 0xFFD6336C.toInt()
-    private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeCap = Paint.Cap.ROUND
-        strokeJoin = Paint.Join.ROUND
-        color = pink
-    }
-    private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val logo = context.getDrawable(R.drawable.sakura_logo)
-    private val traceEase = PathInterpolator(0.6f, 0.05f, 0.3f, 1f)
-    private var t = 0f // milliseconds
-    private var right = Path()
-    private var left = Path()
-    private var length = 0f
-    private val segment = Path()
-
-    // Petal start (fraction of width/height), drift (dp) and colour, as in the design.
-    private val petals = listOf(
-        Petal(0.154f, 0.142f, -30f, 60f, 0xFFF3A6C0.toInt(), 0),
-        Petal(0.872f, 0.308f, -40f, 50f, 0xFFD6336C.toInt(), 1),
-        Petal(0.954f, 0.664f, -60f, 30f, 0xFFF7C6D6.toInt(), 2),
-        Petal(0.077f, 0.498f, 50f, 40f, 0xFFE8789E.toInt(), 3),
-        Petal(0.538f, 0.972f, 10f, -70f, 0xFFD6336C.toInt(), 4),
-        Petal(0.046f, 0.829f, 40f, -30f, 0xFFF3A6C0.toInt(), 5),
-        Petal(0.974f, 0.107f, -50f, 40f, 0xFFE8789E.toInt(), 6),
-    )
-
-    private data class Petal(val x: Float, val y: Float, val dx: Float, val dy: Float, val color: Int, val index: Int)
-
-    private var started = false
-
-    /** The clock starts with the first frame on screen, when the window is really visible. */
-    private fun start() {
-        started = true
-        onFirstFrame()
-        // The drawing below uses the design's milliseconds (0–1350); the clock runs SLOWER times slower.
-        ValueAnimator.ofFloat(0f, 1350f).apply {
-            duration = (1350 * WakeActivation.SLOWER).toLong()
-            interpolator = LinearInterpolator()
-            addUpdateListener { t = it.animatedValue as Float; invalidate() }
-            start()
+    /**
+     * The border: drawn 0–800 ms with cubic-bezier(.6,.05,.3,1), a short glow where the strokes meet, held
+     * complete until [release] (voice mode on screen, not before 1 s) or [MAX_HOLD], then faded in 400 ms.
+     */
+    private class BorderTraceView(
+        context: Context,
+        private val handler: Handler,
+        private val onFirstFrame: () -> Unit,
+        private val onDone: () -> Unit,
+    ) : View(context) {
+        private val density = resources.displayMetrics.density
+        private val night = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        // Rosa Sakura with a dark pink border, readable over cherry wallpapers and in dark mode.
+        private val pink = if (night) 0xFFF06595.toInt() else 0xFFD6336C.toInt()
+        private val edge = if (night) 0xFFA61E4D.toInt() else 0xFF9C1C48.toInt()
+        private val motion = ValueAnimator.areAnimatorsEnabled()
+        private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
         }
-    }
+        private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val traceEase = PathInterpolator(0.6f, 0.05f, 0.3f, 1f)
+        private var t = 0f // milliseconds since the first frame
+        private var fade = 0f // 0 → 1 while the ring fades
+        private var right = Path()
+        private var left = Path()
+        private var length = 0f
+        private val segment = Path()
+        private var started = false
+        private var released = false
+        private var fading = false
+        private var startedAt = 0L
 
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        val radius = cornerRadius()
-        val inset = 3 * density
-        val cx = w / 2f
-        right = Path().apply {
-            moveTo(cx, inset)
-            lineTo(w - radius, inset)
-            arcTo(RectF(w - 2 * radius + inset, inset, w - inset, 2 * radius - inset), -90f, 90f)
-            lineTo(w - inset, h - radius)
-            arcTo(RectF(w - 2 * radius + inset, h - 2 * radius + inset, w - inset, h - inset), 0f, 90f)
-            lineTo(cx, h - inset)
+        /** Voice mode is on screen: fade once the ring has closed (≈ 1 s). */
+        fun release() = handler.post {
+            released = true
+            if (started) maybeFade()
         }
-        left = Path().apply {
-            moveTo(cx, inset)
-            lineTo(radius, inset)
-            arcTo(RectF(inset, inset, 2 * radius - inset, 2 * radius - inset), -90f, -90f)
-            lineTo(inset, h - radius)
-            arcTo(RectF(inset, h - 2 * radius + inset, 2 * radius - inset, h - inset), 180f, -90f)
-            lineTo(cx, h - inset)
+
+        private fun maybeFade() {
+            if (fading || !released) return
+            val wait = (1_000 - (android.os.SystemClock.uptimeMillis() - startedAt)).coerceAtLeast(0)
+            handler.postDelayed({ startFade() }, wait)
         }
-        length = PathMeasure(right, false).length
-    }
 
-    /** The screen's own corner radius where Android reports it; 40 dp otherwise. */
-    private fun cornerRadius(): Float {
-        if (Build.VERSION.SDK_INT >= 31) {
-            val r = rootWindowInsets?.getRoundedCorner(RoundedCorner.POSITION_TOP_LEFT)?.radius ?: 0
-            if (r > 0) return r.toFloat()
-        }
-        return 40 * density
-    }
-
-    private fun phase(from: Float, to: Float) = ((t - from) / (to - from)).coerceIn(0f, 1f)
-
-    override fun onDraw(canvas: Canvas) {
-        if (!started) start()
-        val w = width.toFloat()
-        val h = height.toFloat()
-
-        // The line: drawn 100–900 ms, held, then faded 1000–1300 ms. Two softer, wider strokes make the glow.
-        val progress = traceEase.getInterpolation(phase(100f, 900f))
-        val lineAlpha = 1f - phase(1000f, 1300f)
-        val glow = (phase(650f, 900f) * (1f - phase(1050f, 1300f))).coerceIn(0f, 1f)
-        if (progress > 0f && lineAlpha > 0f) {
-            for ((widthDp, alpha) in listOf(18f to 0.10f * glow, 12f to 0.20f * glow, 6f to 1f)) {
-                if (alpha <= 0f) continue
-                stroke.strokeWidth = widthDp * density
-                stroke.alpha = (255 * alpha * lineAlpha).toInt()
-                for (path in listOf(right, left)) {
-                    segment.reset()
-                    PathMeasure(path, false).getSegment(0f, length * progress, segment, true)
-                    canvas.drawPath(segment, stroke)
-                }
+        private fun startFade() {
+            if (fading) return
+            fading = true
+            ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = if (motion) 400 else 200
+                interpolator = PathInterpolator(0.2f, 0.8f, 0.2f, 1f)
+                addUpdateListener { fade = it.animatedValue as Float; invalidate() }
+                addListener(object : android.animation.AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: android.animation.Animator) { onDone() }
+                })
+                start()
             }
         }
 
-        // Where the two strokes meet: a quick flash that grows and fades (850–1150 ms).
-        val meet = phase(850f, 1150f)
-        if (meet > 0f && meet < 1f) {
-            val grow = if (meet < 0.33f) 0.2f + 0.8f * (meet / 0.33f) else 1f + 1.4f * ((meet - 0.33f) / 0.67f)
-            fill.color = pink
-            fill.alpha = (255 * (if (meet < 0.33f) meet / 0.33f else 1f - (meet - 0.33f) / 0.67f) * 0.6f).toInt()
-            canvas.drawCircle(w / 2, h - 3 * density, 12 * density * grow, fill)
+        /** The clock starts with the first frame on screen, when the window is really visible. */
+        private fun start() {
+            started = true
+            startedAt = android.os.SystemClock.uptimeMillis()
+            onFirstFrame()
+            if (motion) {
+                ValueAnimator.ofFloat(0f, 1_100f).apply {
+                    duration = 1_100
+                    interpolator = LinearInterpolator()
+                    addUpdateListener { t = it.animatedValue as Float; invalidate() }
+                    start()
+                }
+            } else {
+                // Reduced motion: the whole border glows in 200 ms, no run.
+                ValueAnimator.ofFloat(0f, 1f).apply {
+                    duration = 200
+                    addUpdateListener { t = 1_100f * (it.animatedValue as Float); invalidate() }
+                    start()
+                }
+            }
+            handler.postDelayed({ startFade() }, MAX_HOLD)
+            maybeFade()
         }
 
-        // Petals drift off the line from 300 ms, 40 ms apart.
-        for (p in petals) {
-            val start = 300f + p.index * 40f
-            val k = ((t - start) / 800f).coerceIn(0f, 1f)
-            if (k <= 0f || k >= 1f) continue
-            val alpha = if (k < 0.15f) k / 0.15f * 0.9f else 0.9f * (1f - (k - 0.15f) / 0.85f)
-            fill.color = p.color
-            fill.alpha = (255 * alpha).toInt()
-            canvas.save()
-            canvas.translate(p.x * w + p.dx * density * k, p.y * h + p.dy * density * k)
-            canvas.rotate(220f * k)
-            canvas.drawRoundRect(RectF(-4.5f * density, -6.5f * density, 4.5f * density, 6.5f * density), 4.5f * density, 4.5f * density, fill)
-            canvas.restore()
+        override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+            val radius = cornerRadius()
+            val inset = 3 * density
+            val cx = w / 2f
+            right = Path().apply {
+                moveTo(cx, inset)
+                lineTo(w - radius, inset)
+                arcTo(RectF(w - 2 * radius + inset, inset, w - inset, 2 * radius - inset), -90f, 90f)
+                lineTo(w - inset, h - radius)
+                arcTo(RectF(w - 2 * radius + inset, h - 2 * radius + inset, w - inset, h - inset), 0f, 90f)
+                lineTo(cx, h - inset)
+            }
+            left = Path().apply {
+                moveTo(cx, inset)
+                lineTo(radius, inset)
+                arcTo(RectF(inset, inset, 2 * radius - inset, 2 * radius - inset), -90f, -90f)
+                lineTo(inset, h - radius)
+                arcTo(RectF(inset, h - 2 * radius + inset, 2 * radius - inset, h - inset), 180f, -90f)
+                lineTo(cx, h - inset)
+            }
+            length = PathMeasure(right, false).length
         }
 
-        // The flower blooms at the top centre (0–200 ms), settles, and fades as voice mode opens.
-        val d = logo ?: return
-        val bloom = phase(0f, 200f)
-        val settle = phase(200f, 400f)
-        val out = phase(800f, 1000f)
-        if (out >= 1f) return
-        val scale = when {
-            bloom < 1f -> 0.3f + 0.88f * bloom
-            settle < 1f -> 1.18f - 0.18f * settle
-            else -> 1f - 0.3f * out
+        /** The screen's own corner radius where Android reports it; 40 dp otherwise. */
+        private fun cornerRadius(): Float {
+            if (Build.VERSION.SDK_INT >= 31) {
+                val r = rootWindowInsets?.getRoundedCorner(RoundedCorner.POSITION_TOP_LEFT)?.radius ?: 0
+                if (r > 0) return r.toFloat()
+            }
+            return 40 * density
         }
-        val rotation = -40f * (1f - bloom)
-        val size = 40 * density
-        val cx = w / 2
-        val cy = 14 * density + size / 2
-        canvas.save()
-        canvas.translate(cx, cy)
-        canvas.rotate(rotation)
-        canvas.scale(scale, scale)
-        d.setBounds((-size / 2).toInt(), (-size / 2 * 0.95f).toInt(), (size / 2).toInt(), (size / 2 * 0.95f).toInt())
-        d.alpha = (255 * bloom * (1f - out)).toInt()
-        d.draw(canvas)
-        canvas.restore()
+
+        private fun phase(from: Float, to: Float) = ((t - from) / (to - from)).coerceIn(0f, 1f)
+
+        override fun onDraw(canvas: Canvas) {
+            if (!started) start()
+            val w = width.toFloat()
+            val h = height.toFloat()
+            val alpha = 1f - fade
+            if (alpha <= 0f) return
+
+            val progress = if (motion) traceEase.getInterpolation(phase(0f, 800f)) else 1f
+            val reveal = if (motion) 1f else phase(0f, 1_100f)
+            // A soft glow once the ring closes (and all along with reduced motion).
+            val glow = if (motion) phase(650f, 1_000f) else 1f
+            if (progress > 0f) {
+                val layers = listOf(
+                    Triple(16f, pink, 0.12f * glow),
+                    Triple(9f, edge, 1f),
+                    Triple(5f, pink, 1f),
+                )
+                for ((widthDp, color, a) in layers) {
+                    if (a <= 0f) continue
+                    stroke.strokeWidth = widthDp * density
+                    stroke.color = color
+                    stroke.alpha = (255 * a * alpha * reveal).toInt()
+                    for (path in listOf(right, left)) {
+                        segment.reset()
+                        PathMeasure(path, false).getSegment(0f, length * progress, segment, true)
+                        canvas.drawPath(segment, stroke)
+                    }
+                }
+            }
+
+            // Where the two strokes meet: a quick glow that grows and fades (800–1050 ms).
+            if (motion) {
+                val meet = phase(800f, 1_050f)
+                if (meet > 0f && meet < 1f) {
+                    fill.color = pink
+                    fill.alpha = (255 * (1f - meet) * 0.5f * alpha).toInt()
+                    canvas.drawCircle(w / 2, h - 3 * density, 10 * density * (1f + 1.6f * meet), fill)
+                }
+            }
+        }
     }
 }

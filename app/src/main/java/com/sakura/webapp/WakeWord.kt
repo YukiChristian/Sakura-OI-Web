@@ -279,7 +279,7 @@ class WakeWordService : Service(), RecognitionListener {
             .setAction(IncomingIntents.ACTION_VOICE)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         if (WakeActivation.canDraw(this)) {
-            // Tone, flower and the pink border; voice mode loads underneath from the first frame.
+            // Tone, vibration and the pink border; voice mode loads underneath from the first frame.
             WakeActivation.run(this) {
                 try {
                     val grow = android.app.ActivityOptions.makeCustomAnimation(this, R.anim.voice_grow, 0)
