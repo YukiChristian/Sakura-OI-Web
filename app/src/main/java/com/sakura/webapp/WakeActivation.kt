@@ -28,10 +28,11 @@ import android.view.animation.PathInterpolator
 
 /**
  * What happens when «Oye, Sakura» is heard: at that very moment the «Marimba de madera» tone with a light
- * vibration, Sakura starting, and the activation on screen — a veil that dims and blurs the screen, a few
- * abstract petals drifting down and the Rosa Sakura line running down both edges — until voice mode is listening,
- * when it all fades and uncovers the call screen. With reduced motion only the veil and the glowing border.
- * Drawn over any app (and over Sakura itself) when Sakura may draw over other apps.
+ * vibration, Sakura starting, and the activation on screen — frosted glass with a soft colour mesh, the Sakura
+ * logo fading in at the centre, out-of-focus lights drifting down behind it and the Rosa Sakura line running
+ * down both edges as a living neon — until voice mode is listening, when it all fades and uncovers the call
+ * screen. With reduced motion: the glass, the logo and a still border. Drawn over any app (and over Sakura
+ * itself) when Sakura may draw over other apps.
  */
 object WakeActivation {
     private const val TAG = "SakuraWebApp"
@@ -165,10 +166,12 @@ object WakeActivation {
     }
 
     /**
-     * The activation: a veil that dims and blurs the screen (0–500 ms), a few loose petals that drift down across
-     * it, and the Rosa Sakura line with its dark pink border running down both edges (0–800 ms). It all stays
-     * until [release] (voice mode listening; at most [MAX_HOLD]) and then fades in 450 ms, uncovering the call
-     * screen. With reduced motion: the veil and the glowing border only, no petals and no run.
+     * The activation, as chosen on the preview page: the screen turns into frosted glass with a soft colour mesh
+     * («Aurora Sakura» in light mode, «Aurora nocturna» in dark), the Sakura logo fades in at the centre, out-of-
+     * focus lights (bokeh) drift down behind it, and the Rosa Sakura line runs down both edges as a living neon.
+     * It stays until [release] (voice mode listening; at most [MAX_HOLD]); then the logo fades out (800 ms) and,
+     * from 300 ms on, the glass, the lights and the line clear, uncovering the call screen. With reduced motion:
+     * the glass, the logo and a still border, no lights and no flow.
      */
     private class ActivationView(
         context: Context,
@@ -179,10 +182,8 @@ object WakeActivation {
         private val density = resources.displayMetrics.density
         private val night = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         private val pink = if (night) 0xFFF06595.toInt() else 0xFFD6336C.toInt()
+        private val pinkLight = if (night) 0xFFFFD1E1.toInt() else 0xFFFFB3CD.toInt()
         private val edge = if (night) 0xFFA61E4D.toInt() else 0xFF9C1C48.toInt()
-        // The veil: a pink-white mist in light mode, graphite in dark mode.
-        private val veil = if (night) 0xFF0E0E12.toInt() else 0xFFFFF4F7.toInt()
-        private val veilAlpha = if (night) 0.62f else 0.66f
         private val motion = ValueAnimator.areAnimatorsEnabled()
         private val maxBlur = (36 * density).toInt()
         private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -191,12 +192,16 @@ object WakeActivation {
             strokeJoin = Paint.Join.ROUND
         }
         private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val logoPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+        private val logo = android.graphics.BitmapFactory.decodeResource(resources, R.drawable.sakura_logo)
         private val traceEase = PathInterpolator(0.6f, 0.05f, 0.3f, 1f)
-        private val veilEase = PathInterpolator(0.2f, 0.8f, 0.2f, 1f)
+        private val soft = PathInterpolator(0.2f, 0.8f, 0.2f, 1f)
         private var t = 0f // milliseconds since the first frame
-        private var fade = 0f // 0 → 1 while everything fades
+        private var fadeT = -1f // milliseconds since the fade started (-1: not fading)
         private var right = Path()
         private var left = Path()
+        private var rightMeasure = PathMeasure()
+        private var leftMeasure = PathMeasure()
         private var length = 0f
         private val segment = Path()
         private var started = false
@@ -204,23 +209,25 @@ object WakeActivation {
         private var fading = false
         private var startedAt = 0L
         private var lastBlur = -1
-        private val flower = petalPath()
-        private val blossoms = mutableListOf<Blossom>()
+        private var lastFrame = 0f
         private val random = java.util.Random()
-        /** A few loose petals drifting across, not a screen full of flowers. */
-        private val PETALS = 9
+        private val lights = mutableListOf<Light>()
+        private var k = 1f // the preview's 320-px phone → this screen
+        private val colors = if (night)
+            intArrayOf(0xFFFBD6E2.toInt(), 0xFFF7C0D2.toInt(), 0xFFF3A6C0.toInt(), 0xFFFDE4EC.toInt(), 0xFFF5B3C8.toInt())
+        else intArrayOf(0xFFF3A6C0.toInt(), 0xFFEC8FB0.toInt(), 0xFFF5B3C8.toInt(), 0xFFE8789E.toInt())
 
-        /** One floating blossom: where it is, how it drifts, sways and turns, and its size and colour. */
-        private class Blossom(
-            var x: Float, var y: Float, val fall: Float, val swayAmp: Float, val swayHz: Float, val phase: Float,
-            var angle: Float, val spin: Float, val size: Float, val color: Int, val alpha: Float,
+        /** One out-of-focus light: where it is, how it drifts and sways, its depth, size and soft round shader. */
+        private class Light(
+            var x: Float, var y: Float, val depth: Float, val radius: Float, val fall: Float, val drift: Float,
+            val sway: Float, val swayHz: Float, val phase: Float, val alpha: Float, val shader: android.graphics.Shader,
         )
 
         init {
             importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
         }
 
-        /** Voice mode is listening: fade once the line has closed (≈ 1 s). */
+        /** Voice mode is listening: fade once the line has closed and the logo is in (≈ 1 s). */
         fun release() = handler.post {
             released = true
             if (started) maybeFade()
@@ -235,10 +242,10 @@ object WakeActivation {
         private fun startFade() {
             if (fading) return
             fading = true
-            ValueAnimator.ofFloat(0f, 1f).apply {
-                duration = if (motion) 450 else 200
-                interpolator = veilEase
-                addUpdateListener { fade = it.animatedValue as Float; invalidate() }
+            ValueAnimator.ofFloat(0f, 800f).apply {
+                duration = 800
+                interpolator = LinearInterpolator()
+                addUpdateListener { fadeT = it.animatedValue as Float; invalidate() }
                 addListener(object : android.animation.AnimatorListenerAdapter() {
                     override fun onAnimationEnd(animation: android.animation.Animator) { onDone() }
                 })
@@ -246,33 +253,25 @@ object WakeActivation {
             }
         }
 
-        /** The clock starts with the first frame on screen. */
+        /** The clock starts with the first frame on screen and runs until the fade ends. */
         private fun start() {
             started = true
             startedAt = android.os.SystemClock.uptimeMillis()
-            if (motion) {
-                // Runs until the fade ends: the blossoms keep floating while Sakura loads.
-                ValueAnimator.ofFloat(0f, 1f).apply {
-                    duration = 1_000
-                    repeatCount = ValueAnimator.INFINITE
-                    interpolator = LinearInterpolator()
-                    addUpdateListener { t = (android.os.SystemClock.uptimeMillis() - startedAt).toFloat(); invalidate() }
-                    start()
-                }
-            } else {
-                ValueAnimator.ofFloat(0f, 1f).apply {
-                    duration = 200
-                    addUpdateListener { t = 1_100f * (it.animatedValue as Float); invalidate() }
-                    start()
-                }
+            ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = 1_000
+                repeatCount = ValueAnimator.INFINITE
+                interpolator = LinearInterpolator()
+                addUpdateListener { t = (android.os.SystemClock.uptimeMillis() - startedAt).toFloat(); invalidate() }
+                start()
             }
             handler.postDelayed({ startFade() }, MAX_HOLD)
             maybeFade()
         }
 
         override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+            k = w / (320f * density) * density // CSS px of the 320-px preview phone, in this screen's px
             val radius = cornerRadius()
-            val inset = 3 * density
+            val inset = 2 * density
             val cx = w / 2f
             right = Path().apply {
                 moveTo(cx, inset)
@@ -290,36 +289,54 @@ object WakeActivation {
                 arcTo(RectF(inset, h - 2 * radius + inset, 2 * radius - inset, h - inset), 180f, -90f)
                 lineTo(cx, h - inset)
             }
-            length = PathMeasure(right, false).length
-            // The petals are already spread over the screen on the first frame.
-            blossoms.clear()
-            if (motion) repeat(PETALS) { blossoms += newBlossom(w, h, random.nextFloat() * h) }
+            rightMeasure = PathMeasure(right, false)
+            leftMeasure = PathMeasure(left, false)
+            length = rightMeasure.length
+            seedLights(w, h)
         }
 
-        private val petalColors = intArrayOf(0xFFF3A6C0.toInt(), 0xFFE8789E.toInt(), 0xFFF7B6CC.toInt(), 0xFFEC8FB0.toInt())
+        // ── Bokeh: spread on purpose (one per cell of a 6 × 5 grid, the logo's middle left clear), never alike ──
 
-        private fun newBlossom(w: Int, h: Int, y: Float) = Blossom(
-            x = random.nextFloat() * w,
-            y = y,
-            fall = (38 + random.nextFloat() * 52) * density, // px per second
-            swayAmp = (8 + random.nextFloat() * 22) * density,
-            swayHz = 0.25f + random.nextFloat() * 0.45f,
-            phase = random.nextFloat() * 6.283f,
-            angle = random.nextFloat() * 360f,
-            spin = (random.nextFloat() - 0.5f) * 90f, // degrees per second
-            size = (7 + random.nextFloat() * 7) * density,
-            color = petalColors[random.nextInt(petalColors.size)],
-            alpha = 0.45f + random.nextFloat() * 0.4f,
-        )
+        private fun seedLights(w: Int, h: Int) {
+            lights.clear()
+            if (!motion) return
+            for (r in 0 until ROWS) for (c in 0 until COLS) {
+                val x = (c + random.nextFloat()) / COLS * w
+                val y = (r + random.nextFloat()) / ROWS * h
+                val dx = (x - w / 2f) / w
+                val dy = (y - h * 0.46f) / h
+                if (kotlin.math.hypot(dx, dy * 0.7f) < 0.17f) continue
+                lights += newLight(w, h, x, y)
+            }
+        }
 
-        /** One abstract petal about 2 units tall, centred on its middle, with a soft notch at the tip. */
-        private fun petalPath() = Path().apply {
-            moveTo(0f, 1f)
-            cubicTo(-0.7f, 0.55f, -0.62f, -0.6f, -0.2f, -0.95f)
-            quadTo(-0.08f, -1.02f, 0f, -0.86f)
-            quadTo(0.08f, -1.02f, 0.2f, -0.95f)
-            cubicTo(0.62f, -0.6f, 0.7f, 0.55f, 0f, 1f)
-            close()
+        private fun newLight(w: Int, h: Int, x: Float, y: Float): Light {
+            val depth = random.nextFloat() // 0 far … 1 near
+            val size = (5 + depth * 8) * k
+            val radius = size * (0.9f + (1 - depth) * 1.1f)
+            val color = colors[random.nextInt(colors.size)]
+            val clear = color and 0x00FFFFFF
+            return Light(
+                x = x, y = y, depth = depth, radius = radius,
+                fall = (16 + depth * 26) / 700f * h,
+                drift = 0.6f + random.nextFloat() * 0.6f,
+                sway = (4 + random.nextFloat() * 8) * k,
+                swayHz = 0.25f + random.nextFloat() * 0.35f,
+                phase = random.nextFloat() * 6.283f,
+                alpha = (0.35f + depth * 0.55f) * (0.55f + 0.45f * depth),
+                shader = android.graphics.RadialGradient(0f, 0f, radius, intArrayOf(color, color, clear), floatArrayOf(0f, 0.62f, 1f),
+                    android.graphics.Shader.TileMode.CLAMP),
+            )
+        }
+
+        /** As one leaves, the next starts above the column that has the fewest, a little to the left (the wind). */
+        private fun respawn(w: Int, h: Int, old: Light): Light {
+            val counts = IntArray(COLS)
+            for (l in lights) if (l !== old) counts[(l.x / w * COLS).toInt().coerceIn(0, COLS - 1)]++
+            val min = counts.min()
+            val choices = counts.indices.filter { counts[it] == min }
+            val c = choices[random.nextInt(choices.size)]
+            return newLight(w, h, (c + random.nextFloat()) / COLS * w - 0.12f * w, -(12 + random.nextFloat() * 24) * k)
         }
 
         /** The screen's own corner radius where Android reports it; 40 dp otherwise. */
@@ -331,63 +348,144 @@ object WakeActivation {
             return 40 * density
         }
 
-        private fun phase(from: Float, to: Float) = ((t - from) / (to - from)).coerceIn(0f, 1f)
+        private fun phase(value: Float, from: Float, to: Float) = ((value - from) / (to - from)).coerceIn(0f, 1f)
+        private fun sine(x: Float) = 0.5f - 0.5f * kotlin.math.cos(Math.PI.toFloat() * x)
 
-        private var lastFrame = 0f
+        private fun mix(a: Int, b: Int, f: Float): Int {
+            fun ch(shift: Int) = (((a shr shift) and 0xFF) * (1 - f) + ((b shr shift) and 0xFF) * f).toInt() shl shift
+            return (0xFF shl 24) or ch(16) or ch(8) or ch(0)
+        }
+
+        // ── The glass: a colour mesh over the blur ──
+
+        /** One soft blob of the mesh: an ellipse at ([fx], [fy]) of the screen, radii [rx] × [ry], gone at 70 %. */
+        private fun blob(canvas: Canvas, w: Float, h: Float, fx: Float, fy: Float, rx: Float, ry: Float, color: Int, a: Float, strength: Float) {
+            val argb = (((a * strength * 255).toInt().coerceIn(0, 255)) shl 24) or (color and 0xFFFFFF)
+            fill.shader = android.graphics.RadialGradient(0f, 0f, 1f, intArrayOf(argb, argb and 0x00FFFFFF), floatArrayOf(0f, 0.7f),
+                android.graphics.Shader.TileMode.CLAMP)
+            fill.alpha = 255
+            canvas.save()
+            canvas.translate(fx * w, fy * h)
+            canvas.scale(rx * w, ry * h)
+            canvas.drawCircle(0f, 0f, 1f, fill)
+            canvas.restore()
+            fill.shader = null
+        }
+
+        private fun drawGlass(canvas: Canvas, w: Float, h: Float, strength: Float) {
+            if (strength <= 0f) return
+            if (night) {
+                fill.color = 0xFF0A0A0E.toInt(); fill.alpha = (255 * 0.48f * strength).toInt(); canvas.drawRect(0f, 0f, w, h, fill)
+                blob(canvas, w, h, 0.15f, 0.78f, 0.60f, 0.45f, 0x1E2E54, 0.50f, strength)
+                blob(canvas, w, h, 0.65f, 0.88f, 0.70f, 0.50f, 0x782448, 0.45f, strength)
+                blob(canvas, w, h, 0.85f, 0.35f, 0.55f, 0.42f, 0x283E6E, 0.55f, strength)
+                blob(canvas, w, h, 0.20f, 0.20f, 0.60f, 0.45f, 0x96285A, 0.55f, strength)
+            } else {
+                fill.color = 0xFFFFFFFF.toInt(); fill.alpha = (255 * 0.42f * strength).toInt(); canvas.drawRect(0f, 0f, w, h, fill)
+                blob(canvas, w, h, 0.20f, 0.80f, 0.60f, 0.45f, 0xFFD6E8, 0.55f, strength)
+                blob(canvas, w, h, 0.70f, 0.85f, 0.70f, 0.50f, 0xD6E2FF, 0.55f, strength)
+                blob(canvas, w, h, 0.85f, 0.30f, 0.55f, 0.42f, 0xFFDEC4, 0.55f, strength)
+                blob(canvas, w, h, 0.18f, 0.22f, 0.60f, 0.45f, 0xFFC4D6, 0.62f, strength)
+            }
+        }
+
+        // ── The living neon line ──
+
+        private fun strokeRange(canvas: Canvas, measure: PathMeasure, from: Float, to: Float) {
+            if (to <= from) return
+            segment.reset()
+            measure.getSegment(from, to, segment, true)
+            canvas.drawPath(segment, stroke)
+        }
+
+        private fun drawNeon(canvas: Canvas, timeS: Float, alpha: Float) {
+            val progress = if (motion) traceEase.getInterpolation(phase(t, 0f, 800f)) else 1f
+            if (progress <= 0f || alpha <= 0f) return
+            val reach = length * progress
+            val glowIn = if (motion) phase(t, 650f, 1_000f) else 1f
+            val breathe = if (motion) 0.55f + 0.45f * kotlin.math.sin(timeS * 2.4f) else 0.7f
+            val flow = if (motion) timeS * 3.2f else 0f
+            for (measure in arrayOf(rightMeasure, leftMeasure)) {
+                // The dark pink border under it…
+                stroke.color = edge; stroke.alpha = (255 * alpha).toInt(); stroke.strokeWidth = 4.5f * k
+                strokeRange(canvas, measure, 0f, reach)
+                // …the glow that breathes…
+                stroke.color = pink; stroke.alpha = (255 * (0.12f + 0.16f * breathe) * glowIn * alpha).toInt(); stroke.strokeWidth = 14f * k
+                strokeRange(canvas, measure, 0f, reach)
+                // …and the core, whose colour flows along the line between Rosa Sakura and light pink.
+                stroke.strokeWidth = 2.6f * k
+                val n = 20
+                for (i in 0 until n) {
+                    val d0 = reach * i / n
+                    val d1 = reach * (i + 1) / n
+                    val f = 0.5f + 0.5f * kotlin.math.sin((d0 / length) * Math.PI.toFloat() * 4 - flow)
+                    stroke.color = mix(pink, pinkLight, f)
+                    stroke.alpha = (255 * alpha).toInt()
+                    strokeRange(canvas, measure, d0, d1)
+                }
+            }
+        }
 
         override fun onDraw(canvas: Canvas) {
             if (!started) start()
             val w = width.toFloat()
             val h = height.toFloat()
-            val alpha = 1f - fade
-            if (alpha <= 0f) return
+            val timeS = t / 1000f
+            // The fade: the logo leaves over 800 ms; the glass, lights and line clear from 300 to 800 ms.
+            val clear = if (fadeT < 0f) 0f else soft.getInterpolation(phase(fadeT, 300f, 800f))
+            val alpha = 1f - clear
+            val logoOut = if (fadeT < 0f) 0f else sine(phase(fadeT, 0f, 800f))
 
-            // The veil and the blur behind it come in over 500 ms and leave with the fade.
-            val veilIn = if (motion) veilEase.getInterpolation(phase(0f, 500f)) else phase(0f, 1_100f)
-            val strength = veilIn * alpha
-            fill.color = veil
-            fill.alpha = (255 * veilAlpha * strength).toInt()
-            canvas.drawRect(0f, 0f, w, h, fill)
+            val strength = soft.getInterpolation(phase(t, 0f, 700f)) * alpha
             val radius = (maxBlur * strength).toInt()
             if (radius != lastBlur) { lastBlur = radius; blur(radius) }
+            drawGlass(canvas, w, h, strength)
 
-            // A few loose petals drifting down, tumbling as they go; a new one starts above the top as one leaves.
-            if (motion && blossoms.isNotEmpty()) {
+            // Out-of-focus lights drifting down with the wind, behind the logo.
+            if (motion && lights.isNotEmpty()) {
                 val dt = ((t - lastFrame) / 1000f).coerceIn(0f, 0.1f)
                 lastFrame = t
-                val bloom = phase(0f, 300f) * alpha
-                for (i in blossoms.indices) {
-                    val b = blossoms[i]
-                    b.y += b.fall * dt
-                    b.angle += b.spin * dt
-                    if (b.y - b.size > h) blossoms[i] = newBlossom(width, height, -b.size * 2)
-                    val x = b.x + b.swayAmp * kotlin.math.sin(b.phase + t / 1000f * b.swayHz * 6.283f)
+                val wind = 18 * k * (0.6f + 0.4f * kotlin.math.sin(timeS * 0.7f))
+                val bloom = phase(t, 0f, 300f) * alpha
+                for (i in lights.indices) {
+                    var l = lights[i]
+                    l.y += l.fall * dt
+                    l.x += wind * l.drift * (0.4f + l.depth) * dt
+                    if (l.y - l.radius > h || l.x - l.radius > w) { l = respawn(width, height, l); lights[i] = l }
+                    val x = l.x + l.sway * kotlin.math.sin(l.phase + timeS * l.swayHz * 6.283f)
                     canvas.save()
-                    canvas.translate(x, b.y)
-                    canvas.rotate(b.angle)
-                    canvas.scale(b.size * (0.35f + 0.65f * kotlin.math.abs(kotlin.math.cos(b.phase + t / 1000f * 1.3f))), b.size)
-                    fill.color = b.color
-                    fill.alpha = (255 * b.alpha * bloom).toInt()
-                    canvas.drawPath(flower, fill)
+                    canvas.translate(x, l.y)
+                    fill.shader = l.shader
+                    fill.alpha = (255 * l.alpha * bloom).toInt()
+                    canvas.drawCircle(0f, 0f, l.radius, fill)
                     canvas.restore()
                 }
+                fill.shader = null
             }
 
-            // The Rosa Sakura line with its dark pink border, born at the top centre (0–800 ms).
-            val progress = if (motion) traceEase.getInterpolation(phase(0f, 800f)) else 1f
-            val glow = if (motion) phase(650f, 1_000f) else 1f
-            val layers = listOf(Triple(16f, pink, 0.14f * glow), Triple(9f, edge, 1f), Triple(5f, pink, 1f))
-            for ((widthDp, color, a) in layers) {
-                if (a <= 0f || progress <= 0f) continue
-                stroke.strokeWidth = widthDp * density
-                stroke.color = color
-                stroke.alpha = (255 * a * alpha * (if (motion) 1f else veilIn)).toInt()
-                for (path in listOf(right, left)) {
-                    segment.reset()
-                    PathMeasure(path, false).getSegment(0f, length * progress, segment, true)
-                    canvas.drawPath(segment, stroke)
-                }
+            // The logo, always in front and always the same size: it only fades in (300–1300 ms) and out.
+            val logoAlpha = sine(phase(t, 300f, 1_300f)) * (1f - logoOut)
+            if (logoAlpha > 0f && logo != null) {
+                val size = w * 0.36f
+                val cx = w / 2f
+                val cy = h * 0.46f
+                val haloColor = if (night) 0x47F06595 else 0xD9FFFFFF.toInt()
+                fill.shader = android.graphics.RadialGradient(cx, cy, size * 0.95f, intArrayOf(haloColor, haloColor and 0x00FFFFFF), null,
+                    android.graphics.Shader.TileMode.CLAMP)
+                fill.alpha = (255 * logoAlpha).toInt()
+                canvas.drawCircle(cx, cy, size * 0.95f, fill)
+                fill.shader = null
+                logoPaint.alpha = (255 * logoAlpha).toInt()
+                canvas.drawBitmap(logo, null, RectF(cx - size / 2, cy - size / 2, cx + size / 2, cy + size / 2), logoPaint)
             }
+
+            // The living neon line, on top of everything.
+            drawNeon(canvas, timeS, alpha)
+        }
+
+        companion object {
+            private const val COLS = 6
+            private const val ROWS = 5
         }
     }
 }

@@ -52,10 +52,20 @@ widget_new_chat() {
 }
 twice() { tap_composer; sleep 1.2; a shell input keyevent 4; sleep 0.4; tap_composer; sleep 1.2; a shell input keyevent 4; sleep 1.4; }
 
+# Waits (up to 30 s) until the page shows its message box: a cold start shows a white loading screen first.
+wait_composer() {
+  for i in $(seq 1 30); do
+    devtools
+    [ "$(python "$T/page.py" "!!document.getElementById('chat-input')" 2>/dev/null)" = "True" ] && return 0
+    sleep 1
+  done
+  echo "sin cuadro de mensaje tras 30 s"
+}
+
 run_mode() {
   local mode=$1
   a shell cmd uimode night $([ "$mode" = dark ] && echo yes || echo no) >/dev/null
-  sleep 2; launch; sleep 4; closekb
+  sleep 2; launch; sleep 2; wait_composer; sleep 1; closekb
   record "${mode}_abrir_cerrar" 6 open_close; closekb
   record "${mode}_inicio_y_volver" 9 home_return; closekb
   record "${mode}_recientes_y_volver" 9 recents_return; closekb

@@ -549,6 +549,9 @@ class MainActivity : ComponentActivity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         ))
+        // The bars go over the page's edges (see pageEdge), so a hairline the page draws there never shows.
+        statusBarScrim.bringToFront()
+        navigationBarScrim.bringToFront()
         offlineBanner = TextView(this).apply {
             text = getString(R.string.offline_banner)
             textSize = 13f
@@ -581,9 +584,9 @@ class MainActivity : ComponentActivity() {
             if (!keyboardAnimating) pageBottom = maxOf(bars.bottom, ime)
             val margins = intArrayOf(
                 bars.left,
-                bars.top,
+                underBar(bars.top),
                 bars.right,
-                pageBottom
+                underBar(pageBottom)
             )
             listOf(swipeLayout, connectionView).forEach { view ->
                 (view.layoutParams as FrameLayout.LayoutParams).apply {
@@ -1088,10 +1091,19 @@ class MainActivity : ComponentActivity() {
         if (bottom == pageBottom) return
         pageBottom = bottom
         listOf(swipeLayout, connectionView).forEach { view ->
-            (view.layoutParams as FrameLayout.LayoutParams).apply { bottomMargin = bottom }
+            (view.layoutParams as FrameLayout.LayoutParams).apply { bottomMargin = underBar(bottom) }
                 .also { view.layoutParams = it }
         }
     }
+
+    /**
+     * The page reaches 2 dp under each system bar (and the keyboard). Open WebUI draws a hairline border at the
+     * edges of some full-screen panels (voice mode); under the bar it never shows, and the bar's colour, read
+     * from the page itself, flows straight into the page.
+     */
+    private val pageEdge by lazy { (2 * resources.displayMetrics.density).toInt() }
+
+    private fun underBar(margin: Int) = if (margin > pageEdge) margin - pageEdge else margin
 
     private fun updateSystemBars() {
         if (!::connectionView.isInitialized) return
