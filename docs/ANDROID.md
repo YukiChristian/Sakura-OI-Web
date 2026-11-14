@@ -17,7 +17,7 @@ Esta tabla distingue la versión de Android que puede instalar la app del SDK us
 | Android mínimo (minSdk) | API 23 / Android 6.0 | Versión mínima admitida por el APK |
 | Android objetivo (targetSdk) | API 36 / Android 16 | Comportamientos del sistema para los que se configura |
 | SDK de compilación (compileSdk) | API 37 / Android 17 | SDK que debe instalarse para compilar; el teléfono no requiere Android 17 |
-| Sakura Hanami Open WebUI | 1.0 Beta 001 (versionCode 70) | Versión actual del proyecto |
+| Sakura Hanami Open WebUI | 1.0 Beta 002 (versionCode 71) | Versión actual del proyecto |
 | Android Gradle Plugin | 9.4.1 | Plugin de compilación Android |
 | Gradle Wrapper | 9.6.0 | Versión incluida y usada por el proyecto |
 | Kotlin | 2.2.10 | Versión configurada del plugin de Kotlin |
@@ -236,7 +236,7 @@ Opcional y desactivado por defecto. Tiene pantalla propia (`WakeWordSettingsActi
 
 - **Frase y sensibilidad** (`WakePhrase.kt`): “Oye, Sakura”, “Hola, Sakura”, “Sakura, escucha” o una propia. El modelo no conoce la palabra “Sakura”, así que la frase se compara por cómo suena (“sacura”, “sa cura”, “zakura”…). La sensibilidad Estricta, Normal o Relajada fija cuánto tiene que parecerse.
 - **Entrenar tu voz** (`VoiceTrainingActivity.kt`): dices la frase 5 veces y las transcripciones se guardan como variantes aceptadas; **Prueba en vivo** muestra lo que escucha y si se activaría, sin abrir nada.
-- **Activación** (`WakeActivation.kt`): con **Mostrar sobre otras apps** concedido suenan el tono y una vibración ligera, y una línea Rosa Sakura con borde rosa oscuro nace arriba al centro y recorre los dos bordes (0–800 ms, `cubic-bezier(.6,.05,.3,1)`), sin logo. El aro se queda completo hasta que Modo voz abre el micrófono (`MainActivity.waitForVoice` consulta `__sakuraMic.live()` cada 150 ms; como mucho 6.5 s) y se desvanece en 400 ms mientras `voice_grow.xml` hace crecer Modo voz (0.86 → 1). Con las animaciones del sistema apagadas solo brilla el borde. La app arranca desde el primer cuadro, debajo de la animación; la animación va en un hilo propio para no congelarse mientras arranca el WebView. Sin ese permiso aparece una notificación que hay que tocar.
+- **Activación** (`WakeActivation.kt`): con **Mostrar sobre otras apps** concedido suenan el tono «Marimba de madera» (`res/raw/oye_sakura_activacion.wav`, 0.6 s) y una vibración ligera, y una línea Rosa Sakura con borde rosa oscuro nace arriba al centro y recorre los dos bordes (0–800 ms, `cubic-bezier(.6,.05,.3,1)`), sin logo. El aro se queda completo hasta que Modo voz abre el micrófono (`MainActivity.waitForVoice` consulta `__sakuraMic.live()` cada 150 ms; como mucho 6.5 s) y se desvanece en 400 ms mientras `voice_grow.xml` hace crecer Modo voz (0.86 → 1). Con las animaciones del sistema apagadas solo brilla el borde. La app arranca desde el primer cuadro, debajo de la animación; la animación va en un hilo propio para no congelarse mientras arranca el WebView. Sin ese permiso aparece una notificación que hay que tocar.
 - **Micrófono libre al salir:** `MIC_WATCH_JS` guarda los flujos de micrófono que abre la página. Cuando la app deja la pantalla (`onStop`), cuelga una llamada de modo voz con el botón «Finalizar llamada» de Open WebUI y detiene el micrófono, para que «Oye, Sakura» pueda oír la frase de inmediato.
 - **Rapidez:** si Open WebUI ya está cargado, el modo de voz se abre dentro de la página (el enrutador de SvelteKit toma el enlace `/?call=true`), sin recargar. Atrás en la primera pantalla manda la app al fondo para conservar la página, y el servicio carga el motor web al arrancar.
 - La app acepta sola el aviso de Open WebUI “¿Iniciar una llamada de voz con tu micrófono?” en cualquier página en cuanto aparece, y quita `?call` y `?models` de la dirección.
@@ -293,3 +293,11 @@ Opcional y desactivado por defecto. Tiene pantalla propia (`WakeWordSettingsActi
 - `app/src/main/AndroidManifest.xml`: permisos y Activity.
 - `app/src/main/res/xml/network_security_config.xml`: CA aceptadas (sistema y las instaladas por el usuario).
 - `app/build.gradle.kts`: versiones Android y URL de build.
+
+## Teclado sin espacio blanco (1.0 Beta 002)
+
+- `MainActivity` deja de saltar al tamaño final cuando aparece el teclado: con `WindowInsetsAnimationCompat` el margen de abajo de la página sigue la altura del teclado en cada cuadro de su animación (`followKeyboard`). Mientras dura, el listener de insets no toca ese margen (`keyboardAnimating`).
+- Al cerrarse el teclado, la página toma su altura completa en `onStart` (`keyboardHiding`), detrás del teclado, porque el WebView tarda uno o dos cuadros en dibujar su nuevo borde.
+- Lo que aún no está dibujado muestra `restBottomColor`: el color leído en el borde de abajo de la página con el teclado cerrado (lo que el teclado destapa). Ese color también va al fondo del WebView, a `contentRoot` y, con `applyBackdrop`, al fondo base de la página (`html, body`), que Open WebUI pinta blanco debajo del fondo de pantalla del tema.
+- `FOCUS_COMPOSER_JS` deja de devolver el cursor al cuadro de mensaje si el usuario cerró el teclado (el `visualViewport` vuelve a crecer).
+- Prueba: [`tools/keyboard-gap-test`](../tools/keyboard-gap-test/README.md) graba el emulador con `screenrecord` en cinco casos y busca franjas blancas planas a todo lo ancho en cada cuadro (OpenCV).

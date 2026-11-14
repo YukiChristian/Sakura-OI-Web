@@ -73,6 +73,11 @@ class MainActivity : ComponentActivity() {
     /** Colors drawn at the page's top and bottom edges (0xRRGGBB, -1 = unknown), see PageThemeBridge. */
     private var pageTopColor = -1
     private var pageBottomColor = -1
+    /**
+     * The colour at the page's bottom edge with the keyboard closed (the wallpaper under the message box):
+     * exactly what the keyboard uncovers as it slides away, so it paints what the page has not drawn yet.
+     */
+    private var restBottomColor = -1
     private lateinit var assetCache: ImmutableAssetCache
     private lateinit var shareBridge: ShareBridge
     private lateinit var sessionSync: SessionSync
@@ -96,6 +101,14 @@ class MainActivity : ComponentActivity() {
     /** Leaving the screen: the page takes the keyboard's room first, so the keyboard slides away over it. */
     private var leavingScreen = false
     private var barsBottom = 0
+    /** While the keyboard slides in or out, the page's bottom follows it frame by frame (see [followKeyboard]). */
+    private var keyboardAnimating = false
+    /** The keyboard is sliding away: the page already has its full height. */
+    private var keyboardHiding = false
+    /** Whether the keyboard ends up shown, from the last insets Android laid the window out with. */
+    private var imeTargetVisible = false
+    /** The page's current bottom margin: the navigation bar or the keyboard, whichever is taller. */
+    private var pageBottom = 0
     /** The page's process died and its WebView was destroyed; the activity is being rebuilt. */
     private var rendererGone = false
     /** Until when a Nuevo chat from the widget or the shortcut wants the keyboard up. */
@@ -264,6 +277,7 @@ class MainActivity : ComponentActivity() {
                         view.evaluateJavascript(DownloadBridge.SHIM_JS, null)
                         view.evaluateJavascript(WebShareBridge.SHIM_JS, null)
                         view.evaluateJavascript(PageThemeBridge.WATCH_JS, null)
+                        if (restBottomColor >= 0) applyBackdrop(restBottomColor, force = true)
                         view.evaluateJavascript(SessionSync.SYNC_JS, null)
                         view.evaluateJavascript(appMenuScript(), null)
                         if (shareBridge.hasPending) view.evaluateJavascript(ShareBridge.ATTACH_JS, null)
@@ -559,13 +573,17 @@ class MainActivity : ComponentActivity() {
             barsBottom = bars.bottom
             // Room for the keyboard only when it is really up; not right after coming back until the
             // window has focus again (returningToScreen), nor while leaving (leavingScreen).
-            val imeShown = insets.isVisible(WindowInsetsCompat.Type.ime()) && !returningToScreen && !leavingScreen
+            imeTargetVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
+            val imeShown = imeTargetVisible && !returningToScreen && !leavingScreen
             val ime = if (imeShown) insets.getInsets(WindowInsetsCompat.Type.ime()).bottom else 0
+            // While the keyboard moves, its animation sets the bottom (followKeyboard); jumping to the end
+            // state here is what left an empty space between the page and the keyboard.
+            if (!keyboardAnimating) pageBottom = maxOf(bars.bottom, ime)
             val margins = intArrayOf(
                 bars.left,
                 bars.top,
                 bars.right,
-                maxOf(bars.bottom, ime)
+                pageBottom
             )
             listOf(swipeLayout, connectionView).forEach { view ->
                 (view.layoutParams as FrameLayout.LayoutParams).apply {
@@ -578,23 +596,33 @@ class MainActivity : ComponentActivity() {
                 .also { offlineBanner.layoutParams = it }
             insets
         }
-        // When the keyboard starts to hide (also when Android hides it because another app takes the
-        // screen), the page takes its room at once, so the keyboard slides away over the page instead of
-        // leaving a white space behind for a moment.
+        // The page's bottom edge rides on top of the keyboard while it slides in or out, frame by frame, as
+        // in native apps: there is never a gap between the page and the keyboard for the window behind to
+        // show (white, or a solid colour that cannot match a wallpaper). Android lays the window out in
+        // its final state before the animation starts; the listener above keeps the bottom where it was
+        // until the frames arrive.
         ViewCompat.setWindowInsetsAnimationCallback(contentRoot, object : WindowInsetsAnimationCompat.Callback(
             WindowInsetsAnimationCompat.Callback.DISPATCH_MODE_STOP
         ) {
+            override fun onPrepare(animation: WindowInsetsAnimationCompat) {
+                if (animation.typeMask and WindowInsetsCompat.Type.ime() == 0) return
+                // A new keyboard animation may cut the previous one short (closed and reopened at once).
+                keyboardAnimating = true
+                keyboardHiding = false
+            }
+
             override fun onStart(
                 animation: WindowInsetsAnimationCompat,
                 bounds: WindowInsetsAnimationCompat.BoundsCompat,
             ): WindowInsetsAnimationCompat.BoundsCompat {
-                val hiding = animation.typeMask and WindowInsetsCompat.Type.ime() != 0 &&
+                // Hiding: the page takes its full height right away, behind the keyboard, so the page has
+                // drawn its new bottom before the keyboard uncovers it (following frame by frame left a
+                // strip the page had not drawn yet, one or two frames behind the keyboard).
+                val endsHidden = !imeTargetVisible ||
                     ViewCompat.getRootWindowInsets(contentRoot)?.isVisible(WindowInsetsCompat.Type.ime()) == false
-                if (hiding) {
-                    listOf(swipeLayout, connectionView).forEach { view ->
-                        (view.layoutParams as FrameLayout.LayoutParams).apply { bottomMargin = barsBottom }
-                            .also { view.layoutParams = it }
-                    }
+                if (keyboardAnimating && endsHidden) {
+                    keyboardHiding = true
+                    followKeyboard(barsBottom)
                 }
                 return bounds
             }
@@ -602,7 +630,20 @@ class MainActivity : ComponentActivity() {
             override fun onProgress(
                 insets: WindowInsetsCompat,
                 runningAnimations: MutableList<WindowInsetsAnimationCompat>,
-            ): WindowInsetsCompat = insets
+            ): WindowInsetsCompat {
+                if (!keyboardAnimating || keyboardHiding) return insets
+                val ime = if (returningToScreen || leavingScreen) 0 else insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+                followKeyboard(maxOf(barsBottom, ime))
+                return insets
+            }
+
+            override fun onEnd(animation: WindowInsetsAnimationCompat) {
+                if (animation.typeMask and WindowInsetsCompat.Type.ime() == 0) return
+                keyboardAnimating = false
+                keyboardHiding = false
+                // Settle on the final state Android reports.
+                ViewCompat.requestApplyInsets(contentRoot)
+            }
         })
         updateSystemBars()
         ViewCompat.requestApplyInsets(contentRoot)
@@ -1007,12 +1048,46 @@ class MainActivity : ComponentActivity() {
         val inset = (4 * resources.displayMetrics.density).toInt()
         read(at[1] + inset) { top ->
             read(at[1] + h - 1 - inset) { bottom ->
+                val atRest = !keyboardAnimating && pageBottom <= barsBottom
+                if (atRest && bottom != restBottomColor) {
+                    restBottomColor = bottom
+                    updateSystemBars()
+                }
                 if (top != pageTopColor || bottom != pageBottomColor) {
                     pageTopColor = top
                     pageBottomColor = bottom
                     updateSystemBars()
                 }
             }
+        }
+    }
+
+    private var backdropApplied = -1
+
+    /**
+     * The page's own base background (Open WebUI paints `body` white) takes [color], the colour the page shows
+     * at its bottom. Under a wallpaper that base only shows for a moment while the page grows (the keyboard
+     * closing) and the picture is drawn again at the new size; with the same colour it cannot be seen.
+     */
+    private fun applyBackdrop(color: Int, force: Boolean = false) {
+        if (!::webView.isInitialized || !trustedPageLoaded || (color == backdropApplied && !force)) return
+        backdropApplied = color
+        val css = String.format("#%06X", color and 0xFFFFFF)
+        webView.evaluateJavascript(
+            "(function(c){var s=document.getElementById('sakura-backdrop');" +
+                "if(!s){s=document.createElement('style');s.id='sakura-backdrop';(document.head||document.documentElement).appendChild(s);}" +
+                "s.textContent='html,body{background-color:'+c+' !important}';})('$css');",
+            null
+        )
+    }
+
+    /** Moves the page's bottom edge to [bottom] px above the screen's bottom (one keyboard animation frame). */
+    private fun followKeyboard(bottom: Int) {
+        if (bottom == pageBottom) return
+        pageBottom = bottom
+        listOf(swipeLayout, connectionView).forEach { view ->
+            (view.layoutParams as FrameLayout.LayoutParams).apply { bottomMargin = bottom }
+                .also { view.layoutParams = it }
         }
     }
 
@@ -1027,9 +1102,13 @@ class MainActivity : ComponentActivity() {
         val bottomColor = if (showingPage && pageBottomColor >= 0) pageBottomColor or 0xFF000000.toInt() else barColor
         statusBarScrim.setBackgroundColor(topColor)
         navigationBarScrim.setBackgroundColor(bottomColor)
-        contentRoot.setBackgroundColor(bottomColor)
-        // What shows for a moment where the page has not drawn yet: its own colour, not white.
-        if (::webView.isInitialized) webView.setBackgroundColor(barColor)
+        // What shows for a moment where the page has not drawn yet (its new bottom while the keyboard moves):
+        // the colour really drawn at the page's bottom edge, not the theme's base colour (white in light mode,
+        // which stood out over Hanami's wallpaper).
+        val restColor = if (showingPage && restBottomColor >= 0) restBottomColor or 0xFF000000.toInt() else bottomColor
+        contentRoot.setBackgroundColor(restColor)
+        if (::webView.isInitialized) webView.setBackgroundColor(restColor)
+        if (showingPage && restBottomColor >= 0) applyBackdrop(restBottomColor)
         WindowInsetsControllerCompat(window, contentRoot).apply {
             isAppearanceLightStatusBars = ColorUtils.calculateLuminance(topColor) > 0.5
             isAppearanceLightNavigationBars = ColorUtils.calculateLuminance(bottomColor) > 0.5
@@ -1297,10 +1376,7 @@ class MainActivity : ComponentActivity() {
         // The page first takes the keyboard's room (right now, not on the next insets), so while the
         // keyboard slides away during the exit animation it covers the page instead of an empty space.
         leavingScreen = true
-        listOf(swipeLayout, connectionView).forEach { view ->
-            (view.layoutParams as FrameLayout.LayoutParams).apply { bottomMargin = barsBottom }
-                .also { view.layoutParams = it }
-        }
+        followKeyboard(barsBottom)
         webView.evaluateJavascript("window.__sakuraNoAutofocus && window.__sakuraNoAutofocus.leave && window.__sakuraNoAutofocus.leave();", null)
         getSystemService(InputMethodManager::class.java)?.hideSoftInputFromWindow(webView.windowToken, 0)
         // Pause the page a moment later, once it has drawn itself at the new size: paused right away,
@@ -1544,7 +1620,19 @@ class MainActivity : ComponentActivity() {
                     if (!area || !area.contains(e.target)) stop = true;
                 };
                 document.addEventListener('pointerdown', cancel, true);
-                const finish = function() { document.removeEventListener('pointerdown', cancel, true); };
+                // The user closed the keyboard (Atrás): it stays closed; the cursor is not put back.
+                const vv = window.visualViewport;
+                let lowest = vv ? vv.height : 0;
+                const closed = function() {
+                    if (!vv) return;
+                    if (vv.height < lowest) lowest = vv.height;
+                    else if (focusedAt && vv.height > lowest + 120) stop = true;
+                };
+                if (vv) vv.addEventListener('resize', closed);
+                const finish = function() {
+                    document.removeEventListener('pointerdown', cancel, true);
+                    if (vv) vv.removeEventListener('resize', closed);
+                };
                 // A moment first: a new chat opened inside the page replaces the box that is on screen.
                 setTimeout(function tick() {
                     if (stop) return finish();

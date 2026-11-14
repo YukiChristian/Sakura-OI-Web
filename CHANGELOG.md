@@ -2,6 +2,20 @@
 
 Cambios de Sakura Hanami Open WebUI (antes Sakura OI Web y SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 1.0 Beta 002 (versionCode 71) — 13 de noviembre de 2026
+
+Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v1.0-Beta-002).
+
+### Corregido
+- **Sin espacio blanco al abrir o cerrar el teclado.** Con el fondo de cerezos de Hanami ningún color tapaba el hueco que quedaba un instante, así que se veía un cuadro blanco. Ahora el borde de abajo de la página sube con el teclado cuadro por cuadro (`WindowInsetsAnimationCompat`), y al cerrarse la página toma su altura completa en cuanto el teclado empieza a bajar, para que termine de dibujarse detrás de él. Lo que la página aún no dibuja se pinta con el color que tiene abajo con el teclado cerrado (leído de la pantalla), y el fondo base de la página (`body`, blanco en Open WebUI) toma ese mismo color.
+- **El teclado ya no se vuelve a abrir solo** si lo cierras con Atrás justo después de tocar **Nuevo chat** en el widget.
+
+### Cambiado
+- **Tono de activación de «Oye, Sakura»: Marimba de madera.** Dos notas graves y cálidas de 0.6 s (antes, el tono del diseño de 1.6 s, agudo), con la vibración ligera.
+
+### Agregado
+- **Prueba del espacio blanco del teclado** en [`tools/keyboard-gap-test`](tools/keyboard-gap-test/README.md): graba el emulador mientras abre y cierra el teclado en cinco casos, en modo claro y oscuro, y revisa cada cuadro. Se corre antes de publicar y después de cambiar el tema.
+
 ## 1.0 Beta 001 (versionCode 70) — 13 de noviembre de 2026
 
 Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v1.0-Beta-001).

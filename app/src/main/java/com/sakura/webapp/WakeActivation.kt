@@ -28,22 +28,30 @@ import android.view.animation.PathInterpolator
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * What happens when «Oye, Sakura» is heard, from "App de Android · Parte 1 · Activación" (Hanami): the tone
- * and a light vibration, then only the stroke says Sakura woke up — no logo, nothing over the screen or the
+ * What happens when «Oye, Sakura» is heard, from "App de Android · Parte 1 · Activación" (Hanami): the
+ * «Marimba de madera» tone and a light vibration, then only the stroke says Sakura woke up — no logo, nothing over the screen or the
  * camera. Two Rosa Sakura lines with a dark pink border are born at the top centre and run down both edges
  * (0–800 ms), meet at the bottom and the ring stays complete until voice mode is on screen, then it fades
  * while voice mode grows from it. Voice mode starts loading at the first frame, under the stroke. With
- * reduced motion the border only glows (no run), and tone and vibration stay. Drawn over any app (and over
+ * reduced motion the border only glows (no run); the tone and the vibration stay. Drawn over any app (and over
  * Sakura itself) when Sakura may draw over other apps.
  */
 object WakeActivation {
     private const val TAG = "SakuraWebApp"
+    /**
+     * The activation tone: «Marimba de madera» at 100 % (res/raw/oye_sakura_activacion.wav, 0.6 s), the one the
+     * user picked; the design's own 1.6 s tone was too long and too high.
+     */
+    private const val TONE = true
+
     /** The ring waits at most this long for voice mode before it fades anyway (a cold start takes a few seconds). */
     private const val MAX_HOLD = 6_500L
 
     @Volatile private var current: BorderTraceView? = null
 
+    /** The tone (see [TONE]) and a light vibration. */
     fun playTone(context: Context) {
+        if (!TONE) { vibrate(context); return }
         try {
             val player = MediaPlayer()
             player.setAudioAttributes(
