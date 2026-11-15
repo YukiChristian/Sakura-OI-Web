@@ -2,6 +2,19 @@
 
 Cambios de Sakura Hanami Open WebUI (antes Sakura OI Web y SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 1.0 Beta 008 (versionCode 77) — 14 de noviembre de 2026
+
+Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v1.0-Beta-008).
+
+### Corregido
+- **Pantalla en blanco que no se quitaba.** Si el servidor acepta la conexión pero no contesta, o la página se queda colgada, Android no da ningún error y antes solo quedaba el fondo. Ahora, 12 s después de empezar a cargar, la app revisa que Open WebUI haya dibujado algo (el cuadro de mensaje, la barra lateral, un formulario). Si no, le pregunta al servidor: si no contesta, sale **«No hay conexión con Sakura»** con **Reintentar**; si contesta, espera otros 12 s antes de mostrarla. Si la página tampoco responde a esa revisión en 5 s, se toma como colgada.
+- **Tocar la notificación de una respuesta abre ese chat.** Antes solo abría la app. Ahora la app «toca» la notificación de la página, como hace un navegador, y Open WebUI lleva al chat que respondió.
+- **Botón Teléfono con recuadro.** Con el diseño nuevo de la barra lateral había quedado sin fondo ni borde. Ahora copia en vivo el recuadro de **Buscar chats** (fondo, anillo, esquinas y letra), en modo claro y oscuro.
+
+### Cambiado
+- **Barras del sistema al mismo tiempo que la página.** Mientras algo se mueve (la barra lateral al deslizarse, el fondo de un diálogo), el color de los bordes de la página se lee en cada cuadro y la barra de estado y la de navegación cambian en ese mismo cuadro: unos 140 ms después del toque, cuando antes era casi medio segundo. Cuando todo queda quieto, la app lee una vez los píxeles reales del borde y recuerda cómo se ve cada color (difuminado, degradados), así que la próxima vez acierta desde el primer cuadro.
+- **Buscar alineado como campo.** La app ya no centra **Buscar chats**: el diseño nuevo del tema lo dibuja como un campo de búsqueda alineado a la izquierda.
+
 ## 1.0 Beta 007 (versionCode 76) — 14 de noviembre de 2026
 
 Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v1.0-Beta-007).

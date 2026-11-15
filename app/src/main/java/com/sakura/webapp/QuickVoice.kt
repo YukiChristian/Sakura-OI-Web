@@ -370,6 +370,9 @@ object PcStatus {
         }.start()
     }
 
+    /** Blocking: does the server at [base] answer at all within 4 s? (Any HTTP status counts.) */
+    fun answersNow(base: String): Boolean = answers(base)
+
     private fun answers(base: String): Boolean = runCatching {
         val connection = java.net.URL(base.trimEnd('/') + "/health").openConnection() as java.net.HttpURLConnection
         try {

@@ -52,11 +52,15 @@ class WebNotificationBridge(
             Log.w(TAG, "Notification skipped: trusted=${isTrustedPage()}, permission=${currentPermission()}")
             return false
         }
+        // Tapping it opens Sakura and "clicks" the page's notification, so Open WebUI takes you to the chat
+        // that answered (its own onclick), as it does in a browser.
         val openApp = PendingIntent.getActivity(
             context,
-            0,
+            notificationId(id, tag),
             Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                data = android.net.Uri.parse("sakura-notification://" + id.filter { it.isLetterOrDigit() || it == '_' })
+                putExtra(EXTRA_NOTIFICATION, id)
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -120,6 +124,12 @@ class WebNotificationBridge(
 
     companion object {
         const val JS_NAME = "SakuraNotifications"
+        /** The page notification an Android notification stands for (see [clickScript]). */
+        const val EXTRA_NOTIFICATION = "com.sakura.webapp.extra.WEB_NOTIFICATION"
+
+        /** Fires the page's `click` on the notification [id], as a browser does when it is tapped. */
+        fun clickScript(id: String): String =
+            "window.__sakuraNotifyClick && window.__sakuraNotifyClick('${id.filter { it.isLetterOrDigit() || it == '_' }}');"
         private const val CHANNEL_ID = "open_webui_silent_v2"
         private const val KEY_ASKED = "asked"
         private const val TAG = "SakuraWebApp"
@@ -135,6 +145,7 @@ class WebNotificationBridge(
                 if (!bridge || window.__sakuraNotificationShim) return;
                 window.__sakuraNotificationShim = true;
                 var pending = {};
+                var live = {};
                 var seq = 0;
                 function nextId() { return 'n' + Date.now() + '_' + (++seq); }
                 function fire(target, type) {
@@ -159,6 +170,7 @@ class WebNotificationBridge(
                     self.data = options.data;
                     self.onclick = self.onshow = self.onclose = self.onerror = null;
                     self.__id = nextId();
+                    live[self.__id] = self;
                     var shown = bridge.show(self.__id, self.title, self.body, self.tag);
                     setTimeout(function() { fire(self, shown ? 'show' : 'error'); }, 0);
                     return self;
@@ -190,6 +202,13 @@ class WebNotificationBridge(
                     if (typeof callback === 'function') promise.then(callback);
                     return promise;
                 };
+                // The Android notification was tapped: the page reacts as to a click (Open WebUI opens the chat).
+                window.__sakuraNotifyClick = function(id) {
+                    var n = live[id];
+                    delete live[id];
+                    if (n) fire(n, 'click');
+                    return !!n;
+                };
                 window.__sakuraNotifyResolve = function(id, state) {
                     var resolve = pending[id];
                     delete pending[id];
@@ -200,4 +219,3 @@ class WebNotificationBridge(
         """.trimIndent()
     }
 }
-

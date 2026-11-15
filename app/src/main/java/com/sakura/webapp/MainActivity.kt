@@ -73,6 +73,11 @@ class MainActivity : ComponentActivity() {
     /** Colors drawn at the page's top and bottom edges (0xRRGGBB, -1 = unknown), see PageThemeBridge. */
     private var pageTopColor = -1
     private var pageBottomColor = -1
+    /** Last edge colours the page read from its CSS (instant), and what each one really looked like on screen. */
+    private var cssTopColor = -1
+    private var cssBottomColor = -1
+    private val edgeLooks = HashMap<Int, Int>()
+    private val sampleEdgesTask = Runnable { sampleEdgeColors() }
     /**
      * The colour at the page's bottom edge with the keyboard closed (the wallpaper under the message box):
      * exactly what the keyboard uncovers as it slides away, so it paints what the page has not drawn yet.
@@ -126,6 +131,8 @@ class MainActivity : ComponentActivity() {
     /** "wifi" or "other"; address checks only run when this changes, not on every signal update. */
     private var lastTransport: String? = null
     private val reconcileAddressTask = Runnable { reconcileAddress() }
+    /** Each page load gets a number; a watchdog only acts for the load it was started for. */
+    private var loadWatch = 0
     private lateinit var retryArrow: TextView
     private var retryAnimator: ObjectAnimator? = null
     private var pendingUploadCallback: ValueCallback<Array<Uri>>? = null
@@ -252,6 +259,7 @@ class MainActivity : ComponentActivity() {
                     super.onPageStarted(view, url, favicon)
                     pageReady = false
                     trustedPageLoaded = isOpenWebUiOrigin(Uri.parse(url))
+                    if (trustedPageLoaded) armLoadWatch()
                     if (trustedPageLoaded) {
                         view.evaluateJavascript(WebNotificationBridge.SHIM_JS, null)
                         view.evaluateJavascript(DownloadBridge.SHIM_JS, null)
@@ -522,15 +530,14 @@ class MainActivity : ComponentActivity() {
                         updateSystemBars()
                     }
                 },
-                onEdgeColors = { top, bottom ->
-                    // Read from the CSS: used where the pixels cannot be read (Android 7 and older).
-                    if (Build.VERSION.SDK_INT < 26) runOnUiThread {
-                        pageTopColor = top
-                        pageBottomColor = bottom
-                        updateSystemBars()
+                onEdgeColors = { top, bottom -> runOnUiThread { onCssEdges(top, bottom) } },
+                onEdgesChanged = {
+                    // The real pixels are read once the page is still (not on every frame of a slide).
+                    runOnUiThread {
+                        contentRoot.removeCallbacks(sampleEdgesTask)
+                        contentRoot.postDelayed(sampleEdgesTask, EDGE_SAMPLE_DELAY_MS)
                     }
                 },
-                onEdgesChanged = { runOnUiThread { sampleEdgeColors() } },
             ),
             PageThemeBridge.JS_NAME
         )
@@ -693,6 +700,10 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         VoiceWidgetProvider.remember(this, intent)
+        // A tapped notification of a reply: the page opens that chat (its notification's own click).
+        intent.getStringExtra(WebNotificationBridge.EXTRA_NOTIFICATION)?.let { id ->
+            if (::webView.isInitialized && trustedPageLoaded) webView.evaluateJavascript(WebNotificationBridge.clickScript(id), null)
+        }
         val request = IncomingIntents.parse(intent) ?: return
         // Still choosing the address for the first load: open this instead of the last page.
         if (!firstLoadStarted) requestBeforeFirstLoad = request else openRequest(request)
@@ -803,7 +814,7 @@ class MainActivity : ComponentActivity() {
                 val url = webView.url ?: return@runOnUiThread
                 if (isFinishing || !ServerAddress.isServer(Uri.parse(url))) return@runOnUiThread
                 val moved = ServerAddress.rebase(url)
-                if (moved != url) webView.loadUrl(moved)
+                if (moved != url) { webView.loadUrl(moved); armLoadWatch() }
             }
         }.start()
     }
@@ -979,9 +990,58 @@ class MainActivity : ComponentActivity() {
         if (connectionView.visibility != View.VISIBLE) webView.visibility = View.VISIBLE
         updateSystemBars()
         if (loadPage) webView.loadUrl(url)
+        armLoadWatch()
     }
 
-    /** Called only for real failures: no network, DNS or TLS errors, or the server answering 5xx. */
+    /**
+     * A server that takes the connection but never answers (or Open WebUI stuck on its loading screen while
+     * its backend hangs) raises no error in the WebView: only the empty background stayed on screen. 12 s
+     * after a page starts, the watchdog checks that something of Open WebUI is drawn (the message box, the
+     * sidebar, the sign-in form…); if not, it asks the server itself. No answer: the connection screen with
+     * Reintentar. The server answers but the page is still blank: 12 s more, then the same screen.
+     */
+    private fun armLoadWatch() {
+        val id = ++loadWatch
+        contentRoot.postDelayed({ checkLoad(id, 1) }, LOAD_WATCH_MS)
+    }
+
+    private fun checkLoad(id: Int, round: Int) {
+        if (id != loadWatch || mainFrameLoadFailed || isFinishing || !::webView.isInitialized) return
+        if (connectionView.visibility == View.VISIBLE) return
+        // A page whose script never lets go of the main thread never answers either: after 5 s without a
+        // reply it counts as not drawn, so the hung page cannot keep the watchdog waiting forever.
+        var replied = false
+        val noReply = Runnable { if (!replied) { replied = true; Log.w(TAG, "Page did not answer the watchdog"); notDrawn(id, round) } }
+        contentRoot.postDelayed(noReply, JS_REPLY_MS)
+        webView.evaluateJavascript(PAGE_DRAWN_JS) { value ->
+            if (replied) return@evaluateJavascript
+            replied = true
+            contentRoot.removeCallbacks(noReply)
+            if (id != loadWatch || value == "true") return@evaluateJavascript
+            notDrawn(id, round)
+        }
+    }
+
+    /** The page is still blank (or hung) at check [round]: ask the server, then wait or show Reintentar. */
+    private fun notDrawn(id: Int, round: Int) {
+        if (id != loadWatch || mainFrameLoadFailed || isFinishing) return
+        val base = (webView.url?.let { Uri.parse(it) }?.takeIf { ServerAddress.isServer(it) }
+            ?.let { "${it.scheme}://${it.encodedAuthority}/" }) ?: ServerAddress.current
+        Thread {
+            val answers = base.isNotEmpty() && PcStatus.answersNow(base)
+            runOnUiThread {
+                if (id != loadWatch || mainFrameLoadFailed || isFinishing) return@runOnUiThread
+                if (!answers || round >= 2) {
+                    Log.w(TAG, "Page not drawn after ${round * LOAD_WATCH_MS / 1000} s (server answers: $answers)")
+                    webView.stopLoading()
+                    handleMainFrameFailure()
+                } else {
+                    contentRoot.postDelayed({ checkLoad(id, round + 1) }, LOAD_WATCH_MS)
+                }
+            }
+        }.start()
+    }
+
     /**
      * After «Oye, Sakura»: lets the ring fade once voice mode has opened the microphone (the moment it goes from
      * «te oí» to «te escucho»), checked every 150 ms; after 15 s (a slow start) it fades anyway.
@@ -995,6 +1055,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Real failures (no network, DNS or TLS errors, 5xx) and a page the watchdog gave up on. */
     private fun handleMainFrameFailure() {
         mainFrameLoadFailed = true
         // No voice mode is coming: the «Oye, Sakura» activation fades and shows the connection screen.
@@ -1025,6 +1086,22 @@ class MainActivity : ComponentActivity() {
      * page's top and bottom edges), so each bar continues the page: the open sidebar's grey, the
      * header with its blur, a gradient at the bottom.
      */
+    /**
+     * The page's CSS colours at its top and bottom edges, sent on the same frame they change (the sidebar sliding
+     * in, a dialog's backdrop): the bars follow at once. Where the pixels there once looked different (a header
+     * with blur, a gradient), the colour seen then is used, so it does not jump twice.
+     */
+    private fun onCssEdges(top: Int, bottom: Int) {
+        cssTopColor = top
+        cssBottomColor = bottom
+        val shownTop = if (top >= 0) edgeLooks[top] ?: top else -1
+        val shownBottom = if (bottom >= 0) edgeLooks[bottom] ?: bottom else -1
+        if (shownTop == pageTopColor && shownBottom == pageBottomColor) return
+        pageTopColor = shownTop
+        pageBottomColor = shownBottom
+        updateSystemBars()
+    }
+
     private fun sampleEdgeColors() {
         if (Build.VERSION.SDK_INT < 26 || !::webView.isInitialized || isFinishing) return
         val w = webView.width
@@ -1059,6 +1136,10 @@ class MainActivity : ComponentActivity() {
                     restBottomColor = bottom
                     updateSystemBars()
                 }
+                // Remember what each CSS colour really looks like at the edge, for the instant path next time.
+                if (cssTopColor >= 0) edgeLooks[cssTopColor] = top
+                if (cssBottomColor >= 0) edgeLooks[cssBottomColor] = bottom
+                if (edgeLooks.size > 64) edgeLooks.clear()
                 if (top != pageTopColor || bottom != pageBottomColor) {
                     pageTopColor = top
                     pageBottomColor = bottom
@@ -1465,6 +1546,27 @@ class MainActivity : ComponentActivity() {
         private const val SESSION_PREFS = "sakura_session"
         private const val KEY_LAST_PAGE_URL = "last_open_webui_url"
         private const val APP_MENU_JS_NAME = "SakuraApp"
+        /** How long a page may stay blank before the watchdog checks the server (and again before giving up). */
+        private const val LOAD_WATCH_MS = 12_000L
+        /** How long the page must stay still before the app reads the real pixels at its edges. */
+        private const val EDGE_SAMPLE_DELAY_MS = 180L
+        /** How long the page may take to answer the watchdog's check before it counts as hung. */
+        private const val JS_REPLY_MS = 5_000L
+
+        /**
+         * True once Open WebUI has drawn something a person can use: not its loading screen, and some real
+         * content (the message box, the sidebar, a form or a button with text on the page).
+         */
+        private const val PAGE_DRAWN_JS = """
+            (function() {
+                var d = document;
+                if (!d.body || d.readyState === 'loading') return false;
+                var splash = d.getElementById('splash-screen');
+                if (splash && splash.getClientRects().length) return false;
+                var ui = d.querySelector('#chat-input, #sidebar, nav, main, form, input, textarea');
+                return !!ui && (d.body.innerText || '').trim().length > 0;
+            })();
+        """
 
         /**
          * Adds "Ajustes de la app" to Open WebUI's user menu (the one with Settings and
@@ -1529,22 +1631,23 @@ class MainActivity : ComponentActivity() {
                 const icon = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" ' +
                     'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.6"/>' +
                     '<path d="M10.5 5.6h3"/><path d="M11.2 18.3h1.6"/></svg>';
-                const LOOK = ['borderRadius', 'backgroundColor', 'boxShadow', 'borderTop', 'borderRight', 'borderBottom', 'borderLeft',
-                    'color', 'fontFamily', 'fontSize', 'fontWeight', 'letterSpacing'];
+                // The box (background, ring, corners) is the one of «Buscar» right beside it, so the two read as a
+                // pair in light and dark; the label keeps the ink of the sidebar's buttons (Agenda), not the
+                // greyer placeholder of the search box.
+                const BOX = ['borderRadius', 'backgroundColor', 'boxShadow', 'borderTop', 'borderRight', 'borderBottom', 'borderLeft',
+                    'fontFamily', 'fontSize', 'letterSpacing'];
+                function copy(btn, from, props) {
+                    if (!from) return;
+                    const cs = getComputedStyle(from);
+                    props.forEach(function(p) { if (btn.style[p] !== cs[p]) btn.style[p] = cs[p]; });
+                }
                 function paint(btn, row) {
-                    const ref = document.getElementById('sidebar-calendar-button');
-                    if (ref) {
-                        const cs = getComputedStyle(ref);
-                        LOOK.forEach(function(p) { if (btn.style[p] !== cs[p]) btn.style[p] = cs[p]; });
-                    }
                     const search = row.querySelector('.sk-barra-buscar-arriba');
+                    copy(btn, search, BOX);
+                    copy(btn, document.getElementById('sidebar-calendar-button') || search, ['color']);
+                    if (btn.style.fontWeight !== '500') btn.style.fontWeight = '500';
                     const h = search ? getComputedStyle(search).height : '44px';
                     if (btn.style.height !== h) btn.style.height = h;
-                    // «Buscar» is narrower with «Teléfono» beside it: its icon and word go in the middle of the box.
-                    if (search && search.style.justifyContent !== 'center') {
-                        search.style.justifyContent = 'center';
-                        search.style.textAlign = 'center';
-                    }
                 }
                 function add() {
                     const row = document.querySelector('#sidebar .sk-barra-fila');

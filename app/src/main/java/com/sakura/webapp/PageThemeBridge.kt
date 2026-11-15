@@ -146,10 +146,12 @@ class PageThemeBridge(
                     if (a < 0.5) return -1;
                     return (Math.round(r / a) << 16) | (Math.round(g / a) << 8) | Math.round(b / a);
                 }
+                // Fast path: the colours read from the CSS go to the app in the same frame they change, so the bars
+                // move with the page (the sidebar sliding in) instead of catching up afterwards. The app then reads
+                // the real pixels once things are still (edgesChanged, debounced there) and remembers what each CSS
+                // colour really looks like at the edge (blur, gradients), so the next time it is exact at once.
                 let lastEdges = '';
                 function reportEdges() {
-                    // The app reads the actual pixels next to each bar (gradients and blur included).
-                    if (window.$JS_NAME.edgesChanged) window.$JS_NAME.edgesChanged();
                     if (!window.$JS_NAME.setEdgeColors) return;
                     const top = edge(0);
                     const bottom = edge(Math.max(0, window.innerHeight - 1));
@@ -157,11 +159,12 @@ class PageThemeBridge(
                     if (key === lastEdges) return;
                     lastEdges = key;
                     window.$JS_NAME.setEdgeColors(top, bottom);
+                    if (window.$JS_NAME.edgesChanged) window.$JS_NAME.edgesChanged();
                 }
-                let edgeTimer = 0;
+                let edgeFrame = 0;
                 const scheduleEdges = function() {
-                    if (edgeTimer) return;
-                    edgeTimer = setTimeout(function() { edgeTimer = 0; reportEdges(); }, 120);
+                    if (edgeFrame) return;
+                    edgeFrame = requestAnimationFrame(function() { edgeFrame = 0; reportEdges(); });
                 };
                 if (document.body) {
                     new MutationObserver(scheduleEdges).observe(document.body, {
@@ -169,10 +172,24 @@ class PageThemeBridge(
                         attributeFilter: ['class', 'style', 'open', 'data-state', 'aria-hidden']
                     });
                 }
-                ['transitionend', 'animationend', 'scroll', 'resize'].forEach(function(name) {
+                // While something slides or fades (a panel opening, a dialog's backdrop), follow it frame by frame:
+                // the bar changes on the very frame the edge of the page does. Stops by itself after 1.2 s.
+                let followUntil = 0, following = false;
+                function follow() {
+                    reportEdges();
+                    if (performance.now() < followUntil) requestAnimationFrame(follow);
+                    else { following = false; reportEdges(); }
+                }
+                ['transitionrun', 'animationstart'].forEach(function(name) {
+                    window.addEventListener(name, function() {
+                        followUntil = performance.now() + 1200;
+                        if (!following) { following = true; requestAnimationFrame(follow); }
+                    }, { capture: true, passive: true });
+                });
+                ['transitionend', 'transitioncancel', 'animationend', 'scroll', 'resize'].forEach(function(name) {
                     window.addEventListener(name, scheduleEdges, { capture: true, passive: true });
                 });
-                setInterval(reportEdges, 1500);
+                setInterval(function() { lastEdges = ''; reportEdges(); }, 1500);
                 scheduleEdges();
             })();
         """.trimIndent()

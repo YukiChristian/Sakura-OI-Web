@@ -17,7 +17,7 @@ Esta tabla distingue la versión de Android que puede instalar la app del SDK us
 | Android mínimo (minSdk) | API 23 / Android 6.0 | Versión mínima admitida por el APK |
 | Android objetivo (targetSdk) | API 36 / Android 16 | Comportamientos del sistema para los que se configura |
 | SDK de compilación (compileSdk) | API 37 / Android 17 | SDK que debe instalarse para compilar; el teléfono no requiere Android 17 |
-| Sakura Hanami Open WebUI | 1.0 Beta 007 (versionCode 76) | Versión actual del proyecto |
+| Sakura Hanami Open WebUI | 1.0 Beta 008 (versionCode 77) | Versión actual del proyecto |
 | Android Gradle Plugin | 9.4.1 | Plugin de compilación Android |
 | Gradle Wrapper | 9.6.0 | Versión incluida y usada por el proyecto |
 | Kotlin | 2.2.10 | Versión configurada del plugin de Kotlin |
@@ -172,6 +172,8 @@ La app dibuja su contenido detrás de la barra de estado (arriba, donde están l
 
 Ahora `PageThemeBridge.kt` instala en la página un pequeño script que detecta el color de fondo que Open WebUI pinta arriba y abajo de la pantalla y se lo pasa a la app como `window.SakuraTheme`. La app colorea cada franja con ese color y elige iconos claros u oscuros según el contraste. El script vuelve a medir cuando cambia el tema en Open WebUI (**Ajustes → General → Tema**), cuando cambia el modo oscuro del sistema y una vez por segundo, por si la página cambia sin aviso. Solo la página de Open WebUI configurada en `SAKURA_WEBUI_URL` puede cambiar estos colores.
 
+Desde 1.0 Beta 008 el script envía el color de los bordes (leído del CSS) en el mismo cuadro en que cambia, y mientras algo se desliza o se desvanece (`transitionrun`/`animationstart`) lo sigue cuadro a cuadro hasta 1,2 s: la barra cambia a la vez que la página. La app lee los píxeles reales con `PixelCopy` solo cuando la página lleva 180 ms quieta, y recuerda qué color de pantalla corresponde a cada color del CSS (`edgeLooks` en `MainActivity`) para acertar desde el primer cuadro la próxima vez.
+
 Las pantallas de carga y de error, y la ventana que Android muestra mientras abre la app, siguen el modo claro u oscuro del teléfono.
 
 <div align="center">
@@ -183,7 +185,7 @@ Las pantallas de carga y de error, y la ventana que Android muestra mientras abr
 
 Desde la versión 0.3.2 la app no tiene pantalla de carga propia: al abrirla se muestra Open WebUI directamente, con el fondo del tema del teléfono mientras llega la página. El logo y el círculo que puedan verse al principio son la carga del propio Open WebUI; el instante con el icono de la flor es la pantalla de inicio que Android muestra en todas las apps desde Android 12.
 
-La pantalla “No hay conexión con Sakura” solo aparece ante un error real del documento principal: sin red, servidor inalcanzable, error de DNS o de certificado, o una respuesta 5xx. Una conexión lenta ya no la provoca. El botón **Reintentar** (negro con la flecha blanca, o blanco con la flecha negra en modo oscuro) vuelve a cargar la página; la flecha gira hasta que carga o vuelve a fallar.
+La pantalla “No hay conexión con Sakura” aparece ante un error real del documento principal: sin red, servidor inalcanzable, error de DNS o de certificado, o una respuesta 5xx. Una conexión lenta no la provoca. Desde 1.0 Beta 008 también la muestra un vigilante de carga: 12 s después de empezar una página revisa (`PAGE_DRAWN_JS`) que Open WebUI haya dibujado algo usable; si no, pregunta a `/health` del servidor. Si no contesta, muestra esta pantalla; si contesta, espera otros 12 s. Si la página no responde a la revisión en 5 s, cuenta como colgada. El botón **Reintentar** (negro con la flecha blanca, o blanco con la flecha negra en modo oscuro) vuelve a cargar la página; la flecha gira hasta que carga o vuelve a fallar.
 
 <img src="images/connection-error.png" alt="Pantalla de error de conexión y botón para reintentar" width="240">
 
@@ -307,5 +309,5 @@ Opcional y desactivado por defecto. Tiene pantalla propia (`WakeWordSettingsActi
 
 ## Barra lateral en el teléfono (1.0 Beta 005)
 
-- `PHONE_BUTTON_JS` (en `MainActivity`) agrega **Teléfono** a la fila de abajo del tema (`.sk-barra-fila`): copia en vivo el aspecto de `#sidebar-calendar-button` y el alto de `.sk-barra-buscar-arriba`, y se ordena con `order` (foto, Teléfono, Buscar) porque el tema vuelve a poner Buscar tras la foto. Al tocarlo llama a `SakuraApp.openSettings()`. Desde 1.0 Beta 007 también centra el contenido de **Buscar** (`justify-content: center`), que queda más angosto con Teléfono al lado. Un `MutationObserver` lo repone cuando el tema redibuja la barra.
+- `PHONE_BUTTON_JS` (en `MainActivity`) agrega **Teléfono** a la fila de abajo del tema (`.sk-barra-fila`): copia en vivo el recuadro de `.sk-barra-buscar-arriba` (fondo, anillo, esquinas, letra y alto; desde 1.0 Beta 008) y el color de tinta de `#sidebar-calendar-button`, y se ordena con `order` (foto, Teléfono, Buscar) porque el tema vuelve a poner Buscar tras la foto. Al tocarlo llama a `SakuraApp.openSettings()`. En 1.0 Beta 007 centraba el contenido de **Buscar**; desde 1.0 Beta 008 ya no, porque el diseño nuevo del tema lo dibuja como campo alineado a la izquierda. Un `MutationObserver` lo repone cuando el tema redibuja la barra.
 - En 1.0 Beta 005 el mismo script abría **Buscar** al deslizar hacia arriba en el panel de abajo; se quitó en 1.0 Beta 006 porque estorbaba al moverse entre los chats.
