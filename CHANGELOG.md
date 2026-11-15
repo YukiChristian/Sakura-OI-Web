@@ -2,6 +2,13 @@
 
 Cambios de Sakura Hanami Open WebUI (antes Sakura OI Web y SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 1.0 Beta 009 (versionCode 78) — 14 de noviembre de 2026
+
+Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v1.0-Beta-009).
+
+### Corregido
+- **Las compilaciones de prueba también avisan de su versión publicada.** Una compilación personal como «1.0 Beta 008c» comparaba su número sin la «c» y no avisaba de la «1.0 Beta 008» publicada, que es la terminada. Ahora sí la ofrece (`Updates.isUpdate`), y una versión publicada sigue avisando solo de versiones más altas.
+
 ## 1.0 Beta 008 (versionCode 77) — 14 de noviembre de 2026
 
 Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v1.0-Beta-008).

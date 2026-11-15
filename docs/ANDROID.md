@@ -17,7 +17,7 @@ Esta tabla distingue la versión de Android que puede instalar la app del SDK us
 | Android mínimo (minSdk) | API 23 / Android 6.0 | Versión mínima admitida por el APK |
 | Android objetivo (targetSdk) | API 36 / Android 16 | Comportamientos del sistema para los que se configura |
 | SDK de compilación (compileSdk) | API 37 / Android 17 | SDK que debe instalarse para compilar; el teléfono no requiere Android 17 |
-| Sakura Hanami Open WebUI | 1.0 Beta 008 (versionCode 77) | Versión actual del proyecto |
+| Sakura Hanami Open WebUI | 1.0 Beta 009 (versionCode 78) | Versión actual del proyecto |
 | Android Gradle Plugin | 9.4.1 | Plugin de compilación Android |
 | Gradle Wrapper | 9.6.0 | Versión incluida y usada por el proyecto |
 | Kotlin | 2.2.10 | Versión configurada del plugin de Kotlin |
@@ -271,7 +271,7 @@ Opcional y desactivado por defecto. Tiene pantalla propia (`WakeWordSettingsActi
 
 ## Actualizaciones y firma
 
-- `Updates.kt` consulta `releases/latest` de este repositorio una vez al día (si **Revisar cada día** está activo) y con **Buscar actualizaciones**. Compara el número de versión sin sufijo, así una compilación personal “0.8.0c” también recibe el aviso de 0.8.1; desde la 1.0 entiende las betas (“1.0 Beta 001” < “1.0 Beta 002” < “1.0”, etiquetas `v1.0-Beta-001`). `UpdatePrompt.kt` muestra “Hay una actualización”; **Actualizar** descarga el APK del Release con `DownloadManager` y abre el instalador (permiso `REQUEST_INSTALL_PACKAGES`; Android pide permitir instalar desde Sakura la primera vez).
+- `Updates.kt` consulta `releases/latest` de este repositorio una vez al día (si **Revisar cada día** está activo) y con **Buscar actualizaciones**. Compara el número de versión sin sufijo, así una compilación personal “0.8.0c” también recibe el aviso de 0.8.1, y desde 1.0 Beta 009 también el de la “0.8.0” publicada, la terminada (`Updates.isUpdate`); desde la 1.0 entiende las betas (“1.0 Beta 001” < “1.0 Beta 002” < “1.0”, etiquetas `v1.0-Beta-001`). `UpdatePrompt.kt` muestra “Hay una actualización”; **Actualizar** descarga el APK del Release con `DownloadManager` y abre el instalador (permiso `REQUEST_INSTALL_PACKAGES`; Android pide permitir instalar desde Sakura la primera vez).
 - El build `release` usa R8 con reducción de recursos; `app/proguard-rules.pro` conserva los métodos `@JavascriptInterface` y las clases de Vosk/JNA, que se buscan por nombre. La librería de voz va comprimida (`useLegacyPackaging`) y el APK publicado solo trae `arm64-v8a` y `armeabi-v7a` (unos 6.6 MB); `assembleDebug` agrega `x86_64` para el emulador.
 - El APK publicado se compila con `assembleRelease` y se firma con la llave indicada en `~/.gradle/gradle.properties` (`SAKURA_KEYSTORE_FILE`, `SAKURA_KEYSTORE_PASSWORD`, `SAKURA_KEY_ALIAS`, `SAKURA_KEY_PASSWORD`). Con esas propiedades, `assembleDebug` firma con la misma llave, así la versión personal y la publicada se instalan una sobre otra. Sin ellas, la depuración usa la llave de depuración de Android Studio y el release queda sin firmar. Guarda una copia de la llave: sin ella no se pueden publicar actualizaciones que se instalen encima.
 - `network_security_config.xml` confía en los certificados del sistema y en los que el usuario instala en Android, así un servidor de casa con certificado propio funciona con el APK publicado.

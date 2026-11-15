@@ -32,4 +32,17 @@ class UpdatesTest {
         assertTrue(Updates.isNewer("v0.10.0", "0.9.3"))
         assertFalse(Updates.isNewer("v0.9.1.6", "0.9.1.7"))
     }
+
+    @Test
+    fun aPersonalBuildHearsOfItsOwnPublishedVersion() {
+        assertTrue(Updates.isUpdate("1.0-Beta-008", "1.0 Beta 008c"))
+        assertTrue(Updates.isUpdate("v1.0-Beta-009", "1.0 Beta 008c"))
+        assertFalse(Updates.isUpdate("v1.0-Beta-007", "1.0 Beta 008c"))
+    }
+
+    @Test
+    fun aPublishedBuildOnlyHearsOfHigherVersions() {
+        assertFalse(Updates.isUpdate("1.0-Beta-008", "1.0 Beta 008"))
+        assertTrue(Updates.isUpdate("1.0-Beta-009", "1.0 Beta 008"))
+    }
 }

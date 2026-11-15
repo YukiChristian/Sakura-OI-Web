@@ -17,7 +17,8 @@ import java.net.URL
  * Updates from GitHub Releases: a check once a day (and on demand from the settings), the
  * "Hay una actualización" message, and the download of the signed APK, which Android installs
  * over the current app. Personal builds ("0.8.0c") compare by their number, so they also hear of
- * a newer published version; both are signed with the same key, so one installs over the other.
+ * a newer published version, and of the published version with their own number (see [isUpdate]);
+ * both are signed with the same key, so one installs over the other.
  */
 object Updates {
     private const val REPO = "YukiChristian/Sakura-OI-Web"
@@ -53,6 +54,17 @@ object Updates {
         return betaA > betaB
     }
 
+    /**
+     * True when [candidate] should be offered over the app installed as [installedName]: a higher version, or,
+     * for a personal build ("1.0 Beta 008c"), also the published version with its own number ("1.0 Beta 008"),
+     * which is the finished one the test build led to.
+     */
+    fun isUpdate(candidate: String, installedName: String): Boolean {
+        val name = installedName.trim()
+        val base = name.removeSuffix("c").trim()
+        return isNewer(candidate, base) || (name.endsWith("c") && !isNewer(base, candidate))
+    }
+
     /** The numbers of a version and its beta (Int.MAX_VALUE for a final version). */
     private fun parse(version: String): Pair<List<Int>, Int> {
         val text = version.trim().trimStart('v', 'V')
@@ -65,7 +77,7 @@ object Updates {
     fun available(context: Context): Release? {
         val p = prefs(context)
         val version = p.getString("version", null) ?: return null
-        if (!isNewer(version, current)) return null
+        if (!isUpdate(version, BuildConfig.VERSION_NAME)) return null
         return Release(version, p.getString("apk", null), p.getString("page", "https://github.com/$REPO/releases/latest")!!)
     }
 
@@ -107,7 +119,7 @@ object Updates {
         val main = Handler(Looper.getMainLooper())
         Thread {
             val release = if (now - lastCheck(app) >= DAY) runCatching { fetch(app) }.getOrNull() else null
-            val newer = release?.takeIf { isNewer(it.version, current) } ?: available(app)
+            val newer = release?.takeIf { isUpdate(it.version, BuildConfig.VERSION_NAME) } ?: available(app)
             if (newer != null) main.post {
                 p.edit().putLong("last_prompt", System.currentTimeMillis()).apply()
                 onNewer(newer)
