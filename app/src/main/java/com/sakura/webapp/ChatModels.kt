@@ -11,7 +11,10 @@ import android.graphics.Shader
 import android.graphics.Typeface
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 import java.net.HttpURLConnection
+import java.net.URLEncoder
+import java.security.MessageDigest
 import java.net.URL
 
 /** A model to talk to: one of the three characters, or any other model on the server. */
@@ -105,17 +108,28 @@ object ChatModels {
     fun refresh(context: Context, force: Boolean = false) {
         val app = context.applicationContext
         val at = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getLong(KEY_LIST_AT, 0)
-        if (refreshing || (!force && System.currentTimeMillis() - at < REFRESH_MS)) return
+        // the models' descriptions came with the widgets W1–W12: read them once at once if they are missing
+        val sinDescripciones = !app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).contains("descripciones")
+        if (refreshing || (!force && !sinDescripciones && System.currentTimeMillis() - at < REFRESH_MS)) return
         refreshing = true
         Thread {
             try {
                 val models = runCatching { fetchAll(app) }.getOrNull()
-                if (models != null && saveList(app, models)) VoiceWidgetProvider.refreshAll(app)
+                if (models != null) {
+                    val listChanged = saveList(app, models)
+                    val artChanged = syncArt(app, models)
+                    if (listChanged || artChanged) VoiceWidgetProvider.refreshAll(app)
+                }
             } finally {
                 refreshing = false
             }
         }.start()
     }
+
+    /** The model's description in Open WebUI, as last read («Compañera»), or null. */
+    fun descripcion(context: Context, id: String): String? = runCatching {
+        JSONObject(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("descripciones", "{}")!!).optString(id).takeIf { it.isNotBlank() && it != "null" }
+    }.getOrNull()
 
     /** The model a widget talks to; new widgets start with the last one chosen anywhere. */
     fun forWidget(context: Context, widgetId: Int): ChatModel {
@@ -146,11 +160,17 @@ object ChatModels {
      * SessionSync). Blocking; throws when there is no session or the server does not answer.
      */
     fun fetchAll(context: Context): List<ChatModel> {
-        ServerAddress.load(context)
-        val base = ServerAddress.current.ifEmpty { ServerAddress.exterior ?: ServerAddress.local ?: "" }.trimEnd('/')
-        val token = context.getSharedPreferences("session_sync", Context.MODE_PRIVATE).getString("token", null)
-        check(base.isNotEmpty() && !token.isNullOrEmpty()) { "No session" }
+        val (base, token) = session(context)
         val data = get("$base/api/models", token).optJSONArray("data") ?: return emptyList()
+        // each model's description from Open WebUI («Compañera»), for the widgets' second line
+        val descripciones = JSONObject()
+        for (i in 0 until data.length()) {
+            val m = data.optJSONObject(i) ?: continue
+            val meta = m.optJSONObject("info")?.optJSONObject("meta")
+            val d = if (meta == null || meta.isNull("description")) "" else meta.optString("description").trim()
+            if (d.isNotEmpty() && d != "null") descripciones.put(m.optString("id"), d.lineSequence().first().take(60))
+        }
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("descripciones", descripciones.toString()).apply()
         val visible = (0 until data.length()).mapNotNull { i ->
             val m = data.optJSONObject(i) ?: return@mapNotNull null
             val hidden = m.optJSONObject("info")?.optJSONObject("meta")?.optBoolean("hidden") == true
@@ -162,6 +182,108 @@ object ChatModels {
         // «Tus compañeras» first whenever the server has them, pinned or not; then the other pinned models.
         val companions = PERSONAS.mapNotNull { p -> visible.firstOrNull { it.id == p.id } }
         return (companions + ids.mapNotNull { id -> visible.firstOrNull { it.id == id } }).distinctBy { it.id }
+    }
+
+    /**
+     * The server's address and the session the app already keeps (see SessionSync); throws without them.
+     * Also used by [Updates] for the private channel of personal builds.
+     */
+    fun session(context: Context): Pair<String, String> {
+        ServerAddress.load(context)
+        val base = ServerAddress.current.ifEmpty { ServerAddress.exterior ?: ServerAddress.local ?: "" }.trimEnd('/')
+        val token = context.getSharedPreferences("session_sync", Context.MODE_PRIVATE).getString("token", null)
+        check(base.isNotEmpty() && !token.isNullOrEmpty()) { "No session" }
+        return base to token
+    }
+
+    // ── Pictures from Open WebUI ──
+    // Only Sakura, Lain and Yoko came drawn in the app; any other model (Sakiwa) showed its initial, and a picture
+    // changed on the server never reached the widgets. Now each model's picture comes from Open WebUI and is kept
+    // on the phone; the app's own art stays as the fallback until the first download, and the initial for models
+    // with no picture of their own.
+    private const val KEY_ART_TAG = "art_tag_"
+    private const val ART_PX = 256
+
+    private fun artFile(context: Context, id: String): File {
+        val hash = MessageDigest.getInstance("SHA-1").digest(id.toByteArray()).joinToString("") { "%02x".format(it) }
+        return File(File(context.filesDir, "model_art"), "$hash.png")
+    }
+
+    /** The model's picture as last downloaded from Open WebUI; null when it has none or it was not read yet. */
+    private fun serverArt(context: Context, id: String): Bitmap? {
+        val file = artFile(context, id)
+        return if (file.isFile) runCatching { BitmapFactory.decodeFile(file.path) }.getOrNull() else null
+    }
+
+    /**
+     * Downloads the pictures of [models] from Open WebUI (`/api/v1/models/model/profile/image`) and keeps them on
+     * the phone. Each one is asked with its last ETag, so an unchanged picture costs an empty 304. True when any
+     * picture changed (the widgets then redraw). Blocking; quietly keeps what it has when the server fails.
+     */
+    fun syncArt(context: Context, models: List<ChatModel>): Boolean {
+        val (base, token) = runCatching { session(context) }.getOrNull() ?: return false
+        var changed = false
+        for (model in models.distinctBy { it.id }) {
+            if (runCatching { syncOneArt(context, base, token, model.id) }.getOrDefault(false)) changed = true
+        }
+        return changed
+    }
+
+    private fun syncOneArt(context: Context, base: String, token: String, id: String): Boolean {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val file = artFile(context, id)
+        val tag = prefs.getString(KEY_ART_TAG + id, null)
+        val url = "$base/api/v1/models/model/profile/image?id=" + URLEncoder.encode(id, "UTF-8")
+        val connection = URL(url).openConnection() as HttpURLConnection
+        try {
+            connection.instanceFollowRedirects = false
+            connection.connectTimeout = 8_000
+            connection.readTimeout = 12_000
+            connection.setRequestProperty("Authorization", "Bearer $token")
+            if (tag != null && file.isFile) connection.setRequestProperty("If-None-Match", tag)
+            when (connection.responseCode) {
+                HttpURLConnection.HTTP_NOT_MODIFIED -> return false
+                HttpURLConnection.HTTP_OK -> {
+                    val bytes = connection.inputStream.use { it.readBytes() }
+                    val picture = decodeScaled(bytes) ?: return false
+                    file.parentFile?.mkdirs()
+                    val temp = File(file.path + ".tmp")
+                    temp.outputStream().use { picture.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                    if (!temp.renameTo(file)) {
+                        temp.delete()
+                        return false
+                    }
+                    prefs.edit().putString(KEY_ART_TAG + id, connection.getHeaderField("ETag")).apply()
+                    return true
+                }
+                in 300..399 -> {
+                    // Open WebUI sends its default logo: the model has no picture of its own (or it was removed).
+                    val had = file.exists()
+                    file.delete()
+                    prefs.edit().remove(KEY_ART_TAG + id).apply()
+                    return had
+                }
+                else -> return false
+            }
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    /** Decodes a downloaded picture no larger than needed: its short side at most [ART_PX]. */
+    private fun decodeScaled(bytes: ByteArray): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        val short = minOf(bounds.outWidth, bounds.outHeight)
+        if (short <= 0) return null
+        var sample = 1
+        while (short / (sample * 2) >= ART_PX) sample *= 2
+        val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
+            ?: return null
+        val side = minOf(decoded.width, decoded.height)
+        if (side <= ART_PX) return decoded
+        val scale = ART_PX.toFloat() / side
+        return Bitmap.createScaledBitmap(decoded, (decoded.width * scale).toInt(), (decoded.height * scale).toInt(), true)
     }
 
     private fun get(url: String, token: String): JSONObject {
@@ -181,7 +303,8 @@ object ChatModels {
     /**
      * Round avatar of [sizePx]. With [padded] the picture leaves 4 dp around it, and [ring] draws a 2 dp
      * ring in the model's colour at the edge (2 dp away from the picture), as in the design's selected
-     * avatars. Models without art get their initial.
+     * avatars. The picture is the one in Open WebUI (or the app's own art until it is downloaded); models without
+     * any get their initial.
      */
     fun avatar(context: Context, model: ChatModel, sizePx: Int, ring: Boolean = false, padded: Boolean = ring): Bitmap {
         val density = context.resources.displayMetrics.density
@@ -191,7 +314,7 @@ object ChatModels {
         val c = sizePx / 2f
         val r = c - inset
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        val art = model.avatar?.let { BitmapFactory.decodeResource(context.resources, it) }
+        val art = serverArt(context, model.id) ?: model.avatar?.let { BitmapFactory.decodeResource(context.resources, it) }
         if (art != null) {
             val scale = (2 * r) / minOf(art.width, art.height)
             paint.shader = BitmapShader(art, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply {

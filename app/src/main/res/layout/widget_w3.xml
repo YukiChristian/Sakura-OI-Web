@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- W3 (4×3 con la tarea más próxima), W4 (sin pendientes) y W9 (sin conexión: solo agenda, «por enviar»). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/widget_bg_card"
+    android:orientation="vertical" android:padding="16dp">
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal">
+        <LinearLayout android:id="@+id/widget_model" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:minHeight="52dp" android:gravity="center_vertical" android:orientation="horizontal">
+            <ImageView android:id="@+id/widget_avatar" android:layout_width="50dp" android:layout_height="50dp" android:importantForAccessibility="no"
+                android:src="@drawable/widget_preview_avatar" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="10dp" android:orientation="vertical">
+                <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal">
+                    <TextView android:id="@+id/widget_model_name" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Sakura" android:textSize="18sp" android:textColor="@color/widget_ink" android:fontFamily="sans-serif" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false" />
+                    <ImageView android:id="@+id/widget_chev" android:layout_width="18dp" android:layout_height="18dp" android:layout_marginStart="3dp"
+                        android:src="@drawable/ic_ui_chevron_down" android:tint="@color/widget_text2" android:importantForAccessibility="no" />
+                </LinearLayout>
+                <TextView android:id="@+id/widget_model_desc" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Compañera" android:textSize="13sp" android:textColor="@color/widget_text2" android:fontFamily="sans-serif-medium" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false" android:layout_marginTop="3dp" />
+                <LinearLayout android:id="@+id/widget_off_row" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="3dp"
+                    android:gravity="center_vertical" android:orientation="horizontal" android:visibility="gone">
+                    <ImageView android:layout_width="8dp" android:layout_height="8dp" android:src="@drawable/widget_w_dot_amber" android:importantForAccessibility="no" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Sin conexión con tu PC" android:textSize="13sp" android:textColor="@color/widget_amber_ink" android:fontFamily="sans-serif-medium" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false" android:layout_marginStart="6dp" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+        <ImageView android:id="@+id/widget_mic" android:layout_width="52dp" android:layout_height="52dp" android:layout_marginStart="8dp" android:background="@drawable/widget_w_mic" android:padding="15dp" android:src="@drawable/ic_ui_mic" android:tint="@color/widget_on_mic" android:contentDescription="Hablar con Sakura" />
+    </LinearLayout>
+    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:minHeight="12dp" />
+    <LinearLayout android:id="@+id/widget_field" android:layout_width="match_parent" android:layout_height="52dp" android:background="@drawable/widget_w_field"
+        android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="18dp" android:paddingEnd="12dp" android:contentDescription="Escribir a Sakura">
+        <TextView android:id="@+id/widget_hint" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Escríbele a Sakura…" android:textSize="15sp" android:textColor="@color/widget_text2" android:fontFamily="sans-serif-medium" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/widget_offline" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="52dp"
+        android:background="@drawable/widget_w_offline_strip" android:gravity="center_vertical" android:orientation="horizontal"
+        android:paddingStart="12dp" android:paddingTop="6dp" android:paddingEnd="6dp" android:paddingBottom="6dp" android:visibility="gone">
+        <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_ui_monitor" android:tint="@color/widget_amber_ink" android:importantForAccessibility="no" />
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="10dp" android:orientation="vertical">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Sakura no está disponible." android:textSize="13sp" android:textColor="@color/widget_ink" android:fontFamily="sans-serif-medium" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Tu agenda sí funciona." android:textSize="13sp" android:textColor="@color/widget_text2" android:fontFamily="sans-serif" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false" android:layout_marginTop="2dp" />
+        </LinearLayout>
+        <TextView android:id="@+id/widget_retry" android:layout_width="wrap_content" android:layout_height="40dp" android:background="@drawable/widget_w_retry"
+            android:gravity="center" android:paddingStart="14dp" android:paddingEnd="14dp" android:text="Reintentar" android:textColor="@color/widget_on_mic"
+            android:textSize="13sp" android:textStyle="bold" android:fontFamily="sans-serif-medium" />
+    </LinearLayout>
+    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:minHeight="12dp" />
+    <LinearLayout android:id="@+id/widget_card" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp"
+        android:background="@drawable/widget_w_card" android:orientation="vertical" android:paddingStart="12dp" android:paddingTop="2dp" android:paddingEnd="12dp" android:paddingBottom="4dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="44dp" android:gravity="center_vertical" android:orientation="horizontal">
+            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_ag_sun" android:tint="@color/widget_blue" android:importantForAccessibility="no" />
+            <TextView android:id="@+id/widget_pend_title" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pendientes" android:textSize="15.5sp" android:textColor="@color/widget_ink" android:fontFamily="sans-serif" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false" android:layout_marginStart="8dp" />
+            <TextView android:id="@+id/widget_pend_count" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=" · 3" android:textSize="15.5sp" android:textColor="@color/widget_text2" android:fontFamily="sans-serif-medium" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false" />
+            <TextView android:id="@+id/widget_pend_chip" android:layout_width="wrap_content" android:layout_height="24dp" android:layout_marginStart="6dp"
+                android:background="@drawable/widget_w_amber_chip" android:gravity="center" android:paddingStart="9dp" android:paddingEnd="9dp" android:maxLines="1"
+                android:text="2 por enviar" android:textColor="@color/widget_amber_ink" android:textSize="12sp" android:textStyle="bold" android:visibility="gone" />
+            <FrameLayout android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+            <LinearLayout android:id="@+id/widget_add" android:layout_width="wrap_content" android:layout_height="40dp"
+                android:background="@drawable/widget_w_task_btn" android:gravity="center_vertical" android:orientation="horizontal"
+                android:paddingStart="10dp" android:paddingEnd="13dp" android:contentDescription="Agregar tarea">
+                <ImageView android:layout_width="16dp" android:layout_height="16dp" android:src="@drawable/ic_ag_plus" android:tint="@color/widget_blue" android:importantForAccessibility="no" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Tarea" android:textSize="13sp" android:textColor="@color/widget_blue" android:fontFamily="sans-serif" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false" android:layout_marginStart="5dp" />
+            </LinearLayout>
+        </LinearLayout>
+        <FrameLayout android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="-12dp" android:layout_marginEnd="-12dp"
+            android:layout_marginBottom="2dp" android:background="@color/widget_field_ring" />
+        <LinearLayout android:id="@+id/widget_tasks" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
+        <LinearLayout android:id="@+id/widget_empty" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"
+            android:paddingTop="8dp" android:paddingBottom="6dp" android:visibility="gone">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Nada pendiente hoy" android:textSize="15sp" android:textColor="@color/widget_ink" android:fontFamily="sans-serif" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Agrega una tarea o pídele a Sakura que planee tu día." android:textSize="13sp" android:textColor="@color/widget_text2" android:fontFamily="sans-serif" android:maxLines="2" android:includeFontPadding="false" android:layout_marginTop="4dp" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:orientation="horizontal">
+                <LinearLayout android:id="@+id/widget_empty_add" android:layout_width="wrap_content" android:layout_height="40dp" android:background="@drawable/widget_w_neutral_btn"
+                    android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="12dp" android:paddingEnd="14dp">
+                    <ImageView android:layout_width="16dp" android:layout_height="16dp" android:src="@drawable/ic_ag_plus" android:tint="@color/widget_ink" android:importantForAccessibility="no" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Tarea" android:textSize="13sp" android:textColor="@color/widget_ink" android:fontFamily="sans-serif" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false" android:layout_marginStart="5dp" />
+                </LinearLayout>
+                <TextView android:id="@+id/widget_plan" android:layout_width="wrap_content" android:layout_height="40dp" android:layout_marginStart="8dp"
+                    android:background="@drawable/widget_w_neutral_btn" android:gravity="center" android:paddingStart="14dp" android:paddingEnd="14dp"
+                    android:text="Planear mi día" android:textColor="@color/widget_ink" android:textSize="13sp" android:textStyle="bold" android:maxLines="1" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

@@ -108,6 +108,7 @@ object PushNotices {
         Thread {
             val state = try {
                 configureServer(app, endpoint)
+                prefs(app).edit().putInt("eventos_v", 2).apply()
                 State.ON
             } catch (e: NotAdmin) {
                 State.NOT_ADMIN
@@ -146,7 +147,7 @@ object PushNotices {
             .put("id", TARGET_ID)
             .put("type", "webhook")
             .put("enabled", true)
-            .put("events", JSONArray(listOf("chat.finished", "chat.failed")))
+            .put("events", JSONArray(listOf("chat.finished", "chat.failed", "calendar.alert")))
             .put("delivery", "away")
             .put("config", JSONObject().put("url", endpoint))
         val existing = request(context, "GET", "/api/v1/notifications/targets")
@@ -154,6 +155,17 @@ object PushNotices {
         val result = if (exists) request(context, "PUT", "/api/v1/notifications/targets/$TARGET_ID", target.toString())
         else request(context, "POST", "/api/v1/notifications/targets", target.toString())
         check(result.first == 200) { "notification target HTTP ${result.first}: ${result.second.take(200)}" }
+    }
+
+    /**
+     * Agenda reminders also arrive by push (`calendar.alert`, 24-nov-2026). Targets made before ask only for chat
+     * events: the first sync with a session brings them up to date, once.
+     */
+    fun asegurarAvisosDeAgenda(context: Context) {
+        val p = prefs(context)
+        if (!isEnabled(context) || p.getInt("eventos_v", 1) >= 2) return
+        val endpoint = p.getString("endpoint", null) ?: return
+        runCatching { configureServer(context, endpoint) }.onSuccess { p.edit().putInt("eventos_v", 2).apply() }
     }
 
     /** Blocking call to Open WebUI with the session the app keeps (see SessionSync). */
@@ -245,7 +257,17 @@ class PushReceiver : BroadcastReceiver() {
             PushNotices.MESSAGE -> {
                 val bytes = intent.getByteArrayExtra("bytesMessage")
                 val text = bytes?.toString(Charsets.UTF_8) ?: intent.getStringExtra("message").orEmpty()
-                PushNotices.show(context, text)
+                val json = runCatching { org.json.JSONObject(text) }.getOrNull()
+                if (json?.optString("action") == "calendar_alert") {
+                    // a reminder of the Agenda: not twice if the phone's own alarm already rang (AgendaAlarms)
+                    val app = context.applicationContext
+                    val pending = goAsync()
+                    Thread {
+                        try { AgendaAlarms.alPush(app, json) } finally { pending.finish() }
+                    }.start()
+                } else {
+                    PushNotices.show(context, text)
+                }
                 PushNotices.acknowledge(context, token!!, intent.getStringExtra("id"))
             }
             PushNotices.REGISTRATION_FAILED -> PushNotices.onFailed(context)

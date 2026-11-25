@@ -42,7 +42,9 @@ object UpdatePrompt {
             addView(ui.text(activity.getString(R.string.update_title), 20f, ui.ink, bold = true).apply {
                 setPadding(0, ui.dp(12), 0, ui.dp(4))
             })
-            addView(ui.text(activity.getString(R.string.update_text, release.version, Updates.current), 14.5f, ui.muted))
+            // a «c» build names the installed one with its «c» too, so 010c over 009c reads as such
+            val installed = if (release.personal) BuildConfig.VERSION_NAME else Updates.current
+            addView(ui.text(activity.getString(R.string.update_text, release.version, installed), 14.5f, ui.muted))
             addView(LinearLayout(activity).apply {
                 setPadding(0, ui.dp(18), 0, 0)
                 addView(pill(activity.getString(R.string.update_later), false) { dialog.dismiss() },

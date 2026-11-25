@@ -1,4 +1,4 @@
-# 🌸 Sakura Hanami Open WebUI 📱 v1.0 Beta 009
+# 🌸 Sakura Hanami Open WebUI 📱 v1.0 Beta 016
 
 <div align="center">
   <img src="assets/sakura-oi-web-icon.png" alt="Logo de Sakura OI Web: flor con contorno arcoíris y las letras OI" width="160">
@@ -26,6 +26,8 @@ Compartir un ejemplo completo y una guía clara para que otras personas puedan c
 - Compartir con Sakura desde cualquier app, “Preguntar a Sakura” al seleccionar texto, accesos directos del icono y Sakura como asistente del teléfono.
 - Aviso “Sin conexión” mientras no hay red, que se reintenta sola al volver la red.
 - “Oye, Sakura” opcional para abrir el modo de voz con la app en segundo plano.
+- **Agenda con y sin conexión:** con el servidor respondiendo se abre la Agenda web; sin conexión, una copia en el teléfono con el mismo diseño, recordatorios locales y cambios que se envían al volver la red. Ver [Implementación Android](docs/ANDROID.md#agenda-con-y-sin-conexión-10-beta-016).
+- **Widgets** de 4 × 1 a 4 × 4 con el modelo, el micrófono y tus **Pendientes** de la Agenda.
 - Apertura directa de Open WebUI y pantalla de error de conexión, con opción para reintentar, solo cuando de verdad no hay conexión.
 - Los archivos de Open WebUI que no cambian se guardan en el teléfono para no descargarlos en cada arranque.
 - Los enlaces a otros sitios se abren en el navegador predeterminado del teléfono (por ejemplo, Chrome); las páginas de tu Open WebUI siguen dentro de la app.
@@ -71,7 +73,7 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 
 ## 📦 Versiones documentadas
 
-- App: Sakura Hanami Open WebUI **1.0 Beta 009** (versionCode 78). Historial completo en [CHANGELOG.md](CHANGELOG.md).
+- App: Sakura Hanami Open WebUI **1.0 Beta 016** (versionCode 85). Historial completo en [CHANGELOG.md](CHANGELOG.md).
 - Notificaciones verificadas en el teléfono Android 16 de referencia con Open WebUI 0.12.3. Pantallas, icono y barras en tema claro y oscuro de 0.2.1 a 0.2.3 verificados en el emulador de Android Studio (API 37).
 - Open WebUI: **0.12.3**, versión verificada en la instalación local.
 - Nombre visible del modelo en Open WebUI: **Sakura**. Los registros identifican **llama.cpp 0.7.0-dev**, compilado para x64 con CUDA desde el commit `ea0c4c2c8`, que carga `SoAIHQ/Qwen3.5-9B-GGUF:Q4_K_M` (Qwen 3.5 de 9B, cuantización Q4_K_M). llama.cpp es el servidor de inferencia; el modelo no pertenece a la familia Llama. El alias Sakura se configura en Open WebUI.
@@ -80,9 +82,17 @@ Las capturas muestran la animación de inicio mientras conecta, la pantalla de e
 - Herramientas fijadas en el proyecto: Android Gradle Plugin 9.4.1, Gradle 9.6.0, Kotlin 2.2.10 y JDK 17 para ejecutar Gradle. El código Java usa compatibilidad de lenguaje 11.
 - Ideas en desarrollo y pendientes, incluida la activación por voz “Oye, Sakura”, en [docs/IDEAS.md](docs/IDEAS.md).
 
-## 🆕 Novedades de la versión 1.0 Beta 009
+## 🆕 Novedades de la versión 1.0 Beta 016
 
 **Descarga el APK firmado en [Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/latest).** Si ya tienes la app, Sakura te avisa sola y se actualiza encima.
+
+- **Agenda con y sin conexión.** Con tu servidor respondiendo se abre la Agenda web; sin conexión, la Agenda guardada en el teléfono, con el mismo diseño (Mi día con Vencidas, Hoy y Próximos; calendario Día, Semana y Mes; etiquetas que son tus calendarios). Lo que cambies sin red se envía al volver la conexión.
+- **Recordatorios en el teléfono**, aunque el servidor no responda, con **Completar** y **En 10 min**; recordatorio **Personalizado…** en horas y minutos.
+- **Widgets nuevos** en 4 × 1, 4 × 2, 4 × 3 y 4 × 4, con tus **Pendientes**: marca una tarea o agrega otra sin abrir la app. Sin conexión siguen mostrando tu Agenda.
+- **Menos batería en segundo plano**: la página se duerme 10 minutos después de salir (más solo si un modelo está respondiendo) y «Oye, Sakura» escucha con una compuerta de voz.
+- Las fotos de los modelos salen de Open WebUI, y el teclado lleva al último mensaje.
+
+### Versión 1.0 Beta 009
 
 - **Las compilaciones de prueba («c») avisan de su versión publicada**, por ejemplo la 1.0 Beta 008c de la 1.0 Beta 008.
 
@@ -379,7 +389,8 @@ Resumen de todos los cambios de la app. El detalle de cada versión está en [CH
 
 | Versión | versionCode | Cambios |
 |---|---:|---|
-| **1.0 Beta 009** | 78 | Las compilaciones de prueba («c») avisan de la versión publicada con su mismo número. |
+| **1.0 Beta 016** | 85 | Agenda con y sin conexión (web con red, guardada en el teléfono sin ella), recordatorios locales, widgets W1 a W10 con Pendientes, menos batería en segundo plano, fotos de los modelos desde Open WebUI y canal privado para compilaciones «c». |
+| 1.0 Beta 009 | 78 | Las compilaciones de prueba («c») avisan de la versión publicada con su mismo número. |
 | 1.0 Beta 008 | 77 | Vigilante de carga (adiós a la pantalla en blanco), la notificación abre su chat, barras del sistema cuadro a cuadro y Teléfono con el recuadro de Buscar. |
 | 1.0 Beta 007 | 76 | Buscar centrado en la fila de abajo de la barra lateral. |
 | 1.0 Beta 006 | 75 | Se quita el gesto de deslizar hacia arriba que abría la búsqueda. |

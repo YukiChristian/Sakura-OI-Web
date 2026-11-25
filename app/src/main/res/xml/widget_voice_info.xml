@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Widgets Hanami: nace en 4 × 2 (grande, con la fila de modelos y Nuevo chat · Agenda · Notas · Último chat); de una
-     fila es el mediano y de 2 × 2 el chico. Cada 30 minutos revisa si tu PC responde («Tu PC no responde»). -->
+<!-- Widgets Hanami W1–W12 (24-nov-2026): nace en 4 × 3 con la tarea más próxima; de 1 a 4 filas cambia de diseño
+     (W1 4×1, W2 4×2, W3 4×3, W5/W6 4×4). Cada 30 minutos revisa si tu PC responde; sin ella solo sirve la agenda. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/widget_description"
-    android:initialLayout="@layout/widget_large"
+    android:initialLayout="@layout/widget_w3"
     android:minWidth="250dp"
-    android:minHeight="180dp"
-    android:minResizeWidth="140dp"
+    android:minHeight="250dp"
+    android:minResizeWidth="180dp"
     android:minResizeHeight="50dp"
-    android:previewLayout="@layout/widget_large"
+    android:previewLayout="@layout/widget_w3"
     android:resizeMode="horizontal|vertical"
     android:targetCellWidth="4"
-    android:targetCellHeight="2"
+    android:targetCellHeight="3"
     android:updatePeriodMillis="1800000"
     android:widgetCategory="home_screen" />

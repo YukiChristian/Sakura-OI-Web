@@ -255,6 +255,25 @@ Opcional y desactivado por defecto. Tiene pantalla propia (`WakeWordSettingsActi
 - **Audífonos:** con Sakura como asistente digital, `VOICE_COMMAND` y `VOICE_SEARCH_HANDS_FREE` abren el modo de voz.
 - **Prueba sin voz:** la compilación de depuración trae `WakeActivationTestReceiver`, que reproduce la activación con `adb shell am broadcast -a com.sakura.webapp.debug.WAKE -n com.sakura.webapp/.WakeActivationTestReceiver`. Solo responde a quien tiene el permiso `DUMP` (adb).
 
+- **Widgets W1 a W10** (1.0 Beta 016): `VoiceWidgetProvider` entrega cuatro diseños por tamaño (`RemoteViews` con mapa de tamaños en Android 12+: 4 × 1 `widget_w1`, 4 × 2 `widget_w2`, 4 × 3 `widget_w3` y 4 × 4 `widget_w4` con lista desplazable `AgendaWidgetService`). Muestran la foto del modelo (de Open WebUI, `ChatModels.syncArt`), su descripción, el micrófono y la tarjeta **Pendientes** de la Agenda guardada en el teléfono (`AgendaWidget`): el círculo completa la tarea sin abrir la app (pasa por `AgendaWidgetActionActivity`, invisible, en vez de un *trampoline*), la fila abre la tarea y «+ Tarea» abre una hoja rápida. Sin conexión con el servidor (`PcStatus`) muestran «Sin conexión con tu PC» con **Reintentar**, la foto en gris y la Agenda, que sigue funcionando; las tareas sin enviar dicen «por enviar».
+
+## Agenda con y sin conexión (1.0 Beta 016)
+
+- **Cuál se abre:** `AgendaActivity` decide al abrirse. Si el servidor respondió en los últimos 2 minutos (`PcStatus.answeredRecently`) y hay red, abre la Agenda web dentro de la app (`ACTION_CALENDAR_WEB`, sobre la pantalla principal que ya existe). Si no, se muestra la Agenda del teléfono y, si su primera sincronización responde en 8 s y aún no la tocaste, pasa sola a la web. La pantalla de conexión ofrece **Abrir mi agenda**, que siempre abre la del teléfono. Así el diseño de la Agenda vive en la web y la vista del teléfono solo hace falta sin conexión.
+- **Copia en el teléfono:** `AgendaStore` (SQLite) guarda tareas, etiquetas, calendarios y eventos completos y una cola de cambios sin enviar (varios cambios a una tarea se juntan). `AgendaSync` los manda en `POST /static/sakura-agenda/sync` (sesión de Open WebUI) al abrir, un momento después de cada cambio, cada 15 minutos con red (`JobScheduler`) y al volver la red. Gana el cambio más reciente; nada se borra de verdad (`borrada`). Los eventos editados o eliminados sin red van en `eventos_cambios` y el servidor los aplica antes de responder. La tarea que se repite crea la siguiente con el mismo id que le daría el servidor, así no se duplica.
+- **Diseño** (lienzo «AGE · Agenda 1 y 2 de 2»): una sola pieza por estado: barra del color del calendario (punteada sin calendario), círculo negro (rojo si está vencida, verde con ✓ si está hecha), etiqueta **Pendiente / Vencida / Ahora / Hecha**, ☆ y «···». Mi día agrupa **Vencidas** (la más antigua primero), **Hoy**, **Próximos** por día y **Completadas**; Todas se divide por etiqueta con «Sin clasificar» al final. Calendario **Día / Semana (tres días) / Mes**. Los colores y estados están en `AgendaEstilo`, con las mismas reglas que la web.
+- **Etiquetas:** la etiqueta es un calendario (`seccion_id` = `cal-<id del calendario>`); crear una etiqueta crea el calendario con `POST /api/v1/calendars/create`, por eso necesita conexión.
+- **Recordatorios:** `AgendaAlarms` programa los avisos de tareas y eventos de los próximos 35 días con alarma exacta (`USE_EXACT_ALARM`, se reprograman al reiniciar el teléfono), con **Completar**, **En 10 min** y **Abrir**. El aviso `calendar.alert` que llega por UnifiedPush se reconoce y no suena dos veces.
+
+## Batería en segundo plano (1.0 Beta 016)
+
+- `PageSleep`: 10 minutos después de salir de la app, `MainActivity` pausa los temporizadores del WebView (`pauseTimers`) y detiene el servicio de primer plano; si un modelo está respondiendo espera más (revisa el chat). Al volver, `onStart` los reanuda.
+- `WakeGate`: «Oye, Sakura» lee el micrófono y solo pasa el audio al reconocedor de Vosk cuando el nivel indica que puede haber voz.
+
+## Canal privado de compilaciones «c» (1.0 Beta 016)
+
+- Una compilación personal (sufijo «c») también revisa `/static/sakura-app/personal.json` en el servidor de Open WebUI, con la sesión guardada. Si hay una «c» más nueva, `UpdatePrompt` la ofrece; `Updates.installPersonal` la descarga, compara su SHA-256 con el de `personal.json` y la instala con `FileProvider`. El servidor solo la entrega con sesión.
+
 ## Bloqueo con huella
 
 `AppLock.kt`, desactivado por defecto, en la tarjeta **Bloqueo con huella** de *Ajustes del teléfono*. Usa `BiometricPrompt` con huella, rostro o el bloqueo de pantalla (Android 10+) y la pantalla de PIN del sistema en Android 6 a 9; necesita un bloqueo de pantalla configurado. Cuenta las pantallas visibles de la app (`ActivityLifecycleCallbacks`): al cerrarse la última empieza el tiempo, y al volver después del retraso elegido (al instante, 1 o 5 minutos) `MainActivity` muestra “Sakura está bloqueada” y pide desbloquear. Activarlo o desactivarlo pide autenticarse. Mientras está bloqueada, un modo de voz pedido espera al desbloqueo, Ajustes también lo pide y la vista de recientes no muestra el chat (`setRecentsScreenshotEnabled`, Android 13+). Volver del selector de archivos propio no cuenta como salir.
@@ -294,6 +313,8 @@ Opcional y desactivado por defecto. Tiene pantalla propia (`WakeWordSettingsActi
 - `app/src/main/java/com/sakura/webapp/SetupParts.kt`: piezas de diseño de las pantallas de «Oye, Sakura».
 - `app/src/main/java/com/sakura/webapp/AppLock.kt`: bloqueo con huella.
 - `app/src/main/java/com/sakura/webapp/PushNotices.kt`: avisos con la app cerrada (UnifiedPush).
+- `app/src/main/java/com/sakura/webapp/AgendaActivity.kt`, `AgendaStore.kt`, `AgendaSync.kt`, `AgendaAlarms.kt`, `AgendaEstilo.kt` y `AgendaWidget.kt`: Agenda sin conexión, sincronización, recordatorios y la tarjeta Pendientes de los widgets.
+- `app/src/main/java/com/sakura/webapp/PageSleep.kt` y `WakeGate.kt`: batería en segundo plano.
 - `app/src/main/java/com/sakura/webapp/Updates.kt` y `UpdatePrompt.kt`: actualizaciones desde GitHub Releases.
 - `app/src/main/AndroidManifest.xml`: permisos y Activity.
 - `app/src/main/res/xml/network_security_config.xml`: CA aceptadas (sistema y las instaladas por el usuario).

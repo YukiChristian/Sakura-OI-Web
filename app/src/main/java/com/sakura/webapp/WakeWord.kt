@@ -22,7 +22,6 @@ import org.json.JSONObject
 import org.vosk.Model
 import org.vosk.Recognizer
 import org.vosk.android.RecognitionListener
-import org.vosk.android.SpeechService
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -101,7 +100,7 @@ object WakeWordModel {
 class WakeWordService : Service(), RecognitionListener {
     private val main = Handler(Looper.getMainLooper())
     private var model: Model? = null
-    private var speech: SpeechService? = null
+    private var speech: WakeGate? = null
     private var recognizer: Recognizer? = null
     private var paused = false
     private var lastTrigger = 0L
@@ -119,7 +118,8 @@ class WakeWordService : Service(), RecognitionListener {
                 if (speech == null) {
                     Log.i(TAG, "Wake word: listening again")
                     startListening()
-                } else if (System.currentTimeMillis() - lastHeardAt > SILENT_LIMIT_MS) {
+                } else if (System.currentTimeMillis() - maxOf(lastHeardAt, speech?.lastFrameAt ?: 0L) > SILENT_LIMIT_MS) {
+                    // (with the voice gate, silence brings no results: the microphone's own sound is what counts)
                     Log.w(TAG, "Wake word: the recognizer went quiet; restarting it")
                     stopListening()
                     startListening()
@@ -218,7 +218,8 @@ class WakeWordService : Service(), RecognitionListener {
         try {
             val r = Recognizer(m, SAMPLE_RATE).also { recognizer = it }
             lastHeardAt = System.currentTimeMillis()
-            speech = SpeechService(r, SAMPLE_RATE).also { it.startListening(this) }
+            // the voice gate (WakeGate) instead of Vosk's SpeechService: the recognizer only works when there may be a voice
+            speech = WakeGate(r, SAMPLE_RATE.toInt(), this, main).also { it.start() }
             if (BuildConfig.DEBUG) Log.d(TAG, "Wake word: listening")
         } catch (e: Exception) {
             Log.e(TAG, "Could not start listening", e)
@@ -228,7 +229,6 @@ class WakeWordService : Service(), RecognitionListener {
     private fun stopListening() {
         if (BuildConfig.DEBUG && speech != null) Log.d(TAG, "Wake word: stopped (paused=$paused)")
         speech?.stop()
-        speech?.shutdown()
         speech = null
         recognizer?.close()
         recognizer = null

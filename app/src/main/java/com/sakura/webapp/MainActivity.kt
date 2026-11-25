@@ -126,6 +126,49 @@ class MainActivity : ComponentActivity() {
     private val pauseWebViewTask = Runnable {
         if (::webView.isInitialized && !lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) webView.onPause()
     }
+
+    // ── Battery in the background (PageSleep): awake 10 minutes after leaving, longer only while a model answers ──
+    private val sleepHandler = Handler(Looper.getMainLooper())
+    private var leftAt = 0L
+    private var pageAsleep = false
+    private val sleepCheck = Runnable { checkPageSleep() }
+
+    private fun startSleepWatch() {
+        leftAt = SystemClock.elapsedRealtime()
+        sleepHandler.removeCallbacks(sleepCheck)
+        sleepHandler.postDelayed(sleepCheck, PageSleep.IDLE_MS)
+    }
+
+    private fun checkPageSleep() {
+        if (pageAsleep || isFinishing || !::webView.isInitialized || lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) return
+        val chatId = PageSleep.chatOf(webView.url)
+        val app = applicationContext
+        Thread {
+            val answering = PageSleep.isAnswering(app, chatId)
+            sleepHandler.post {
+                if (pageAsleep || isFinishing || lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) return@post
+                val awakeFor = SystemClock.elapsedRealtime() - leftAt
+                if (answering && awakeFor < PageSleep.MAX_AWAKE_MS) sleepHandler.postDelayed(sleepCheck, PageSleep.BUSY_RECHECK_MS)
+                else putPageToSleep()
+            }
+        }.start()
+    }
+
+    /** The page's timers stop and the service ends: nothing of Open WebUI runs until you come back. */
+    private fun putPageToSleep() {
+        if (rendererGone) return
+        pageAsleep = true
+        Log.i(TAG, "Open WebUI sleeps in the background (battery)")
+        webView.pauseTimers()
+        stopService(Intent(this, SakuraKeepAliveService::class.java))
+    }
+
+    private fun wakePage() {
+        sleepHandler.removeCallbacks(sleepCheck)
+        if (!pageAsleep) return
+        pageAsleep = false
+        if (::webView.isInitialized) webView.resumeTimers()
+    }
     /** A Nuevo chat that should open with the keyboard, waiting for the page to finish loading. */
     private var focusComposerPending = false
     /** "wifi" or "other"; address checks only run when this changes, not on every signal update. */
@@ -274,6 +317,7 @@ class MainActivity : ComponentActivity() {
                     if (isOpenWebUiOrigin(Uri.parse(url))) view.evaluateJavascript(CONFIRM_VOICE_JS, null)
                     if (isOpenWebUiOrigin(Uri.parse(url))) view.evaluateJavascript(MIC_WATCH_JS, null)
                     if (isOpenWebUiOrigin(Uri.parse(url)) && keepKeyboardClosed(url)) view.evaluateJavascript(NO_AUTOFOCUS_JS, null)
+                    if (isOpenWebUiOrigin(Uri.parse(url))) view.evaluateJavascript(KEEP_BOTTOM_JS, null)
                 }
 
                 override fun onPageFinished(view: WebView, url: String) {
@@ -295,6 +339,7 @@ class MainActivity : ComponentActivity() {
                         view.evaluateJavascript(CONFIRM_VOICE_JS, null)
                         view.evaluateJavascript(MIC_WATCH_JS, null)
                         if (keepKeyboardClosed(url)) view.evaluateJavascript(NO_AUTOFOCUS_JS, null)
+                        view.evaluateJavascript(KEEP_BOTTOM_JS, null)
                         if (focusComposerPending) {
                             focusComposerPending = false
                             view.evaluateJavascript(FOCUS_COMPOSER_JS, null)
@@ -331,6 +376,8 @@ class MainActivity : ComponentActivity() {
                     super.doUpdateVisitedHistory(view, url, isReload)
                     val uri = runCatching { Uri.parse(url) }.getOrNull() ?: return
                     if (isOpenWebUiOrigin(uri) && isErrorRoute(uri)) handleMainFrameFailure()
+                    // Agenda: with the PC answering it is the web one (the sidebar's «Agenda» stays here); without it
+                    // the page cannot load and the connection screen offers the Agenda kept on the phone
                 }
 
                 override fun onReceivedError(
@@ -670,7 +717,11 @@ class MainActivity : ComponentActivity() {
         })
 
         VoiceWidgetProvider.remember(this, intent)
-        val request = IncomingIntents.parse(intent)
+        // the Agenda keeps its own copy on the phone: sync now, every 15 min, and the reminders stay scheduled
+        AgendaSync.programarPeriodica(this)
+        AgendaSync.ahora(this)
+        if (intent?.action == IncomingIntents.ACTION_CALENDAR) startActivity(AgendaActivity.intent(this))
+        val request = IncomingIntents.parse(intent)?.takeIf { intent?.action != IncomingIntents.ACTION_CALENDAR }
         val restored = request == null && savedInstanceState != null &&
             webView.restoreState(savedInstanceState) != null
         if (restored) {
@@ -704,6 +755,7 @@ class MainActivity : ComponentActivity() {
         intent.getStringExtra(WebNotificationBridge.EXTRA_NOTIFICATION)?.let { id ->
             if (::webView.isInitialized && trustedPageLoaded) webView.evaluateJavascript(WebNotificationBridge.clickScript(id), null)
         }
+        if (intent.action == IncomingIntents.ACTION_CALENDAR) { startActivity(AgendaActivity.intent(this)); return }
         val request = IncomingIntents.parse(intent) ?: return
         // Still choosing the address for the first load: open this instead of the last page.
         if (!firstLoadStarted) requestBeforeFirstLoad = request else openRequest(request)
@@ -943,6 +995,25 @@ class MainActivity : ComponentActivity() {
             setPadding(0, dp(8), 0, 0)
         }
         content.addView(retryLabel)
+        // Agenda: it lives on the phone too, so it opens without the PC (the native one, never the web)
+        content.addView(TextView(this).apply {
+            text = "Abrir mi agenda"
+            textSize = 16f
+            setTextColor(retryColor)
+            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+            gravity = Gravity.CENTER
+            setPadding(dp(22), 0, dp(22), 0)
+            background = GradientDrawable().apply {
+                cornerRadius = dp(24).toFloat()
+                setStroke(dp(1), themed(Color.argb(46, 24, 24, 27), Color.argb(60, 255, 255, 255)))
+            }
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { startActivity(AgendaActivity.intent(this@MainActivity, nativa = true)) }
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(48)).apply {
+            topMargin = dp(22)
+            gravity = Gravity.CENTER_HORIZONTAL
+        })
         content.addView(TextView(this).apply {
             text = getString(R.string.connection_configure)
             textSize = 15f
@@ -1383,6 +1454,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        wakePage()
         if (skipLockOnce) {
             // Back from our own file picker: not leaving the app.
             skipLockOnce = false
@@ -1412,6 +1484,7 @@ class MainActivity : ComponentActivity() {
         if (::webView.isInitialized && !skipLockOnce && !rendererGone) {
             webView.evaluateJavascript("window.__sakuraMic && window.__sakuraMic.release();", null)
         }
+        if (::webView.isInitialized && !skipLockOnce && !isChangingConfigurations) startSleepWatch()
         super.onStop()
     }
 
@@ -1526,6 +1599,8 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        // pauseTimers() holds every WebView of the process: never leave it on for the next screen
+        wakePage()
         networkCallback?.let { getSystemService(ConnectivityManager::class.java)?.unregisterNetworkCallback(it) }
         networkCallback = null
         stopRetryAnimation()
@@ -1743,6 +1818,64 @@ class MainActivity : ComponentActivity() {
          * when it leaves the screen. A call left open in the background kept the microphone busy for a
          * few seconds, and «Oye, Sakura» could not hear the phrase meanwhile.
          */
+        /**
+         * The conversation stays at its end when the page changes size (pedido de Christian, 21-nov-2026). The
+         * keyboard opening makes the page shorter one frame at a time and Open WebUI keeps the conversation's
+         * position, so the last answer ended up hidden behind the message box ("a veces el chat no se pone en la
+         * posición adecuada"). Opening the keyboard to write (the message box takes the cursor) always goes to the
+         * last message, wherever you were ("se tiene que ir al último mensaje"). Any other change of size (the
+         * keyboard closing) keeps you at the end only if you were there; if you had scrolled up, it stays put.
+         */
+        private const val KEEP_BOTTOM_JS = """
+            (function() {
+                if (window.__sakuraKeepBottom) return;
+                window.__sakuraKeepBottom = true;
+                const NEAR = 120;
+                let atEnd = true, list = null, lastHeight = 0;
+                const find = function() {
+                    const el = document.getElementById('messages-container');
+                    return el && el.offsetParent !== null ? el : null;
+                };
+                const distance = function(el) { return el.scrollHeight - el.scrollTop - el.clientHeight; };
+                const writing = function() {
+                    const box = document.getElementById('chat-input');
+                    const form = box && (box.closest('form') || box);
+                    return !!form && form.contains(document.activeElement);
+                };
+                const toEnd = function(el) { el.scrollTop = el.scrollHeight; atEnd = true; };
+                document.addEventListener('scroll', function(e) {
+                    const el = e.target;
+                    if (!el || el.id !== 'messages-container') return;
+                    // a scroll that only follows a shorter box (the keyboard) does not count as leaving the end
+                    if (el.clientHeight !== lastHeight) return;
+                    atEnd = distance(el) < NEAR;
+                }, true);
+                const follow = function() {
+                    const el = find();
+                    if (!el) return;
+                    if (el !== list) { list = el; lastHeight = el.clientHeight; atEnd = distance(el) < NEAR; return; }
+                    if (el.clientHeight === lastHeight) return;
+                    const shrank = el.clientHeight < lastHeight;
+                    lastHeight = el.clientHeight;
+                    if ((shrank && writing()) || atEnd) toEnd(el);
+                };
+                // the message box takes the cursor: to the last message now and again as the keyboard finishes opening
+                document.addEventListener('focusin', function(e) {
+                    if (!writing()) return;
+                    [0, 250, 500].forEach(function(ms) { setTimeout(function() { const el = find(); if (el && writing()) toEnd(el); }, ms); });
+                }, true);
+                const watch = new ResizeObserver(function() { follow(); });
+                const attach = function() {
+                    const el = find();
+                    if (el && el !== list) { watch.disconnect(); watch.observe(el); follow(); }
+                };
+                window.addEventListener('resize', function() { attach(); follow(); });
+                if (window.visualViewport) window.visualViewport.addEventListener('resize', function() { attach(); follow(); });
+                new MutationObserver(attach).observe(document.body, { childList: true, subtree: true });
+                attach();
+            })();
+        """
+
         private const val MIC_WATCH_JS = """
             (function() {
                 if (window.__sakuraMic) return;

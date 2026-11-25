@@ -2,6 +2,27 @@
 
 Cambios de Sakura Hanami Open WebUI (antes Sakura OI Web y SakuraWebApp) por versión. La versión de cada APK está en `app/build.gradle.kts` (`versionName` y `versionCode`).
 
+## 1.0 Beta 016 (versionCode 85) — 24 de noviembre de 2026
+
+Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v1.0-Beta-016). Reúne lo probado en las compilaciones personales 1.0 Beta 010c a 016c, que no se publicaron.
+
+### Agregado
+- **Agenda con y sin conexión.** Con el servidor respondiendo, la app abre la Agenda web de Open WebUI. Sin conexión abre la **Agenda guardada en el teléfono** (`AgendaActivity`), con el mismo diseño: Tareas | Calendario, Mi día con **Vencidas**, **Hoy**, **Próximos** y **Completadas**, Importante, Planeado y Todas divididas por etiqueta. Cada fila lleva la barra del color de su calendario y su estado: **Pendiente**, **Vencida** (con hora, en cuanto pasa la hora; sin hora, al terminar el día), **Ahora** o **Hecha**. El calendario tiene vistas **Día**, **Semana** (tres días) y **Mes**.
+- **Todo funciona sin red.** Agregar, completar, reprogramar o eliminar tareas, y editar o eliminar eventos, se guarda en el teléfono (`AgendaStore`, SQLite) y se envía al volver la conexión por la ruta de sincronización de la Agenda del servidor. Una cápsula avisa «Sin conexión» o «N por enviar», y al volver la red aparece «Hay conexión con tu PC · Abrir la Agenda web».
+- **Recordatorios en el teléfono.** Los avisos de tareas y eventos suenan aunque el servidor no responda (`AgendaAlarms`, alarma exacta), con **Completar** y **En 10 min** en la notificación; si también llega el aviso del servidor, no se repite. Nuevos recordatorios: 10 y 30 min, 3 días y **Personalizado…** (horas y minutos).
+- **Etiquetas = calendarios.** La etiqueta de una tarea es uno de tus calendarios, con su nombre y uno de los 13 colores de la paleta. Crear una etiqueta crea su calendario (necesita conexión).
+- **Widgets nuevos (W1 a W10).** Cuatro tamaños (4 × 1, 4 × 2, 4 × 3 y 4 × 4) con el modelo, su descripción, el micrófono y la tarjeta **Pendientes** de la Agenda: marcar una tarea la completa sin abrir la app y «+ Tarea» la agrega. Sin conexión con el servidor muestran «Sin conexión con tu PC» con **Reintentar**, la foto en gris y la Agenda, que sigue funcionando.
+- **Canal privado para compilaciones personales.** Una compilación «c» se actualiza desde el propio servidor de Open WebUI con su sesión (`/static/sakura-app/personal.json`, revisando el SHA-256 antes de instalar).
+
+### Cambiado
+- **Menos batería en segundo plano.** La página de Open WebUI se duerme 10 minutos después de salir de la app (más tiempo solo mientras un modelo está respondiendo) y despierta al volver (`PageSleep`). «Oye, Sakura» pasa por una compuerta de voz (`WakeGate`): el reconocedor solo trabaja cuando puede haber alguien hablando.
+- **Fotos de los modelos desde Open WebUI.** Los widgets y el selector usan la foto que cada modelo tiene en Open WebUI, guardada en el teléfono; un modelo nuevo o una foto cambiada se ven sin reinstalar.
+- **El teclado lleva al último mensaje.** Al tocar el cuadro de mensaje, la conversación baja al final aunque estuvieras más arriba.
+
+### Corregido
+- Una nota vacía de la Agenda ya no aparece como «Nota».
+- El aviso de actualización de una compilación «c» nombra la versión instalada con su «c».
+
 ## 1.0 Beta 009 (versionCode 78) — 14 de noviembre de 2026
 
 Publicado en [GitHub Releases](https://github.com/YukiChristian/Sakura-OI-Web/releases/tag/v1.0-Beta-009).

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Agenda, the only thing available offline: blue slate border. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/widget_field" />
+    <stroke android:width="1.5dp" android:color="@color/widget_blue" />
+    <corners android:radius="18dp" />
+</shape>

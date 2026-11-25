@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Widget colours, Hanami dark: graphite glass at 70 %, the mic inverted (white with a graphite icon). -->
 <resources>
-    <color name="widget_glass">#B31C1C21</color>
+    <color name="widget_glass">#BF1C1C21</color>
     <color name="widget_glass_ring">#1AFFFFFF</color>
     <color name="widget_ink">#FFFAFAFA</color>
     <color name="widget_muted">#FFB4B4BC</color>
@@ -13,4 +13,16 @@
     <color name="widget_warn_bg">#33FAC83C</color>
     <color name="widget_warn">#FFF5D06A</color>
     <color name="widget_warn_ink">#FFF5E2A8</color>
+
+    <!-- Widgets W1–W12 (Hanami, 24-nov-2026): opaque field and card, blue for the chosen, amber offline. -->
+    <color name="widget_field">#FF26262B</color>
+    <color name="widget_field_ring">#1FFFFFFF</color>
+    <color name="widget_text2">#FFC4C4CC</color>
+    <color name="widget_blue">#FF8FA9DA</color>
+    <color name="widget_blue_soft">#338FA9DA</color>
+    <color name="widget_amber_ink">#FFF5D06A</color>
+    <color name="widget_amber_dot">#FFF5B731</color>
+    <color name="widget_amber_soft">#33FAC83C</color>
+    <color name="widget_amber_ring">#66F5D06A</color>
+    <color name="widget_check_ring">#FFA1A1AA</color>
 </resources>

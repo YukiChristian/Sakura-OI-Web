@@ -18,6 +18,10 @@ object IncomingIntents {
     /** Open WebUI's calendar and notes, from the widgets. */
     const val ACTION_CALENDAR = "com.sakura.webapp.action.CALENDAR"
     const val ACTION_NOTES = "com.sakura.webapp.action.NOTES"
+    /** The web Agenda on purpose (the globe of the native Agenda): /calendar is not sent back to AgendaActivity. */
+    const val ACTION_CALENDAR_WEB = "com.sakura.webapp.action.CALENDAR_WEB"
+    /** «Planear mi día» of the widget without pending tasks: a new chat that asks for it. */
+    const val ACTION_PLAN_DAY = "com.sakura.webapp.action.PLAN_DAY"
     /** Opens a page of Open WebUI (a chat from a push notice): EXTRA_PATH = "/c/<id>". */
     const val ACTION_OPEN_PATH = "com.sakura.webapp.action.OPEN_PATH"
     const val EXTRA_PATH = "com.sakura.webapp.extra.PATH"
@@ -47,8 +51,9 @@ object IncomingIntents {
             ACTION_VOICE, Intent.ACTION_ASSIST, Intent.ACTION_VOICE_COMMAND, VOICE_SEARCH_HANDS_FREE ->
                 Request(withModel("/?call=true", intent))
             ACTION_LAST_CHAT -> Request(null)
-            ACTION_CALENDAR -> Request("/calendar")
+            ACTION_CALENDAR, ACTION_CALENDAR_WEB -> Request("/calendar")
             ACTION_NOTES -> Request("/notes")
+            ACTION_PLAN_DAY -> Request(withModel(newChatWith("Ayúdame a planear mi día con mis pendientes de la Agenda."), intent))
             ACTION_OPEN_PATH -> Request(intent.getStringExtra(EXTRA_PATH)?.takeIf { it.startsWith("/c/") })
             Intent.ACTION_PROCESS_TEXT -> {
                 val text = intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()

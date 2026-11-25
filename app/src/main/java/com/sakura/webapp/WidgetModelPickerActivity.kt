@@ -214,7 +214,10 @@ class WidgetModelPickerActivity : ComponentActivity() {
     private fun loadFromServer() {
         Thread {
             val models = runCatching { ChatModels.fetchAll(this) }.getOrNull()
-            val changed = models != null && ChatModels.saveList(this, models)
+            val listChanged = models != null && ChatModels.saveList(this, models)
+            // the pictures too: a model added or a picture changed in Open WebUI shows right away here
+            val artChanged = models != null && ChatModels.syncArt(this, models)
+            val changed = listChanged || artChanged
             if (changed) VoiceWidgetProvider.refreshAll(this)
             runOnUiThread {
                 if (isFinishing) return@runOnUiThread

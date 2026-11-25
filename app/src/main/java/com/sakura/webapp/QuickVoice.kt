@@ -19,6 +19,12 @@ import android.widget.RemoteViews
 
 /** Ways to open voice mode with one tap: the quick settings tile and the home screen widgets. */
 object QuickVoice {
+    /** The Agenda changed (a sync, a task done from a reminder): the widgets redraw their pending tasks. */
+    fun refreshAgenda(context: Context) {
+        runCatching { VoiceWidgetProvider.refreshAll(context.applicationContext) }
+            .onFailure { android.util.Log.w("SakuraWebApp", "Widget: no se pudo redibujar", it) }
+    }
+
     fun intent(context: Context, model: String? = null): Intent = appIntent(context, IncomingIntents.ACTION_VOICE, model)
 
     fun appIntent(context: Context, action: String, model: String? = null): Intent =
@@ -60,13 +66,12 @@ class VoiceTileService : TileService() {
 }
 
 /**
- * Home screen widget, from "App de Android · Parte 1 · Widgets y «Oye, Sakura»" (Hanami). Its real size picks
- * the layout: large (4 × 2): the chosen model's avatar and name with the graphite mic, a row with the other
- * models (none with a single model; tapping one makes it the widget's model; when they do not fit, the last
- * place is «+N» and opens the picker), and Nuevo chat · Agenda · Notas · Último chat. Medium (one row): the
- * mic, the model and Nuevo and Agenda with their names. Small (2 × 2): avatar and mic, the model, Nuevo and
- * Agenda. The model name (▾) opens «¿Con quién quieres hablar?». When the PC does not answer, the mic and the
- * shortcuts switch off and the large widget says why, with «Reintentar» (see [PcStatus]).
+ * Home screen widget, after «AND · App de Android» W1–W12 (Hanami, 24-nov-2026). Glass over the wallpaper, an opaque
+ * field to write and the graphite mic; the model's photo and name ⌄ open «Elegir modelo». By height: W1 4×1 (field
+ * and mic), W2 4×2 (name, description and field), W3 4×3 (+ the nearest pending task, or W4 «Nada pendiente hoy»),
+ * W5/W6 4×4 (pending tasks that scroll + Nuevo chat · Agenda · Notas). Without the PC only the Agenda works, and the
+ * widget says so (W7–W10): grey photo and «Sin conexión con tu PC», «Reintentar», the mic and the chat off, the
+ * pending tasks still ticking and adding, «N por enviar», and in 4×4 only Agenda active with a blue border.
  */
 class VoiceWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
@@ -85,238 +90,212 @@ class VoiceWidgetProvider : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
-            ACTION_SELECT -> {
-                // A model of the row: it becomes the widget's model and moves to the top.
-                val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
-                val model = intent.getStringExtra(IncomingIntents.EXTRA_MODEL)
-                if (id != AppWidgetManager.INVALID_APPWIDGET_ID && model != null) {
-                    ChatModels.setForWidget(context, id, ChatModels.find(model, intent.getStringExtra(EXTRA_MODEL_NAME) ?: model))
-                    update(context, AppWidgetManager.getInstance(context), id)
-                }
+            ACTION_RETRY -> {
+                PcStatus.check(context, force = true)
+                AgendaSync.ahora(context)
             }
-            ACTION_RETRY -> PcStatus.check(context, force = true)
             else -> super.onReceive(context, intent)
         }
     }
 
     companion object {
         const val EXTRA_MODEL_NAME = "model_name"
-        private const val ACTION_SELECT = "com.sakura.webapp.widget.SELECT"
         private const val ACTION_RETRY = "com.sakura.webapp.widget.RETRY"
-        private val SLOTS = intArrayOf(
-            R.id.widget_slot_0, R.id.widget_slot_1, R.id.widget_slot_2, R.id.widget_slot_3,
-            R.id.widget_slot_4, R.id.widget_slot_5, R.id.widget_slot_6,
-        )
-        /** The shortcuts of each layout, with their icon and name (dimmed while the PC does not answer). */
-        private val SHORTCUTS = listOf(
-            Triple(R.id.widget_new_chat, R.id.widget_new_chat_icon, R.id.widget_new_chat_label),
-            Triple(R.id.widget_calendar, R.id.widget_calendar_icon, R.id.widget_calendar_label),
-            Triple(R.id.widget_notes, R.id.widget_notes_icon, R.id.widget_notes_label),
-            Triple(R.id.widget_last_chat, R.id.widget_last_chat_icon, R.id.widget_last_chat_label),
-        )
-        /** Height (dp) the large widget needs to show the row of models (or the notice) as well. */
-        private const val ROW_HEIGHT = 196f
-        /** Width (dp) of one place in the row: a 48 dp target plus 2 dp between places. */
-        private const val PLACE = 50f
 
-        /** Redraws every widget, e.g. after the list of models changed. */
+        /** Redraws every widget, e.g. after the list of models or the Agenda changed. */
         fun refreshAll(context: Context) {
             val manager = AppWidgetManager.getInstance(context) ?: return
-            manager.getAppWidgetIds(ComponentName(context, VoiceWidgetProvider::class.java))
-                .forEach { update(context, manager, it) }
+            val ids = manager.getAppWidgetIds(ComponentName(context, VoiceWidgetProvider::class.java))
+            ids.forEach { update(context, manager, it) }
+            if (ids.isNotEmpty()) {
+                @Suppress("DEPRECATION")
+                runCatching { manager.notifyAppWidgetViewDataChanged(ids, R.id.widget_task_list) }
+            }
         }
 
         /**
-         * Android 12 and later get every layout with the smallest size it needs, and the launcher shows
-         * the largest one that fits the widget's real size (the sizes launchers report are not always
-         * right). Older versions choose here from the reported size.
+         * Android 12 and later get the four layouts with the smallest size each needs, and the launcher shows the
+         * largest that fits the widget's real size. Older versions choose here from the reported height.
          */
         fun update(context: Context, manager: AppWidgetManager, id: Int) {
             val w = Widget(context, id)
             val views = if (Build.VERSION.SDK_INT >= 31) {
-                val layouts = linkedMapOf<SizeF, RemoteViews>()
-                layouts[SizeF(140f, 110f)] = w.small()
-                // One row: the mic and the model need about 190 dp; each 62 dp button 68 more.
-                for (buttons in 0..2) layouts[SizeF(190f + 68f * buttons, 50f)] = w.medium(buttons)
-                layouts[SizeF(250f, 140f)] = w.large(places = 0)
-                if (w.offline) {
-                    layouts[SizeF(250f, ROW_HEIGHT)] = w.large(places = 0, notice = true)
-                } else if (w.others.isNotEmpty()) {
-                    // Wider widgets fit more places (4 to 7); a wider layout wins when it fits.
-                    for (places in 4..minOf(SLOTS.size, maxOf(4, w.others.size))) {
-                        layouts[SizeF(maxOf(250f, 28f + PLACE * places), ROW_HEIGHT)] = w.large(places)
-                    }
-                }
-                RemoteViews(layouts)
+                RemoteViews(linkedMapOf(
+                    SizeF(180f, 50f) to w.w1(),
+                    SizeF(180f, 140f) to w.w2(),
+                    SizeF(180f, 250f) to w.w3(),
+                    SizeF(180f, 360f) to w.w4(),
+                ))
             } else {
-                // Portrait size in dp (0 before the launcher reports it: the large layout, as placed).
                 val options = manager.getAppWidgetOptions(id)
-                val width = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH) ?: 0
                 val height = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT) ?: 0
-                val tall = height == 0 || height >= ROW_HEIGHT.toInt()
                 when {
-                    height in 1 until 120 -> w.medium(if (width == 0) 2 else ((width - 190) / 68).coerceIn(0, 2))
-                    width in 1 until 250 -> w.small()
-                    w.offline -> w.large(0, notice = tall)
-                    else -> w.large(
-                        if (w.others.isEmpty() || !tall) 0
-                        else if (width == 0) 5 else ((width - 28) / PLACE.toInt()).coerceIn(2, SLOTS.size)
-                    )
+                    height == 0 -> w.w3()
+                    height < 140 -> w.w1()
+                    height < 250 -> w.w2()
+                    height < 360 -> w.w3()
+                    else -> w.w4()
                 }
             }
             manager.updateAppWidget(id, views)
         }
 
-        /** Builds the widget's layouts; the avatars are drawn once and shared by all of them. */
+        /** Builds the widget's layouts; the photos are drawn once and shared by all of them. */
         private class Widget(val context: Context, val id: Int) {
             val model = ChatModels.forWidget(context, id)
-            val models = ChatModels.available(context).let { list -> if (list.any { it.id == model.id }) list else listOf(model) + list }
-            val several = models.size > 1
-            /** The row shows only the others: the chosen one is already at the top. */
-            val others = models.filter { it.id != model.id }
+            val several = ChatModels.available(context).size > 1
             val offline = PcStatus.isOffline(context)
             private val density = context.resources.displayMetrics.density
             // Request codes are unique per widget and button, so each keeps its own PendingIntent.
             val code = id * 32
             val picker = QuickVoice.activity(context, code + 11, WidgetModelPickerActivity.intent(context, id))
-            val chat = chatIntent(context, id, model, code + 10)
-            val retry = broadcast(context, code + 14, Intent(context, VoiceWidgetProvider::class.java).setAction(ACTION_RETRY)
-                .setData(Uri.parse("sakura-widget://$id/retry")))
+            val chat = QuickVoice.activity(
+                context, code + 1,
+                QuickVoice.appIntent(context, IncomingIntents.ACTION_NEW_CHAT, model.id).putExtra(IncomingIntents.EXTRA_FOCUS, true)
+                    .setData(Uri.parse("sakura-widget://$id/chat/${model.id}"))
+                    .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id).putExtra(EXTRA_MODEL_NAME, model.name)
+            )
+            val agenda = QuickVoice.activity(context, code + 12, AgendaActivity.intent(context))
+            val retry = PendingIntent.getBroadcast(
+                context, code + 14,
+                Intent(context, VoiceWidgetProvider::class.java).setAction(ACTION_RETRY).setData(Uri.parse("sakura-widget://$id/retry")),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
             private val avatars = HashMap<Int, Bitmap>()
+            private fun avatar(dp: Int): Bitmap = avatars.getOrPut(dp) {
+                val b = ChatModels.avatar(context, model, (dp * density).toInt(), ring = true)
+                if (offline) AgendaWidget.gris(b) else b
+            }
+            private val descripcion = ChatModels.descripcion(context, model.id)
 
-            private fun avatar(dp: Int) = avatars.getOrPut(dp) { ChatModels.avatar(context, model, (dp * density).toInt()) }
-
-            private fun base(layout: Int, avatarDp: Int, arrow: Int): RemoteViews {
-                val views = RemoteViews(context.packageName, layout)
+            /** Photo, name ⌄, description, mic and field: what W2–W10 share. */
+            private fun cabecera(views: RemoteViews, avatarDp: Int) {
                 views.setImageViewBitmap(R.id.widget_avatar, avatar(avatarDp))
                 views.setTextViewText(R.id.widget_model_name, ChatModels.shortName(model))
-                views.setTextViewCompoundDrawablesRelative(R.id.widget_model_name, 0, 0, if (several) arrow else 0, 0)
-                views.setOnClickPendingIntent(R.id.widget_model, if (several) picker else chat)
-                views.setContentDescription(
-                    R.id.widget_model,
-                    context.getString(if (several) R.string.widget_change_model else R.string.widget_open_chat, model.name)
-                )
+                views.setViewVisibility(R.id.widget_chev, if (several && !offline) View.VISIBLE else View.GONE)
+                views.setTextColor(R.id.widget_model_name, context.getColor(if (offline) R.color.widget_text2 else R.color.widget_ink))
+                views.setTextViewText(R.id.widget_model_desc, descripcion ?: "")
+                views.setViewVisibility(R.id.widget_model_desc, if (!offline && !descripcion.isNullOrBlank()) View.VISIBLE else View.GONE)
+                views.setViewVisibility(R.id.widget_off_row, if (offline) View.VISIBLE else View.GONE)
+                views.setOnClickPendingIntent(R.id.widget_model, if (offline) retry else if (several) picker else chat)
+                views.setContentDescription(R.id.widget_model,
+                    if (offline) "${model.name}. Sin conexión con tu PC. Reintentar"
+                    else context.getString(if (several) R.string.widget_change_model else R.string.widget_open_chat, model.name))
+                microfono(views)
+                views.setViewVisibility(R.id.widget_field, if (offline) View.GONE else View.VISIBLE)
+                views.setViewVisibility(R.id.widget_offline, if (offline) View.VISIBLE else View.GONE)
+                if (offline) views.setOnClickPendingIntent(R.id.widget_retry, retry)
+                else {
+                    views.setOnClickPendingIntent(R.id.widget_field, chat)
+                    views.setTextViewText(R.id.widget_hint, "Escríbele a ${ChatModels.shortName(model)}…")
+                    views.setContentDescription(R.id.widget_field, "Escribir a ${model.name}")
+                }
+            }
+
+            private fun microfono(views: RemoteViews) {
                 if (offline) {
-                    // Off rather than failing in silence: a ring instead of the graphite mic; a tap checks again.
-                    views.setInt(R.id.widget_mic, "setBackgroundResource", R.drawable.widget_mic_off)
-                    views.setInt(R.id.widget_mic, "setColorFilter", context.getColor(R.color.widget_off))
+                    // off rather than failing in silence; a tap checks the PC again
+                    views.setInt(R.id.widget_mic, "setBackgroundResource", R.drawable.widget_w_mic_off)
+                    views.setInt(R.id.widget_mic, "setColorFilter", context.getColor(R.color.widget_check_ring))
                     views.setOnClickPendingIntent(R.id.widget_mic, retry)
-                    views.setContentDescription(R.id.widget_mic, context.getString(R.string.widget_mic_off, model.name))
+                    views.setContentDescription(R.id.widget_mic, "Hablar (sin conexión)")
                 } else {
+                    views.setInt(R.id.widget_mic, "setBackgroundResource", R.drawable.widget_w_mic)
+                    views.setInt(R.id.widget_mic, "setColorFilter", context.getColor(R.color.widget_on_mic))
                     views.setOnClickPendingIntent(R.id.widget_mic, QuickVoice.pendingIntent(context, code, model.id))
                     views.setContentDescription(R.id.widget_mic, context.getString(R.string.widget_talk_to, model.name))
-                    views.setOnClickPendingIntent(
-                        R.id.widget_new_chat,
-                        QuickVoice.activity(
-                            context, code + 1,
-                            QuickVoice.appIntent(context, IncomingIntents.ACTION_NEW_CHAT, model.id).putExtra(IncomingIntents.EXTRA_FOCUS, true)
-                        )
-                    )
-                    views.setOnClickPendingIntent(R.id.widget_calendar, page(context, IncomingIntents.ACTION_CALENDAR, code + 12))
-                }
-                return views
-            }
-
-            /** Greys the shortcuts of [views] that the layout has (only while the PC does not answer). */
-            private fun dim(views: RemoteViews, cells: Int) {
-                if (!offline) return
-                val off = context.getColor(R.color.widget_off)
-                SHORTCUTS.take(cells).forEach { (_, icon, label) ->
-                    views.setInt(icon, "setColorFilter", off)
-                    views.setTextColor(label, off)
                 }
             }
 
-            fun small(): RemoteViews = base(R.layout.widget_small, 40, R.drawable.widget_arrow_15).apply {
-                setOnClickPendingIntent(R.id.widget_avatar, if (offline) retry else chat)
-                dim(this, 2)
-            }
-
-            /** One row with the buttons by importance: Nuevo, then Agenda. */
-            fun medium(buttons: Int): RemoteViews = base(R.layout.widget_medium, 30, R.drawable.widget_arrow_15).apply {
-                setViewVisibility(R.id.widget_buttons, if (buttons > 0) View.VISIBLE else View.GONE)
-                setViewVisibility(R.id.widget_calendar, if (buttons > 1) View.VISIBLE else View.GONE)
-                dim(this, 2)
-            }
-
-            /** The large widget with a row of [places] models (none: no row), or the offline [notice]. */
-            fun large(places: Int, notice: Boolean = false): RemoteViews = base(R.layout.widget_large, 44, R.drawable.widget_arrow_17).apply {
-                setOnClickPendingIntent(R.id.widget_avatar, if (offline) retry else chat)
-                if (!offline) {
-                    setOnClickPendingIntent(R.id.widget_notes, page(context, IncomingIntents.ACTION_NOTES, code + 13))
-                    setOnClickPendingIntent(R.id.widget_last_chat, page(context, IncomingIntents.ACTION_LAST_CHAT, code + 2))
+            /** W1 · 4×1, or W7 offline: the whole pill opens the Agenda. */
+            fun w1(): RemoteViews = RemoteViews(context.packageName, R.layout.widget_w1).apply {
+                setViewVisibility(R.id.widget_field, if (offline) View.GONE else View.VISIBLE)
+                setViewVisibility(R.id.widget_off_pill, if (offline) View.VISIBLE else View.GONE)
+                if (offline) {
+                    setImageViewBitmap(R.id.widget_off_avatar, avatar(42))
+                    setOnClickPendingIntent(R.id.widget_off_pill, agenda)
+                } else {
+                    setImageViewBitmap(R.id.widget_avatar, avatar(42))
+                    setViewVisibility(R.id.widget_chev, if (several) View.VISIBLE else View.GONE)
+                    setOnClickPendingIntent(R.id.widget_model, if (several) picker else chat)
+                    setContentDescription(R.id.widget_model, context.getString(if (several) R.string.widget_change_model else R.string.widget_open_chat, model.name))
+                    setTextViewText(R.id.widget_hint, "Escríbele a ${ChatModels.shortName(model)}…")
+                    setOnClickPendingIntent(R.id.widget_hint, chat)
+                    setContentDescription(R.id.widget_hint, "Escribir a ${model.name}")
                 }
-                dim(this, 4)
-                setViewVisibility(R.id.widget_offline, if (notice) View.VISIBLE else View.GONE)
-                if (notice) setOnClickPendingIntent(R.id.widget_retry, retry)
-                setViewVisibility(R.id.widget_slots, if (places > 0 && !notice) View.VISIBLE else View.GONE)
-                if (places > 0 && !notice) fillSlots(this, places)
+                microfono(this)
             }
 
-            /**
-             * The row of the other models: 40 dp avatars in 48 dp places. If they do not all fit, the last
-             * place is «+N» (announced as «Ver los 9 modelos») and opens the picker.
-             */
-            private fun fillSlots(views: RemoteViews, places: Int) {
-                val size = (48 * density).toInt()
-                val shown = if (others.size <= places) others else others.take(places - 1)
-                val hidden = others.size - shown.size
-                SLOTS.forEachIndexed { i, slot ->
-                    when {
-                        i < shown.size -> {
-                            val m = shown[i]
-                            views.setViewVisibility(slot, View.VISIBLE)
-                            views.setImageViewBitmap(slot, slotAvatar(m, size))
-                            views.setOnClickPendingIntent(slot, selectIntent(m, code + 3 + i))
-                            views.setContentDescription(slot, context.getString(R.string.widget_switch_to, m.name))
-                        }
-                        i == shown.size && hidden > 0 -> {
-                            views.setViewVisibility(slot, View.VISIBLE)
-                            views.setImageViewBitmap(slot, ChatModels.more(context, hidden, size))
-                            views.setOnClickPendingIntent(slot, picker)
-                            views.setContentDescription(slot, context.getString(R.string.widget_more_models, models.size))
-                        }
-                        else -> views.setViewVisibility(slot, View.GONE)
+            /** W2 · 4×2, or W8. */
+            fun w2(): RemoteViews = RemoteViews(context.packageName, R.layout.widget_w2).apply { cabecera(this, 50) }
+
+            /** W3 / W4 · 4×3 with the nearest task, or W9. */
+            fun w3(): RemoteViews = RemoteViews(context.packageName, R.layout.widget_w3).apply {
+                cabecera(this, 50)
+                val tareas = tarjeta(this)
+                removeAllViews(R.id.widget_tasks)
+                tareas.firstOrNull()?.let { t ->
+                    val fila = AgendaWidget.fila(context, t, AgendaWidget.secciones(context))
+                    fila.setOnClickPendingIntent(R.id.task_check, AgendaWidget.accion(context, code + 20, AgendaWidget.COMPLETAR, t.id))
+                    fila.setOnClickPendingIntent(R.id.task_row, AgendaWidget.accion(context, code + 21, AgendaWidget.ABRIR, t.id))
+                    addView(R.id.widget_tasks, fila)
+                }
+            }
+
+            /** W5 / W6 · 4×4: the tasks scroll inside the widget, then Nuevo chat · Agenda · Notas; or W10. */
+            fun w4(): RemoteViews = RemoteViews(context.packageName, R.layout.widget_w4).apply {
+                cabecera(this, 50)
+                val tareas = tarjeta(this)
+                setViewVisibility(R.id.widget_task_list, if (tareas.isEmpty()) View.GONE else View.VISIBLE)
+                @Suppress("DEPRECATION")
+                setRemoteAdapter(R.id.widget_task_list,
+                    Intent(context, AgendaWidgetService::class.java).setData(Uri.parse("sakura-widget://$id/tareas")))
+                setPendingIntentTemplate(R.id.widget_task_list, AgendaWidget.plantilla(context, code + 22))
+                setContentDescription(R.id.widget_task_list, "Pendientes, ${tareas.size}")
+                setOnClickPendingIntent(R.id.widget_calendar, agenda)
+                setInt(R.id.widget_calendar, "setBackgroundResource", if (offline) R.drawable.widget_w_action_on else R.drawable.widget_w_action)
+                val off = context.getColor(R.color.widget_check_ring)
+                val ink = context.getColor(R.color.widget_ink)
+                for ((cell, icon, label) in listOf(
+                    Triple(R.id.widget_new_chat, R.id.widget_new_chat_icon, R.id.widget_new_chat_label),
+                    Triple(R.id.widget_notes, R.id.widget_notes_icon, R.id.widget_notes_label),
+                )) {
+                    setInt(icon, "setColorFilter", if (offline) off else ink)
+                    setTextColor(label, if (offline) off else ink)
+                    if (offline) {
+                        setOnClickPendingIntent(cell, retry)
+                        setContentDescription(cell, (if (cell == R.id.widget_new_chat) "Nuevo chat" else "Notas") + ", no disponible sin conexión")
                     }
                 }
+                if (!offline) {
+                    setOnClickPendingIntent(R.id.widget_new_chat, chat)
+                    setOnClickPendingIntent(R.id.widget_notes, QuickVoice.activity(context, code + 13, QuickVoice.appIntent(context, IncomingIntents.ACTION_NOTES)))
+                }
+                setInt(R.id.widget_calendar_icon, "setColorFilter", if (offline) context.getColor(R.color.widget_blue) else ink)
+                setTextColor(R.id.widget_calendar_label, if (offline) context.getColor(R.color.widget_blue) else ink)
             }
 
-            private val slotAvatars = HashMap<String, Bitmap>()
-
-            private fun slotAvatar(m: ChatModel, size: Int) = slotAvatars.getOrPut(m.id) {
-                ChatModels.avatar(context, m, size, ring = false, padded = true)
+            /** «Pendientes · N», «N por enviar», «+ Tarea» and the empty state (W4); returns the open tasks. */
+            private fun tarjeta(views: RemoteViews): List<AgendaStore.Tarea> {
+                val tareas = AgendaWidget.pendientes(context)
+                val porEnviar = AgendaStore.pendientes(context)
+                views.setTextViewText(R.id.widget_pend_count, " · ${tareas.size}")
+                views.setViewVisibility(R.id.widget_pend_count, if (tareas.isEmpty()) View.GONE else View.VISIBLE)
+                views.setTextViewText(R.id.widget_pend_chip, "$porEnviar por enviar")
+                views.setViewVisibility(R.id.widget_pend_chip, if (porEnviar > 0) View.VISIBLE else View.GONE)
+                views.setContentDescription(R.id.widget_pend_title, "Pendientes, ${tareas.size}" + if (porEnviar > 0) ", $porEnviar por enviar" else "")
+                val nueva = AgendaWidget.accion(context, code + 23, AgendaWidget.NUEVA)
+                views.setOnClickPendingIntent(R.id.widget_add, nueva)
+                views.setViewVisibility(R.id.widget_empty, if (tareas.isEmpty()) View.VISIBLE else View.GONE)
+                if (tareas.isEmpty()) {
+                    views.setOnClickPendingIntent(R.id.widget_empty_add, nueva)
+                    views.setViewVisibility(R.id.widget_plan, if (offline) View.GONE else View.VISIBLE)
+                    views.setOnClickPendingIntent(R.id.widget_plan, QuickVoice.activity(context, code + 24,
+                        QuickVoice.appIntent(context, IncomingIntents.ACTION_PLAN_DAY, model.id)))
+                }
+                return tareas
             }
-
-            /** «Cambiar a Lain»: the widget switches model without opening anything. */
-            private fun selectIntent(m: ChatModel, requestCode: Int): PendingIntent = broadcast(
-                context, requestCode,
-                Intent(context, VoiceWidgetProvider::class.java).setAction(ACTION_SELECT)
-                    .setData(Uri.parse("sakura-widget://$id/select/${Uri.encode(m.id)}"))
-                    .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
-                    .putExtra(IncomingIntents.EXTRA_MODEL, m.id)
-                    .putExtra(EXTRA_MODEL_NAME, m.name)
-            )
         }
-
-        private fun broadcast(context: Context, requestCode: Int, intent: Intent): PendingIntent =
-            PendingIntent.getBroadcast(context, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-
-        /** Agenda, Notas or Último chat: a page of Open WebUI. */
-        private fun page(context: Context, action: String, requestCode: Int): PendingIntent =
-            QuickVoice.activity(context, requestCode, QuickVoice.appIntent(context, action))
-
-        /**
-         * A new chat with [model], which also becomes the widget's model (MainActivity saves it). Opens the
-         * app directly: Android 12+ blocks a broadcast from starting it.
-         */
-        private fun chatIntent(context: Context, widgetId: Int, model: ChatModel, requestCode: Int): PendingIntent =
-            QuickVoice.activity(
-                context, requestCode,
-                QuickVoice.appIntent(context, IncomingIntents.ACTION_NEW_CHAT, model.id)
-                    .setData(Uri.parse("sakura-widget://$widgetId/chat/${model.id}"))
-                    .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
-                    .putExtra(EXTRA_MODEL_NAME, model.name)
-            )
 
         /** Called by MainActivity for a chat opened from a widget: remember the model and redraw it. */
         fun remember(context: Context, intent: Intent) {
@@ -344,6 +323,10 @@ object PcStatus {
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     fun isOffline(context: Context) = prefs(context).getBoolean(KEY_OFFLINE, false)
+
+    /** The PC answered within the last [ms] (a check or a page of the server): «online» is not a stale guess. */
+    fun answeredRecently(context: Context, ms: Long = EVERY_MS): Boolean =
+        !isOffline(context) && System.currentTimeMillis() - prefs(context).getLong(KEY_AT, 0) < ms
 
     fun markOnline(context: Context) = set(context.applicationContext, offline = false)
 
